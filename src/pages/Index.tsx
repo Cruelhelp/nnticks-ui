@@ -74,13 +74,15 @@ const Index = () => {
     const body = document.body;
     body.classList.remove('theme-blue', 'theme-purple', 'theme-red');
     
-    if (settings.accent !== 'green') {
-      body.classList.add(`theme-${settings.accent}`);
+    if (settings?.accent !== 'green') {
+      body.classList.add(`theme-${settings?.accent}`);
     }
     
     // Apply font
-    document.documentElement.style.fontFamily = settings.font;
-  }, [settings.accent, settings.font]);
+    if (settings?.font) {
+      document.documentElement.style.fontFamily = settings.font;
+    }
+  }, [settings?.accent, settings?.font]);
   
   if (showSplash) {
     return <Splash />;
