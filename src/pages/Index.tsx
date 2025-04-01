@@ -11,13 +11,13 @@ import History from '@/components/History';
 import Leaderboard from '@/components/Leaderboard';
 import Splash from './Splash';
 import { useSettings } from '@/hooks/useSettings';
-import { AuthProvider } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Index = () => {
   const [showSplash, setShowSplash] = useState(true);
   const [activeSection, setActiveSection] = useState('home');
   const [showSidebar, setShowSidebar] = useState(true);
-  const [showTerminal, setShowTerminal] = useState(true); // Terminal visible by default
+  const [showTerminal, setShowTerminal] = useState(true);
   const { settings } = useSettings();
   
   // Show splash screen
@@ -43,7 +43,7 @@ const Index = () => {
   
   const resetLayout = () => {
     setShowSidebar(true);
-    setShowTerminal(true); // Reset to show terminal
+    setShowTerminal(true);
   };
   
   // Apply accent color class based on settings
@@ -83,38 +83,36 @@ const Index = () => {
   };
   
   return (
-    <AuthProvider>
-      <div className="h-screen flex flex-col overflow-hidden">
-        <TopBar 
-          toggleSidebar={toggleSidebar} 
-          toggleTerminal={toggleTerminal}
-          onReset={resetLayout}
-        />
+    <div className="h-screen flex flex-col overflow-hidden">
+      <TopBar 
+        toggleSidebar={toggleSidebar} 
+        toggleTerminal={toggleTerminal}
+        onReset={resetLayout}
+      />
+      
+      <div className="flex-1 flex overflow-hidden">
+        {showSidebar && (
+          <SideBar 
+            activeSection={activeSection} 
+            onSectionChange={handleSectionChange} 
+          />
+        )}
         
-        <div className="flex-1 flex overflow-hidden">
-          {showSidebar && (
-            <SideBar 
-              activeSection={activeSection} 
-              onSectionChange={handleSectionChange} 
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <main className="flex-1 p-4 overflow-auto">
+            {renderActiveSection()}
+          </main>
+          
+          {showTerminal && (
+            <Terminal 
+              onClose={() => setShowTerminal(false)}
+              onMinimize={() => setShowTerminal(false)}
+              onMaximize={() => {}}
             />
           )}
-          
-          <div className="flex-1 flex flex-col overflow-hidden">
-            <main className="flex-1 p-4 overflow-auto">
-              {renderActiveSection()}
-            </main>
-            
-            {showTerminal && (
-              <Terminal 
-                onClose={() => setShowTerminal(false)}
-                onMinimize={() => setShowTerminal(false)}
-                onMaximize={() => {}}
-              />
-            )}
-          </div>
         </div>
       </div>
-    </AuthProvider>
+    </div>
   );
 };
 

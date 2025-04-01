@@ -128,7 +128,7 @@ const NeuralNetworkVisual = () => {
       
       {/* Connections between layers */}
       {layers.slice(0, -1).map(layerIdx => (
-        <React.Fragment key={`connections-layer-${layerIdx}`}>
+        <React.Fragment key={`connections-${layerIdx}`}>
           {[...Array(nodesPerLayer)].map((_, fromNodeIdx) => (
             <React.Fragment key={`from-${layerIdx}-${fromNodeIdx}`}>
               {[...Array(nodesPerLayer)].map((_, toNodeIdx) => {
@@ -216,12 +216,15 @@ const Predictions = () => {
     // Determine random outcome for now (replace with actual implementation)
     const outcome: "win" | "loss" = Math.random() > 0.5 ? "win" : "loss";
     
+    // Find the pending prediction before it's removed from state
+    const pendingPred = pendingPredictions.find(p => p.id === id);
+    
     setCompletedPredictions(prevCompleted => [
       ...prevCompleted,
       {
         id,
-        type: pendingPredictions.find(p => p.id === id)?.type || 'rise',
-        confidence: pendingPredictions.find(p => p.id === id)?.confidence || 0,
+        type: pendingPred?.type || 'rise',
+        confidence: pendingPred?.confidence || 0,
         timestamp: new Date(),
         outcome
       }

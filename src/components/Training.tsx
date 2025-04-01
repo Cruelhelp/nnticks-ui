@@ -221,12 +221,12 @@ const Training = () => {
         lt => newTotalPoints >= lt.minPoints && newTotalPoints <= lt.maxPoints
       ) || levelThresholds[0];
       
-      const newLevel = currentLevelData.level;
+      const newLevelValue = currentLevelData.level;
       
       // Check if level up occurred
-      if (newLevel > level) {
-        setLevel(newLevel);
-        toast.success(`Level Up! You are now level ${newLevel}`);
+      if (newLevelValue > level) {
+        setLevel(newLevelValue);
+        toast.success(`Level Up! You are now level ${newLevelValue}`);
       }
       
       // Save to Supabase
@@ -252,7 +252,7 @@ const Training = () => {
             user_id: user.id,
             username: userDetails?.username || 'Anonymous',
             accuracy: 75 + Math.floor(Math.random() * 10),
-            level: newLevel
+            level: newLevelValue
           });
           
         if (error) throw error;
@@ -421,9 +421,9 @@ const Training = () => {
                 
                 <svg className="absolute top-0 left-0 w-full h-full">
                   {Array.from({ length: 3 }).map((_, layerIdx) => (
-                    <React.Fragment key={`svg-layer-${layerIdx}`}>
+                    <React.Fragment key={`lines-layer-${layerIdx}`}>
                       {Array.from({ length: layerIdx === 0 ? 3 : 5 }).map((_, fromIdx) => (
-                        <React.Fragment key={`from-${layerIdx}-${fromIdx}`}>
+                        <React.Fragment key={`lines-from-${layerIdx}-${fromIdx}`}>
                           {Array.from({ length: layerIdx === 2 ? 3 : 5 }).map((_, toIdx) => (
                             <line
                               key={`line-${layerIdx}-${fromIdx}-${toIdx}`}
