@@ -1,3 +1,4 @@
+
 import { 
   LineChart, 
   Line, 
@@ -13,9 +14,8 @@ import {
   ResponsiveContainer 
 } from 'recharts';
 import { Badge } from '@/components/ui/badge';
-
 import React, { useState, useEffect } from 'react';
-import { useTheme } from "@/components/ui/theme-provider"
+import { useTheme } from "@/components/ui/theme-provider";
 
 interface ChartProps {
   data: any[];
@@ -67,7 +67,7 @@ const BarChartView: React.FC<ChartProps> = ({ data }) => {
 };
 
 const Charts: React.FC = () => {
-  const [tickData, setTickData] = useState([]);
+  const [tickData, setTickData] = useState<Array<any>>([]);
   const { theme } = useTheme();
 
   useEffect(() => {
@@ -76,6 +76,7 @@ const Charts: React.FC = () => {
       const newData = Array.from({ length: 20 }, (_, i) => ({
         timestamp: new Date(now - i * 60000).toLocaleTimeString(),
         price: 100 + Math.random() * 10,
+        value: 100 + Math.random() * 10,
       }));
       setTickData(newData);
     };
@@ -86,7 +87,7 @@ const Charts: React.FC = () => {
     return () => clearInterval(intervalId);
   }, []);
 
-  const renderCandlestickData = (data) => {
+  const renderCandlestickData = (data: any[]) => {
     // Convert candlestick data to a format that works with BarChart or LineChart
     return (
       <ResponsiveContainer width="100%" height="100%">
