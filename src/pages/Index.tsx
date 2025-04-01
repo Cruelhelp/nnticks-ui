@@ -10,6 +10,9 @@ import Predictions from '@/components/Predictions';
 import Training from '@/components/Training';
 import History from '@/components/History';
 import Leaderboard from '@/components/Leaderboard';
+import NeuralNet from '@/components/NeuralNet';
+import DebugTools from '@/components/DebugTools';
+import Account from '@/components/Account';
 import Splash from './Splash';
 import { useSettings } from '@/hooks/useSettings';
 import { useAuth } from '@/contexts/AuthContext';
@@ -143,6 +146,12 @@ const Index = () => {
         return <History />;
       case 'leaderboard':
         return <Leaderboard />;
+      case 'neuralnet':
+        return <NeuralNet />;
+      case 'debug':
+        return <DebugTools />;
+      case 'account':
+        return <Account />;
       default:
         return <Home onSectionChange={handleSectionChange} />;
     }

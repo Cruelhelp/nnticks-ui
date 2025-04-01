@@ -25,7 +25,7 @@ const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <ThemeProvider defaultTheme="dark">
+        <ThemeProvider defaultTheme="dark" attribute="class">
           <TooltipProvider>
             <BrowserRouter>
               <div className="h-full min-h-screen flex flex-col bg-background text-foreground overflow-hidden">

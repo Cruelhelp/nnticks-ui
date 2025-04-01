@@ -1,14 +1,21 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { useNavigate } from 'react-router-dom';
 import Logo from '@/components/Logo';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Settings, TerminalSquare, Layout, UserCircle, Bell, LogOut, ChevronDown, Menu, Sidebar } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu';
+import { Menu, Bell, TerminalSquare, Settings, ChevronDown, LogOut, FileEdit, Code, HelpCircle, BookOpen, UserCircle } from 'lucide-react';
 import SettingsDialog from '@/components/SettingsDialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/lib/supabase';
-import { useNavigate } from 'react-router-dom';
 
 interface TopBarProps {
   toggleSidebar: () => void;
@@ -18,25 +25,12 @@ interface TopBarProps {
 }
 
 const TopBar: React.FC<TopBarProps> = ({ toggleSidebar, toggleTerminal, onReset, username }) => {
-  const [settingsOpen, setSettingsOpen] = React.useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const { user, userDetails, signOut } = useAuth();
   const navigate = useNavigate();
-  
+
   const handleSignOut = async () => {
     try {
-      // Update session status in Supabase
-      if (user) {
-        await supabase
-          .from('user_sessions')
-          .update({ 
-            end_time: new Date().toISOString(),
-            status: 'ended' 
-          })
-          .eq('user_id', user.id)
-          .eq('status', 'active');
-      }
-      
-      // Sign out
       await signOut();
       navigate('/login');
     } catch (error) {
@@ -44,61 +38,175 @@ const TopBar: React.FC<TopBarProps> = ({ toggleSidebar, toggleTerminal, onReset,
     }
   };
   
+  // Sample notifications
+  const notifications = [
+    {
+      title: 'Connection established',
+      description: 'WebSocket connection active',
+      timestamp: new Date().getTime() - 5 * 60 * 1000, // 5 minutes ago
+      read: false
+    },
+    {
+      title: 'Training complete',
+      description: 'Model trained with 89% accuracy',
+      timestamp: new Date().getTime() - 25 * 60 * 1000, // 25 minutes ago
+      read: false
+    },
+    {
+      title: 'Prediction successful',
+      description: 'Last prediction was correct',
+      timestamp: new Date().getTime() - 120 * 60 * 1000, // 2 hours ago
+      read: true
+    }
+  ];
+  
+  const formatTimeAgo = (timestamp: number) => {
+    const seconds = Math.floor((new Date().getTime() - timestamp) / 1000);
+    let interval = Math.floor(seconds / 31536000);
+    
+    if (interval >= 1) return `${interval} year${interval === 1 ? '' : 's'} ago`;
+    interval = Math.floor(seconds / 2592000);
+    if (interval >= 1) return `${interval} month${interval === 1 ? '' : 's'} ago`;
+    interval = Math.floor(seconds / 86400);
+    if (interval >= 1) return `${interval} day${interval === 1 ? '' : 's'} ago`;
+    interval = Math.floor(seconds / 3600);
+    if (interval >= 1) return `${interval} hour${interval === 1 ? '' : 's'} ago`;
+    interval = Math.floor(seconds / 60);
+    if (interval >= 1) return `${interval} minute${interval === 1 ? '' : 's'} ago`;
+    return `${Math.floor(seconds)} second${seconds === 1 ? '' : 's'} ago`;
+  };
+
   return (
     <header className="h-14 border-b flex items-center justify-between px-4 bg-background">
       {/* Left side */}
       <div className="flex items-center gap-2">
         <Button variant="ghost" size="icon" onClick={toggleSidebar} className="md:flex">
-          <Sidebar className="h-5 w-5" />
+          <Menu className="h-5 w-5" />
         </Button>
         
-        <Logo size={24} />
+        <a href="/" className="flex items-center hover:opacity-80 transition-opacity">
+          <Logo size={24} />
+          <span className="font-bold tracking-tight ml-2">NNticks</span>
+        </a>
         
-        <span className="font-bold tracking-tight ml-2">NNticks</span>
         {userDetails?.proStatus && (
-          <Badge className="font-semibold bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600">
-            PRO
-          </Badge>
+          <Badge className="font-semibold">PRO</Badge>
         )}
+      </div>
+      
+      {/* Menu Bar */}
+      <div className="hidden md:flex items-center gap-4 ml-4">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm" className="h-8">File</Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            <DropdownMenuItem>New Connection</DropdownMenuItem>
+            <DropdownMenuItem>Save Configuration</DropdownMenuItem>
+            <DropdownMenuItem>Export Data</DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={handleSignOut}>Exit</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm" className="h-8">Edit</Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            <DropdownMenuItem onClick={() => setSettingsOpen(true)}>Settings</DropdownMenuItem>
+            <DropdownMenuItem>Clear History</DropdownMenuItem>
+            <DropdownMenuItem>Preferences</DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem>Reset Application</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm" className="h-8">View</Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            <DropdownMenuItem onClick={toggleSidebar}>Toggle Sidebar</DropdownMenuItem>
+            <DropdownMenuItem onClick={toggleTerminal}>Toggle Terminal</DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem>Full Screen</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm" className="h-8">Help</Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            <DropdownMenuItem>
+              <BookOpen className="mr-2 h-4 w-4" /> Documentation
+            </DropdownMenuItem>
+            <DropdownMenuItem>
+              <Code className="mr-2 h-4 w-4" /> API Reference
+            </DropdownMenuItem>
+            <DropdownMenuItem>
+              <HelpCircle className="mr-2 h-4 w-4" /> Support
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem>About NNticks</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
       
       {/* Right side */}
       <div className="flex items-center gap-2">
-        <div className="mr-4 flex items-center gap-1.5">
+        <a href="/account" className="mr-4 flex items-center gap-1.5 hover:opacity-80 transition-opacity">
           <UserCircle className="h-4 w-4 text-muted-foreground" />
           <span className="text-sm font-medium">{username}</span>
-          <span className="h-3 w-1.5 bg-primary cursor-blink"></span>
-        </div>
+        </a>
         
         <Button variant="ghost" size="icon" onClick={toggleTerminal}>
           <TerminalSquare className="h-5 w-5" />
         </Button>
         
-        <Button variant="ghost" size="icon" onClick={onReset}>
-          <Layout className="h-5 w-5" />
-        </Button>
-        
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" className="relative">
               <Bell className="h-5 w-5" />
+              {notifications.filter(n => !n.read).length > 0 && (
+                <span className="absolute top-1 right-1.5 w-2 h-2 bg-red-500 rounded-full"></span>
+              )}
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Notifications</DropdownMenuLabel>
+          <DropdownMenuContent align="end" className="w-80">
+            <DropdownMenuLabel className="flex justify-between items-center">
+              <span>Notifications</span>
+              <Button variant="outline" size="sm">Mark all read</Button>
+            </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
-              <div className="flex flex-col">
-                <span className="font-medium">Market update</span>
-                <span className="text-xs text-muted-foreground">New volatility data available</span>
+            {notifications.length > 0 ? (
+              <>
+                {notifications.map((notification, index) => (
+                  <DropdownMenuItem key={index} className={`p-0 ${!notification.read ? 'bg-secondary/50' : ''}`}>
+                    <div className="w-full p-2">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="font-medium">{notification.title}</p>
+                          <p className="text-xs text-muted-foreground">{notification.description}</p>
+                        </div>
+                        <span className="text-xs text-muted-foreground whitespace-nowrap ml-4">
+                          {formatTimeAgo(notification.timestamp)}
+                        </span>
+                      </div>
+                    </div>
+                  </DropdownMenuItem>
+                ))}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="justify-center">
+                  View all notifications
+                </DropdownMenuItem>
+              </>
+            ) : (
+              <div className="text-center py-4 text-muted-foreground">
+                No notifications
               </div>
-            </DropdownMenuItem>
-            <DropdownMenuItem>
-              <div className="flex flex-col">
-                <span className="font-medium">Prediction successful</span>
-                <span className="text-xs text-muted-foreground">Your last prediction was correct</span>
-              </div>
-            </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
         
@@ -115,18 +223,10 @@ const TopBar: React.FC<TopBarProps> = ({ toggleSidebar, toggleTerminal, onReset,
           <DropdownMenuContent align="end">
             {!userDetails?.proStatus && (
               <>
-                <DropdownMenuLabel className="flex items-center">
-                  <span className="text-purple-600 flex items-center gap-1 font-semibold">
-                    Upgrade to Pro
-                  </span>
-                </DropdownMenuLabel>
-                <DropdownMenuItem 
-                  onClick={() => window.location.href = `https://paypal.me/username?business=support@nnticks.com`}
-                  className="bg-gradient-to-r from-purple-500/20 to-indigo-500/20 border-purple-500/30 hover:from-purple-500/30 hover:to-indigo-500/30"
-                >
+                <DropdownMenuItem className="bg-gradient-to-r from-purple-500/20 to-indigo-500/20 border-purple-500/30 hover:from-purple-500/30 hover:to-indigo-500/30">
                   <div className="flex flex-col">
                     <span className="font-medium">Get PRO access</span>
-                    <span className="text-xs">Advanced prediction models & features</span>
+                    <span className="text-xs">Advanced features & models</span>
                   </div>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />

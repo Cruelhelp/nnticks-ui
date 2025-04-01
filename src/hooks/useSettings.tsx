@@ -1,148 +1,141 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, createContext, useContext, PropsWithChildren } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
-import { toast } from 'sonner';
 
-// Define settings interface
-export interface UserSettings {
-  theme: string;
-  accent: 'green' | 'blue' | 'purple' | 'red';
-  font: 'JetBrains Mono' | 'Fira Code';
-  chartStyle: 'line' | 'candlestick' | 'bar';
-  terminalHeight: number;
-  sidebarWidth: number;
+export type UserSettings = {
   wsUrl: string;
   apiKey: string;
   subscription: string;
-}
-
-// Default settings
-export const DEFAULT_SETTINGS: UserSettings = {
-  theme: 'dark',
-  accent: 'green',
-  font: 'JetBrains Mono',
-  chartStyle: 'line',
-  terminalHeight: 200,
-  sidebarWidth: 150,
-  wsUrl: 'wss://ws.binaryws.com/websockets/v3?app_id=1089',
-  apiKey: '',
-  subscription: '{"ticks":"R_10"}'
+  font: 'JetBrains Mono' | 'Fira Code' | 'Courier New' | 'Consolas' | 'Menlo' | 'Monaco' | 'Roboto Mono' | 'Source Code Pro';
+  accent: 'green' | 'blue' | 'purple' | 'red';
+  chartStyle: 'line' | 'candlestick' | 'bar';
+  terminalHeight: number;
+  sidebarWidth: number;
+  theme?: string;
 };
 
-export const useSettings = () => {
-  const { user } = useAuth();
-  const [settings, setSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
-  const [loading, setLoading] = useState(true);
+export const DEFAULT_SETTINGS: UserSettings = {
+  wsUrl: 'wss://ws.binaryws.com/websockets/v3?app_id=1089',
+  apiKey: '',
+  subscription: '{"ticks":"R_10"}',
+  font: 'JetBrains Mono',
+  accent: 'green',
+  chartStyle: 'line',
+  terminalHeight: 200,
+  sidebarWidth: 200,
+};
 
-  // Load settings from Supabase
+interface SettingsContextType {
+  settings: UserSettings;
+  updateSettings: (newSettings: Partial<UserSettings>) => Promise<void>;
+}
+
+const SettingsContext = createContext<SettingsContextType>({
+  settings: DEFAULT_SETTINGS,
+  updateSettings: async () => {},
+});
+
+export const SettingsProvider = ({ children }: PropsWithChildren) => {
+  const [settings, setSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
+  const { user } = useAuth();
+
+  // Load settings from localStorage or Supabase
   useEffect(() => {
     const loadSettings = async () => {
-      if (!user) {
-        // For non-authenticated users, try to load from localStorage
-        const storedSettings = localStorage.getItem('nnticks_settings');
-        if (storedSettings) {
-          try {
-            setSettings(JSON.parse(storedSettings));
-          } catch (e) {
-            setSettings(DEFAULT_SETTINGS);
-          }
-        } else {
-          setSettings(DEFAULT_SETTINGS);
-        }
-        setLoading(false);
-        return;
-      }
-
       try {
-        const { data, error } = await supabase
-          .from('user_settings')
-          .select('*')
-          .eq('user_id', user.id)
-          .single();
-
-        if (error && error.code !== 'PGRST116') {
-          console.error('Error loading settings:', error);
-          throw error;
+        // First try to get from local storage
+        const savedSettings = localStorage.getItem('user_settings');
+        
+        if (savedSettings) {
+          setSettings({ ...DEFAULT_SETTINGS, ...JSON.parse(savedSettings) });
         }
-
-        if (data) {
-          setSettings({
-            theme: data.theme,
-            accent: data.accent as UserSettings['accent'],
-            font: data.font as UserSettings['font'],
-            chartStyle: data.chart_style as UserSettings['chartStyle'],
-            terminalHeight: data.terminal_height,
-            sidebarWidth: data.sidebar_width,
-            wsUrl: data.ws_url || DEFAULT_SETTINGS.wsUrl,
-            apiKey: data.api_key || '',
-            subscription: data.subscription || DEFAULT_SETTINGS.subscription
-          });
-        } else {
-          // Create default settings if none exist
-          await supabase.from('user_settings').insert({
-            user_id: user.id,
-            theme: DEFAULT_SETTINGS.theme,
-            accent: DEFAULT_SETTINGS.accent,
-            font: DEFAULT_SETTINGS.font,
-            chart_style: DEFAULT_SETTINGS.chartStyle,
-            terminal_height: DEFAULT_SETTINGS.terminalHeight,
-            sidebar_width: DEFAULT_SETTINGS.sidebarWidth,
-            ws_url: DEFAULT_SETTINGS.wsUrl,
-            api_key: DEFAULT_SETTINGS.apiKey,
-            subscription: DEFAULT_SETTINGS.subscription
-          });
-          setSettings(DEFAULT_SETTINGS);
+        
+        // If logged in, get settings from Supabase
+        if (user) {
+          const { data, error } = await supabase
+            .from('user_settings')
+            .select('*')
+            .eq('user_id', user.id)
+            .single();
+            
+          if (error && error.code !== 'PGRST116') {
+            // PGRST116 is "no rows returned" error, other errors are issues
+            console.error('Error loading settings:', error);
+          }
+          
+          if (data) {
+            // Format the data to match our settings structure
+            const dbSettings: UserSettings = {
+              wsUrl: data.ws_url || DEFAULT_SETTINGS.wsUrl,
+              apiKey: data.api_key || DEFAULT_SETTINGS.apiKey,
+              subscription: data.subscription || DEFAULT_SETTINGS.subscription,
+              font: data.font as any || DEFAULT_SETTINGS.font,
+              accent: data.accent as any || DEFAULT_SETTINGS.accent,
+              chartStyle: data.chart_style as any || DEFAULT_SETTINGS.chartStyle,
+              terminalHeight: data.terminal_height || DEFAULT_SETTINGS.terminalHeight,
+              sidebarWidth: data.sidebar_width || DEFAULT_SETTINGS.sidebarWidth,
+              theme: data.theme || 'dark',
+            };
+            
+            // Save to localStorage and state
+            localStorage.setItem('user_settings', JSON.stringify(dbSettings));
+            setSettings(dbSettings);
+          }
         }
       } catch (error) {
         console.error('Failed to load settings:', error);
-        setSettings(DEFAULT_SETTINGS);
-      } finally {
-        setLoading(false);
       }
     };
 
     loadSettings();
   }, [user]);
 
-  // Update settings
   const updateSettings = async (newSettings: Partial<UserSettings>) => {
-    const updatedSettings = { ...settings, ...newSettings };
-    setSettings(updatedSettings);
-
-    if (!user) {
-      // For non-authenticated users, save to localStorage
-      localStorage.setItem('nnticks_settings', JSON.stringify(updatedSettings));
-      return;
-    }
-
     try {
-      const { error } = await supabase
-        .from('user_settings')
-        .upsert({
+      const updatedSettings = { ...settings, ...newSettings };
+      
+      // Save to localStorage
+      localStorage.setItem('user_settings', JSON.stringify(updatedSettings));
+      setSettings(updatedSettings);
+      
+      // If logged in, save to Supabase
+      if (user) {
+        // Convert to database structure
+        const dbSettings = {
           user_id: user.id,
-          theme: updatedSettings.theme,
-          accent: updatedSettings.accent,
+          ws_url: updatedSettings.wsUrl,
+          api_key: updatedSettings.apiKey,
+          subscription: updatedSettings.subscription,
           font: updatedSettings.font,
+          accent: updatedSettings.accent,
           chart_style: updatedSettings.chartStyle,
           terminal_height: updatedSettings.terminalHeight,
           sidebar_width: updatedSettings.sidebarWidth,
-          ws_url: updatedSettings.wsUrl,
-          api_key: updatedSettings.apiKey,
-          subscription: updatedSettings.subscription
-        });
-
-      if (error) throw error;
-      toast.success('Settings saved successfully');
+          theme: updatedSettings.theme || 'dark',
+          updated_at: new Date().toISOString(),
+        };
+        
+        // Upsert settings
+        const { error } = await supabase
+          .from('user_settings')
+          .upsert(dbSettings, { onConflict: 'user_id' });
+          
+        if (error) {
+          console.error('Error saving settings to Supabase:', error);
+        }
+      }
     } catch (error) {
-      console.error('Error updating settings:', error);
-      toast.error('Failed to save settings');
+      console.error('Failed to update settings:', error);
+      throw error;
     }
   };
 
-  return {
-    settings,
-    loading,
-    updateSettings
-  };
+  return (
+    <SettingsContext.Provider value={{ settings, updateSettings }}>
+      {children}
+    </SettingsContext.Provider>
+  );
 };
+
+export const useSettings = () => useContext(SettingsContext);

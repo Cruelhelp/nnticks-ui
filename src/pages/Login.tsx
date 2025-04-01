@@ -1,256 +1,359 @@
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { supabase } from '@/lib/supabase';
+import Logo from '@/components/Logo';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { useAuth } from '@/contexts/AuthContext';
-import Logo from '@/components/Logo';
-import { Github, Mail, AlertCircle } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { useTheme } from '@/components/ui/theme-provider';
+import { Github, Mail, User, AlertCircle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 const Login = () => {
-  const navigate = useNavigate();
-  const { signIn, signUp, signInWithProvider, signInAsGuest } = useAuth();
-  
-  const [loginEmail, setLoginEmail] = useState('');
-  const [loginPassword, setLoginPassword] = useState('');
-  const [signupEmail, setSignupEmail] = useState('');
-  const [signupPassword, setSignupPassword] = useState('');
-  const [signupUsername, setSignupUsername] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [username, setUsername] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [authError, setAuthError] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const { setTheme, theme } = useTheme();
   
-  const handleLogin = async (e: React.FormEvent) => {
+  // Login with email
+  const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setAuthError('');
+    setError(null);
     
     try {
-      await signIn(loginEmail, loginPassword);
-      navigate('/');
-    } catch (error: any) {
-      console.error('Login error:', error);
-      setAuthError(error.message || 'Failed to sign in');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
-  const handleSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setAuthError('');
-    
-    try {
-      await signUp(signupEmail, signupPassword, signupUsername);
-      navigate('/');
-    } catch (error: any) {
-      console.error('Signup error:', error);
-      setAuthError(error.message || 'Failed to create account');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
-  const handleProviderSignIn = async (provider: 'google' | 'github') => {
-    try {
-      setIsLoading(true);
-      setAuthError('');
-      await signInWithProvider(provider);
-      // Redirect happens automatically after OAuth flow
-    } catch (error: any) {
-      console.error(`${provider} login error:`, error);
-      if (error.message.includes('provider is not enabled')) {
-        setAuthError('This provider is not enabled. Please make sure OAuth is configured in Supabase.');
-      } else {
-        setAuthError(error.message || `Failed to sign in with ${provider}`);
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      
+      if (error) throw error;
+      
+      if (data?.user) {
+        toast.success('Login successful!');
+        navigate('/');
       }
+    } catch (error: any) {
+      console.error('Error during login:', error);
+      setError(error.message || 'Failed to login');
+      toast.error('Login failed. Please check your credentials.');
     } finally {
       setIsLoading(false);
     }
   };
   
-  const handleGuestSignIn = async () => {
+  // Register with email
+  const handleEmailRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError(null);
+    
+    if (!username.trim()) {
+      setError('Username is required');
+      setIsLoading(false);
+      return;
+    }
+    
     try {
-      setIsLoading(true);
-      await signInAsGuest();
-      navigate('/');
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            username
+          }
+        }
+      });
+      
+      if (error) throw error;
+      
+      if (data?.user) {
+        // Create user profile
+        await supabase.from('users_extra').insert({
+          user_id: data.user.id,
+          username,
+          registration_date: new Date().toISOString(),
+          last_login: new Date().toISOString()
+        });
+        
+        toast.success('Registration successful! Please check your email for confirmation.');
+        navigate('/');
+      }
     } catch (error: any) {
-      console.error('Guest login error:', error);
-      setAuthError(error.message || 'Failed to sign in as guest');
+      console.error('Error during registration:', error);
+      setError(error.message || 'Failed to register');
+      toast.error('Registration failed.');
     } finally {
       setIsLoading(false);
     }
   };
-
+  
+  // Login with GitHub
+  const handleGithubLogin = async () => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'github',
+        options: {
+          redirectTo: `${window.location.origin}/`
+        }
+      });
+      
+      if (error) {
+        throw error;
+      }
+      
+      // Redirect will happen automatically
+    } catch (error: any) {
+      console.error('GitHub login error:', error);
+      setError('Failed to login with GitHub. Provider might not be configured.');
+      toast.error('GitHub login failed.');
+      setIsLoading(false);
+    }
+  };
+  
+  // Login with Google
+  const handleGoogleLogin = async () => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/`
+        }
+      });
+      
+      if (error) {
+        throw error;
+      }
+      
+      // Redirect will happen automatically
+    } catch (error: any) {
+      console.error('Google login error:', error);
+      setError('Failed to login with Google. Provider might not be configured.');
+      toast.error('Google login failed.');
+      setIsLoading(false);
+    }
+  };
+  
+  // Guest login
+  const handleGuestLogin = () => {
+    localStorage.setItem('guestMode', 'true');
+    localStorage.setItem('guestUsername', 'Guest User');
+    
+    toast.success('Logged in as guest!');
+    navigate('/');
+  };
+  
+  const themeToggle = () => {
+    setTheme(theme === 'dark' ? 'light' : 'dark');
+  };
+  
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4 md:p-0">
-      <div className="w-full max-w-md">
-        <div className="mb-8 text-center">
-          <Logo size={48} />
-          <h1 className="mt-4 text-2xl font-bold">Welcome to NNticks</h1>
-          <p className="text-muted-foreground">Neural Network Prediction for Financial Markets</p>
-        </div>
-        
-        <Card className="border-primary/20">
-          <CardHeader>
-            <CardTitle>Sign In</CardTitle>
-            <CardDescription>
-              Sign in to access your neural network predictions
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {authError && (
-              <Alert variant="destructive" className="mb-4">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{authError}</AlertDescription>
-              </Alert>
-            )}
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-background">
+      <div className="absolute top-4 right-4">
+        <Button variant="outline" size="sm" onClick={themeToggle}>
+          {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+        </Button>
+      </div>
+      
+      <div className="flex flex-col items-center justify-center space-y-4 mb-8">
+        <Logo size={56} />
+        <h1 className="text-3xl font-bold">NNticks</h1>
+        <p className="text-muted-foreground">Neural Network Trading Prediction Platform</p>
+      </div>
+      
+      <Card className="w-full max-w-lg shadow-lg">
+        <CardHeader className="space-y-1">
+          <CardTitle className="text-2xl text-center">Welcome back</CardTitle>
+          <CardDescription className="text-center">
+            Sign in to your account or continue as a guest
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {error && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+          
+          <div className="flex flex-col gap-4">
+            <Button
+              variant="outline"
+              disabled={isLoading}
+              onClick={handleGithubLogin}
+              className="w-full"
+            >
+              {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Github className="mr-2 h-4 w-4" />}
+              Continue with GitHub
+            </Button>
             
-            <div className="flex flex-col space-y-4">
-              <Button
-                variant="outline"
-                onClick={() => handleProviderSignIn('github')}
-                className="w-full relative"
-                disabled={isLoading}
-              >
-                <Github className="mr-2 h-4 w-4" /> Continue with GitHub
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => handleProviderSignIn('google')}
-                className="w-full"
-                disabled={isLoading}
-              >
-                <Mail className="mr-2 h-4 w-4" /> Continue with Google
-              </Button>
-              
-              <Button
-                variant="ghost"
-                onClick={handleGuestSignIn}
-                className="w-full"
-                disabled={isLoading}
-              >
-                Continue as Guest
-              </Button>
-              
-              <div className="relative my-4">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-card px-2 text-muted-foreground">Or</span>
-                </div>
+            <Button
+              variant="outline"
+              disabled={isLoading}
+              onClick={handleGoogleLogin}
+              className="w-full"
+            >
+              <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
+                <path
+                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                  fill="#4285F4"
+                />
+                <path
+                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                  fill="#34A853"
+                />
+                <path
+                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                  fill="#FBBC05"
+                />
+                <path
+                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                  fill="#EA4335"
+                />
+                <path d="M1 1h22v22H1z" fill="none" />
+              </svg>
+              Continue with Google
+            </Button>
+            
+            <div className="relative my-2">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">
+                  Or continue with
+                </span>
               </div>
             </div>
             
-            <Tabs defaultValue="login" className="mt-4">
+            <Tabs defaultValue="login" className="w-full">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="login">Login</TabsTrigger>
-                <TabsTrigger value="signup">Sign Up</TabsTrigger>
+                <TabsTrigger value="register">Register</TabsTrigger>
               </TabsList>
               
               <TabsContent value="login">
-                <form onSubmit={handleLogin} className="space-y-4 mt-4">
+                <form onSubmit={handleEmailLogin} className="space-y-4 mt-4">
                   <div className="space-y-2">
                     <Label htmlFor="email">Email</Label>
                     <Input
                       id="email"
                       type="email"
-                      placeholder="you@example.com"
-                      value={loginEmail}
-                      onChange={(e) => setLoginEmail(e.target.value)}
+                      placeholder="your@email.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
                       required
                     />
                   </div>
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <Label htmlFor="password">Password</Label>
-                      <a
-                        href="#"
-                        className="text-sm text-primary hover:underline"
-                      >
+                      <Button variant="link" className="p-0 h-auto text-xs">
                         Forgot password?
-                      </a>
+                      </Button>
                     </div>
                     <Input
                       id="password"
                       type="password"
-                      value={loginPassword}
-                      onChange={(e) => setLoginPassword(e.target.value)}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
                       required
                     />
                   </div>
-                  <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? 'Signing In...' : 'Sign In'}
+                  <Button 
+                    type="submit" 
+                    className="w-full" 
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Mail className="mr-2 h-4 w-4" />
+                    )}
+                    Sign In with Email
                   </Button>
                 </form>
               </TabsContent>
               
-              <TabsContent value="signup">
-                <form onSubmit={handleSignUp} className="space-y-4 mt-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-email">Email</Label>
-                    <Input
-                      id="signup-email"
-                      type="email"
-                      placeholder="you@example.com"
-                      value={signupEmail}
-                      onChange={(e) => setSignupEmail(e.target.value)}
-                      required
-                    />
-                  </div>
+              <TabsContent value="register">
+                <form onSubmit={handleEmailRegister} className="space-y-4 mt-4">
                   <div className="space-y-2">
                     <Label htmlFor="username">Username</Label>
                     <Input
                       id="username"
-                      type="text"
                       placeholder="johndoe"
-                      value={signupUsername}
-                      onChange={(e) => setSignupUsername(e.target.value)}
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
                       required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="signup-password">Password</Label>
+                    <Label htmlFor="register-email">Email</Label>
                     <Input
-                      id="signup-password"
-                      type="password"
-                      value={signupPassword}
-                      onChange={(e) => setSignupPassword(e.target.value)}
+                      id="register-email"
+                      type="email"
+                      placeholder="your@email.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
                       required
                     />
                   </div>
-                  <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? 'Creating Account...' : 'Create Account'}
+                  <div className="space-y-2">
+                    <Label htmlFor="register-password">Password</Label>
+                    <Input
+                      id="register-password"
+                      type="password"
+                      placeholder="Create a password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      minLength={6}
+                    />
+                  </div>
+                  <Button 
+                    type="submit" 
+                    className="w-full" 
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <User className="mr-2 h-4 w-4" />
+                    )}
+                    Create Account
                   </Button>
                 </form>
               </TabsContent>
             </Tabs>
-          </CardContent>
-          <CardFooter className="flex justify-center text-sm text-muted-foreground">
-            <span>
-              By continuing, you agree to the{' '}
-              <a href="#" className="text-primary hover:underline">
-                Terms of Service
-              </a>{' '}
-              and{' '}
-              <a href="#" className="text-primary hover:underline">
-                Privacy Policy
-              </a>
-              .
-            </span>
-          </CardFooter>
-        </Card>
-      </div>
-      
-      <footer className="mt-8 text-center text-xs text-muted-foreground">
-        <p>Copyright © 2025 Ruel McNeil</p>
-      </footer>
+          </div>
+        </CardContent>
+        <CardFooter className="flex flex-col">
+          <Button 
+            variant="ghost" 
+            className="w-full" 
+            onClick={handleGuestLogin}
+          >
+            Continue as Guest
+          </Button>
+          <p className="text-xs text-center text-muted-foreground mt-4">
+            By continuing, you agree to our Terms of Service and Privacy Policy.
+          </p>
+        </CardFooter>
+      </Card>
     </div>
   );
 };

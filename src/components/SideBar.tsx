@@ -1,8 +1,7 @@
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
-import { Home, LineChart, FileText, Dumbbell, History, Trophy, Shield } from "lucide-react";
+import { Home, LineChart, FileText, Dumbbell, History, Trophy, Shield, BrainCircuit, Bug, UserCog } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSettings } from "@/hooks/useSettings";
 
@@ -31,7 +30,10 @@ const SideBar = ({ activeSection, onSectionChange }: SideBarProps) => {
     { id: 'charts', icon: LineChart, label: 'Charts' },
     { id: 'predictions', icon: FileText, label: 'Predictions' },
     { id: 'training', icon: Dumbbell, label: 'Training' },
+    { id: 'neuralnet', icon: BrainCircuit, label: 'Neural Net' },
     { id: 'history', icon: History, label: 'History' },
+    { id: 'debug', icon: Bug, label: 'Debug' },
+    { id: 'account', icon: UserCog, label: 'Account' },
     { id: 'leaderboard', icon: Trophy, label: 'Leaderboard', proOnly: true },
     { id: 'admin', icon: Shield, label: 'Admin', adminOnly: true },
   ];
@@ -42,10 +44,10 @@ const SideBar = ({ activeSection, onSectionChange }: SideBarProps) => {
 
   return (
     <div 
-      className="h-full bg-sidebar border-r border-border"
-      style={{ width: `${settings.sidebarWidth}px` }}
+      className="h-full bg-sidebar border-r border-border flex flex-col"
+      style={{ width: `${settings.sidebarWidth || 200}px` }}
     >
-      <div className="flex flex-col py-2">
+      <div className="flex flex-col py-2 flex-1">
         {sidebarItems.map((item) => {
           // Skip if the item is pro-only and user is not pro
           if (item.proOnly && !isPro) return null;
@@ -63,7 +65,7 @@ const SideBar = ({ activeSection, onSectionChange }: SideBarProps) => {
               )}
               onClick={() => handleClick(item.id)}
             >
-              <item.icon size={18} />
+              <item.icon size={18} className="mr-2" />
               <span>{item.label}</span>
               {item.proOnly && <span className="ml-auto text-xs text-primary">PRO</span>}
             </Button>
