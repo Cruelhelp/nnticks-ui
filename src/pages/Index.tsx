@@ -17,7 +17,7 @@ const Index = () => {
   const [showSplash, setShowSplash] = useState(true);
   const [activeSection, setActiveSection] = useState('home');
   const [showSidebar, setShowSidebar] = useState(true);
-  const [showTerminal, setShowTerminal] = useState(false);
+  const [showTerminal, setShowTerminal] = useState(true); // Terminal visible by default
   const { settings } = useSettings();
   
   // Show splash screen
@@ -43,7 +43,7 @@ const Index = () => {
   
   const resetLayout = () => {
     setShowSidebar(true);
-    setShowTerminal(false);
+    setShowTerminal(true); // Reset to show terminal
   };
   
   // Apply accent color class based on settings

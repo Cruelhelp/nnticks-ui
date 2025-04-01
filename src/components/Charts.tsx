@@ -18,16 +18,14 @@ import {
 } from 'recharts';
 import { useAuth } from '@/contexts/AuthContext';
 import { Clock, ZoomIn, ZoomOut, RefreshCw } from 'lucide-react';
-import { useWebSocket } from '@/hooks/useWebSocket';
+import { useWebSocket, brokerWebSockets } from '@/hooks/useWebSocket';
 import { neuralNetwork, Indicators } from '@/lib/neuralNetwork';
 import { supabase } from '@/lib/supabase';
+import { toast } from 'sonner';
+import { ProcessedTickData, TickData, BrokerConfig } from '@/types/chartTypes';
 
 interface ChartProps {
-  tickData: {
-    timestamp: string;
-    value: number;
-    market: string;
-  }[];
+  tickData: ProcessedTickData[];
   market: string;
   showIndicators: boolean;
 }
@@ -292,17 +290,17 @@ const Charts = () => {
   const isPro = userDetails?.proStatus || false;
   
   // Default broker settings
-  const [brokerSettings, setBrokerSettings] = useState({
-    broker: 'deriv',
-    wsUrl: 'wss://frontend.binaryws.com/websockets/v3',
-    apiKey: '',
+  const [brokerSettings, setBrokerSettings] = useState<BrokerConfig>({
+    broker: 'binary',
+    wsUrl: 'wss://ws.binaryws.com/websockets/v3?app_id=1089',
+    apiKey: 'bJ29WdfG59AhOEN',
     subscription: { ticks: 'R_10' }
   });
   
   const [showIndicators, setShowIndicators] = useState(true);
   const [isConnected, setIsConnected] = useState(false);
   const [market, setMarket] = useState('R_10');
-  const [tickData, setTickData] = useState<any[]>([]);
+  const [tickData, setTickData] = useState<ProcessedTickData[]>([]);
   
   // WebSocket connection
   const ws = useWebSocket({
@@ -319,26 +317,39 @@ const Charts = () => {
         tickData = {
           timestamp: new Date(data.tick.epoch * 1000).toISOString(),
           value: data.tick.quote,
-          market: data.tick.symbol
+          market: data.tick.symbol,
+          time: new Date(data.tick.epoch * 1000).toLocaleTimeString(),
+          formattedValue: parseFloat(data.tick.quote.toFixed(5))
         };
         setMarket(data.tick.symbol);
       }
       // Handle other formats...
       
       if (tickData) {
-        setTickData(prev => [...prev.slice(-999), tickData]);
+        setTickData(prev => [...prev.slice(-999), tickData as ProcessedTickData]);
       }
     },
     onError: (error) => {
       console.error('WebSocket error:', error);
+      toast.error('Connection error: ' + error);
     },
     onOpen: () => {
       console.log('WebSocket connected');
+      setIsConnected(true);
+      toast.success('Connected to broker successfully!');
     },
     onClose: () => {
       console.log('WebSocket closed');
+      setIsConnected(false);
+      toast.info('Disconnected from broker');
     }
   });
+  
+  // Connect automatically on component mount
+  useEffect(() => {
+    // Auto-connect to default broker
+    toggleConnection();
+  }, []);
   
   // Connect/disconnect WebSocket
   const toggleConnection = () => {
@@ -365,10 +376,17 @@ const Charts = () => {
       }
       
       if (data && data.length > 0) {
-        setTickData(data);
+        const processed = data.map(tick => ({
+          ...tick,
+          time: new Date(tick.timestamp).toLocaleTimeString(),
+          formattedValue: parseFloat(tick.value.toFixed(5))
+        }));
+        setTickData(processed);
+        toast.success(`Loaded ${data.length} historical ticks`);
       }
     } catch (error) {
       console.error('Error loading historical ticks:', error);
+      toast.error('Failed to load historical data');
     }
   };
   
@@ -382,7 +400,7 @@ const Charts = () => {
   ];
   
   const handleBrokerChange = (broker: string) => {
-    const wsUrl = brokerWebSockets[broker as keyof typeof brokerWebSockets];
+    const wsUrl = brokerWebSockets[broker];
     const subscription = subscriptionExamples.find(
       example => example.label.toLowerCase().startsWith(broker)
     );
@@ -413,6 +431,7 @@ const Charts = () => {
       }
     } catch (error) {
       console.error('Invalid JSON subscription:', error);
+      toast.error('Invalid JSON format');
     }
   };
   
@@ -523,6 +542,11 @@ const Charts = () => {
                 {isConnected ? 'Disconnect' : 'Connect'}
               </Button>
               <Button onClick={loadHistoricalTicks} variant="outline">Load Historical Data</Button>
+            </div>
+            
+            <div className={`px-3 py-1 rounded-full text-xs inline-flex items-center gap-1 ${isConnected ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+              <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></span>
+              {isConnected ? 'Connected' : 'Disconnected'}
             </div>
           </TabsContent>
         </Tabs>

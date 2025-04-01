@@ -27,6 +27,7 @@ const Terminal = ({ onClose, onMinimize, onMaximize }: TerminalProps) => {
     { type: 'output', content: 'Type "help" for a list of commands', timestamp: new Date().toISOString() },
   ]);
   const [adminMode, setAdminMode] = useState(false);
+  const [isCursorVisible, setIsCursorVisible] = useState(true);
   const terminalRef = useRef<HTMLDivElement>(null);
   
   const username = userDetails?.username || 'guest';
@@ -37,6 +38,15 @@ const Terminal = ({ onClose, onMinimize, onMaximize }: TerminalProps) => {
       terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
     }
   }, [history]);
+  
+  // Blinking cursor effect
+  useEffect(() => {
+    const cursorInterval = setInterval(() => {
+      setIsCursorVisible(prev => !prev);
+    }, 500);
+    
+    return () => clearInterval(cursorInterval);
+  }, []);
   
   // Available commands
   const commands: { [key: string]: (args: string[]) => string } = {
@@ -176,7 +186,7 @@ Admin panel:
       <div 
         ref={terminalRef}
         className="flex-1 overflow-auto p-2 font-mono text-sm bg-black text-green-500"
-        style={{ fontFamily: 'Fira Code, monospace' }}
+        style={{ fontFamily: settings.font }}
       >
         {history.map((entry, i) => (
           <div key={i} className="mb-1">
@@ -199,13 +209,16 @@ Admin panel:
       
       <form onSubmit={handleSubmit} className="flex border-t border-border bg-black p-2">
         <div className="text-blue-400 font-mono text-sm mr-1">{username}@terminal&gt;</div>
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          className="flex-1 bg-transparent border-0 outline-none text-green-500 font-mono text-sm"
-          style={{ fontFamily: 'Fira Code, monospace' }}
-        />
+        <div className="flex-1 flex">
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            className="flex-1 bg-transparent border-0 outline-none text-green-500 font-mono text-sm"
+            style={{ fontFamily: settings.font }}
+          />
+          <div className={`h-full w-2 bg-green-500 ${isCursorVisible ? 'opacity-100' : 'opacity-0'} transition-opacity duration-100`}></div>
+        </div>
       </form>
     </div>
   );

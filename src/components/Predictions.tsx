@@ -1,312 +1,349 @@
-
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { ArrowDown, ArrowUp, Clock } from 'lucide-react';
-import { PredictionType, neuralNetwork } from '@/lib/neuralNetwork';
-import { supabase } from '@/lib/supabase';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Brain, Clock, BadgeCheck, BadgeX } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
+import { neuralNetwork } from '@/lib/neuralNetwork';
+import { supabase } from '@/lib/supabase';
 
-interface PredictionCardProps {
+type PredictionType = 'rise' | 'fall' | 'even' | 'odd';
+
+interface Prediction {
+  id: number;
   type: PredictionType;
   confidence: number;
-  timeLeft?: number;
-  completed?: boolean;
-  outcome?: 'win' | 'loss' | undefined;
+  timestamp: Date;
+  outcome: "win" | "loss";
 }
 
-const PredictionCard = ({ type, confidence, timeLeft, completed, outcome }: PredictionCardProps) => {
-  const isRise = type === 'rise';
-  const isEven = type === 'even';
+interface PendingPrediction {
+  id: number;
+  type: PredictionType;
+  confidence: number;
+  timestamp: Date;
+  countdown: number;
+}
+
+// Visual representation of a neural network node
+const NNNode = ({ id, active, x, y }: { id: string; active: boolean; x: number; y: number }) => (
+  <div 
+    id={id}
+    className={`absolute w-4 h-4 rounded-full transform -translate-x-1/2 -translate-y-1/2 transition-all duration-300 ${
+      active ? 'bg-primary animate-pulse' : 'bg-muted-foreground'
+    }`}
+    style={{ left: `${x}%`, top: `${y}%` }}
+  />
+);
+
+// Visual representation of a neural network connection
+const NNConnection = ({ from, to, active }: { from: string; to: string; active: boolean }) => {
+  const [path, setPath] = useState({ x1: 0, y1: 0, x2: 0, y2: 0 });
   
-  const getBadgeVariant = () => {
-    if (completed) {
-      return outcome === 'win' ? 'default' : 'destructive';
-    }
-    return 'outline';
-  };
+  useEffect(() => {
+    const updatePath = () => {
+      const fromNode = document.getElementById(from);
+      const toNode = document.getElementById(to);
+      
+      if (!fromNode || !toNode) return;
+      
+      const fromRect = fromNode.getBoundingClientRect();
+      const toRect = toNode.getBoundingClientRect();
+      const parentRect = fromNode.parentElement?.getBoundingClientRect() || { left: 0, top: 0 };
+      
+      setPath({
+        x1: fromRect.left - parentRect.left + fromRect.width / 2,
+        y1: fromRect.top - parentRect.top + fromRect.height / 2,
+        x2: toRect.left - parentRect.left + toRect.width / 2,
+        y2: toRect.top - parentRect.top + toRect.height / 2,
+      });
+    };
+    
+    updatePath();
+    window.addEventListener('resize', updatePath);
+    
+    return () => window.removeEventListener('resize', updatePath);
+  }, [from, to]);
   
   return (
-    <Card className={`${completed && 'opacity-75'}`}>
-      <CardHeader className="pb-2">
-        <CardTitle className="flex justify-between items-center text-lg">
-          <div className="flex items-center gap-2">
-            {isRise || isEven ? (
-              <ArrowUp className="text-green-500" />
-            ) : (
-              <ArrowDown className="text-red-500" />
-            )}
-            <span>{isRise || type === 'fall' ? (isRise ? 'Rise' : 'Fall') : (isEven ? 'Even' : 'Odd')}</span>
-          </div>
-          <Badge variant={getBadgeVariant()}>
-            {completed ? (outcome === 'win' ? 'Win' : 'Loss') : `${Math.round(confidence * 100)}%`}
-          </Badge>
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="pt-0">
-        {completed ? (
-          <p className="text-sm text-muted-foreground">
-            {outcome === 'win' 
-              ? 'Prediction was correct' 
-              : 'Prediction was incorrect'}
-          </p>
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            Confidence: {confidence > 0.8 ? 'Strong' : 'Weak'} signal
-          </p>
-        )}
-        
-        {!completed && timeLeft !== undefined && (
-          <div className="mt-4 text-center">
-            <div className="text-3xl font-bold countdown">
-              {timeLeft}s
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Get ready to trade
-            </p>
-          </div>
-        )}
-      </CardContent>
-      {completed && (
-        <CardFooter className="pt-0">
-          <p className="text-xs text-muted-foreground">
-            {new Date().toLocaleTimeString()}
-          </p>
-        </CardFooter>
-      )}
-    </Card>
+    <svg className="absolute top-0 left-0 w-full h-full pointer-events-none">
+      <line
+        x1={path.x1}
+        y1={path.y1}
+        x2={path.x2}
+        y2={path.y2}
+        className={`transition-all duration-300 ${
+          active ? 'stroke-primary stroke-[2px]' : 'stroke-muted-foreground stroke-[1px]'
+        }`}
+        strokeOpacity={active ? 1 : 0.3}
+      />
+    </svg>
+  );
+};
+
+const NeuralNetworkVisual = () => {
+  const [activeNodeId, setActiveNodeId] = useState<string | null>(null);
+  
+  // Simulate neural network activity
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const layerIndex = Math.floor(Math.random() * 3);
+      const nodeIndex = Math.floor(Math.random() * 5);
+      setActiveNodeId(`node-${layerIndex}-${nodeIndex}`);
+      
+      setTimeout(() => setActiveNodeId(null), 500);
+    }, 1000);
+    
+    return () => clearInterval(interval);
+  }, []);
+  
+  // Generate nodes for 3 layers with 5 nodes each
+  const layers = [0, 1, 2];
+  const nodesPerLayer = 5;
+  
+  return (
+    <div className="relative h-64 my-4">
+      {layers.map(layerIdx => (
+        <React.Fragment key={`layer-${layerIdx}`}>
+          {[...Array(nodesPerLayer)].map((_, nodeIdx) => {
+            const nodeId = `node-${layerIdx}-${nodeIdx}`;
+            const x = 20 + layerIdx * 30;
+            const y = 10 + (nodeIdx * (100 - 20)) / (nodesPerLayer - 1);
+            
+            return (
+              <NNNode 
+                key={nodeId}
+                id={nodeId}
+                active={activeNodeId === nodeId}
+                x={x}
+                y={y}
+              />
+            );
+          })}
+        </React.Fragment>
+      ))}
+      
+      {/* Connections between layers */}
+      {layers.slice(0, -1).map(layerIdx => (
+        [...Array(nodesPerLayer)].map((_, fromNodeIdx) => (
+          [...Array(nodesPerLayer)].map((_, toNodeIdx) => {
+            const fromId = `node-${layerIdx}-${fromNodeIdx}`;
+            const toId = `node-${layerIdx + 1}-${toNodeIdx}`;
+            return (
+              <NNConnection 
+                key={`${fromId}-to-${toId}`}
+                from={fromId}
+                to={toId}
+                active={activeNodeId === fromId || activeNodeId === toId}
+              />
+            );
+          })
+        ))
+      ).flat(2)}
+    </div>
   );
 };
 
 const Predictions = () => {
+  const [pendingPredictions, setPendingPredictions] = useState<PendingPrediction[]>([]);
+  const [completedPredictions, setCompletedPredictions] = useState<Prediction[]>([]);
+  const [predictionType, setPredictionType] = useState<PredictionType>('rise');
+  const [predictionConfidence, setPredictionConfidence] = useState(50);
+  const [isPredicting, setIsPredicting] = useState(false);
   const { user } = useAuth();
-  const [activePrediction, setActivePrediction] = useState<{
-    type: PredictionType;
-    confidence: number;
-    startTime: Date;
-    timeLeft: number;
-  } | null>(null);
   
-  const [completedPredictions, setCompletedPredictions] = useState<{
-    id: number;
-    type: PredictionType;
-    confidence: number;
-    timestamp: Date;
-    outcome: 'win' | 'loss';
-  }[]>([]);
-  
-  const [countdownInterval, setCountdownInterval] = useState<NodeJS.Timeout | null>(null);
-  
-  // Clean up interval on unmount
   useEffect(() => {
-    return () => {
-      if (countdownInterval) {
-        clearInterval(countdownInterval);
-      }
+    // Load initial data or perform setup
+    loadPredictions();
+  }, []);
+  
+  const loadPredictions = async () => {
+    // Load pending and completed predictions from Supabase
+    // (replace with actual implementation)
+  };
+  
+  let nextId = 0;
+  
+  const handleAddPrediction = async () => {
+    if (isPredicting) return;
+    
+    setIsPredicting(true);
+    
+    const newPrediction: PendingPrediction = {
+      id: nextId++,
+      type: predictionType,
+      confidence: predictionConfidence,
+      timestamp: new Date(),
+      countdown: 10
     };
-  }, [countdownInterval]);
-  
-  // Generate a prediction
-  const generatePrediction = async () => {
-    if (activePrediction) {
-      toast.error("Wait for the current prediction to complete");
-      return;
-    }
     
-    try {
-      // Generate random tick data for demo
-      const fakeTicks = Array(100).fill(0).map((_, i) => 
-        100 + Math.sin(i / 10) * 5 + Math.random() * 2
-      );
-      
-      // Get prediction from neural network
-      const prediction = await neuralNetwork.predict(fakeTicks);
-      
-      // Start countdown
-      const newPrediction = {
-        type: prediction.type,
-        confidence: prediction.confidence,
-        startTime: new Date(),
-        timeLeft: 10
-      };
-      
-      setActivePrediction(newPrediction);
-      
-      // Notify the user
-      toast.info(`New prediction generated: ${prediction.type.toUpperCase()}`);
-      
-      // Start countdown
-      const interval = setInterval(() => {
-        setActivePrediction(prev => {
-          if (prev && prev.timeLeft > 0) {
-            return { ...prev, timeLeft: prev.timeLeft - 1 };
-          } else if (prev) {
-            // When countdown finishes
-            clearInterval(interval);
-            
-            // Simulate outcome (70% win rate if confidence > 0.8, 55% win rate otherwise)
-            const isWin = Math.random() < (prev.confidence > 0.8 ? 0.7 : 0.55);
-            
-            // Add to completed predictions
-            const completedPrediction = {
-              id: Date.now(),
-              type: prev.type,
-              confidence: prev.confidence,
-              timestamp: new Date(),
-              outcome: isWin ? 'win' : 'loss'
-            };
-            
-            setCompletedPredictions(prevCompleted => 
-              [completedPrediction, ...prevCompleted].slice(0, 10)
-            );
-            
-            // Save to Supabase if user is logged in
-            if (user) {
-              savePredictionToSupabase(completedPrediction);
-            }
-            
-            // Notify the user
-            toast.success(
-              isWin ? 'Prediction correct!' : 'Prediction incorrect',
-              { description: `${prev.type.toUpperCase()} prediction completed` }
-            );
-            
-            return null;
+    setPendingPredictions(prev => [...prev, newPrediction]);
+    
+    // Simulate countdown
+    const countdownInterval = setInterval(() => {
+      setPendingPredictions(prev => {
+        const updatedPredictions = prev.map(p => {
+          if (p.id === newPrediction.id) {
+            return { ...p, countdown: p.countdown - 1 };
           }
-          return null;
+          return p;
         });
-      }, 1000);
-      
-      setCountdownInterval(interval);
-      
-    } catch (error) {
-      console.error('Error generating prediction:', error);
-      toast.error('Failed to generate prediction');
-    }
-  };
-  
-  // Save prediction to Supabase
-  const savePredictionToSupabase = async (prediction: any) => {
-    if (!user) return;
-    
-    try {
-      const { error } = await supabase.from('trade_history').insert({
-        user_id: user.id,
-        timestamp: new Date().toISOString(),
-        market: 'DEMO',
-        prediction: prediction.type,
-        confidence: prediction.confidence,
-        outcome: prediction.outcome === 'win' ? 'win' : 'loss'
-      });
-      
-      if (error) {
-        throw error;
-      }
-    } catch (error) {
-      console.error('Error saving prediction:', error);
-    }
-  };
-  
-  // Load past predictions from Supabase
-  useEffect(() => {
-    const loadPredictions = async () => {
-      if (!user) return;
-      
-      try {
-        const { data, error } = await supabase
-          .from('trade_history')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('timestamp', { ascending: false })
-          .limit(10);
-          
-        if (error) {
-          throw error;
+        
+        // Remove prediction when countdown reaches 0
+        if (updatedPredictions.find(p => p.id === newPrediction.id)?.countdown === 0) {
+          clearInterval(countdownInterval);
+          handleCompletePrediction(newPrediction.id);
+          return updatedPredictions.filter(p => p.id !== newPrediction.id);
         }
         
-        if (data) {
-          const processed = data.map(item => ({
-            id: item.id,
-            type: item.prediction as PredictionType,
-            confidence: item.confidence,
-            timestamp: new Date(item.timestamp),
-            outcome: item.outcome === 'win' ? 'win' : 'loss' as 'win' | 'loss'
-          }));
-          
-          setCompletedPredictions(processed);
-        }
-      } catch (error) {
-        console.error('Error loading predictions:', error);
-      }
-    };
+        return updatedPredictions;
+      });
+    }, 1000);
     
-    loadPredictions();
-  }, [user]);
+    setIsPredicting(false);
+  };
+  
+  const handleCompletePrediction = (id: number) => {
+    setPendingPredictions(prev => prev.filter(p => p.id !== id));
+    
+    // Determine random outcome for now (replace with actual implementation)
+    const outcome: "win" | "loss" = Math.random() > 0.5 ? "win" : "loss";
+    
+    setCompletedPredictions(prevCompleted => [
+      ...prevCompleted,
+      {
+        id,
+        type: pendingPredictions.find(p => p.id === id)?.type || 'rise',
+        confidence: pendingPredictions.find(p => p.id === id)?.confidence || 0,
+        timestamp: new Date(),
+        outcome
+      }
+    ]);
+    
+    // Show notification
+    toast.success(`Prediction completed: ${outcome.toUpperCase()}`);
+  };
+  
+  const handleDeletePrediction = (id: number) => {
+    setCompletedPredictions(prev => prev.filter(p => p.id !== id));
+  };
   
   return (
-    <div className="flex flex-col h-full">
-      <div className="mb-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle>Neural Network Predictions</CardTitle>
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="md:col-span-2">
+        <Card className="h-full">
+          <CardHeader>
+            <CardTitle>Make Predictions</CardTitle>
           </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground mb-4">
-              The neural network analyzes market data to predict price movements.
-              When a prediction is generated, you'll get a 10-second countdown to prepare for your trade.
-            </p>
+          <CardContent className="space-y-4">
+            <NeuralNetworkVisual />
             
-            <div className="flex justify-center">
-              <Button 
-                onClick={generatePrediction} 
-                disabled={!!activePrediction}
-                className="w-full max-w-xs"
-              >
-                Generate Prediction
-              </Button>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-muted-foreground">
+                  Prediction Type
+                </label>
+                <select
+                  value={predictionType}
+                  onChange={(e) => setPredictionType(e.target.value as PredictionType)}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
+                >
+                  <option value="rise">Rise</option>
+                  <option value="fall">Fall</option>
+                  <option value="even">Even</option>
+                  <option value="odd">Odd</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-muted-foreground">
+                  Confidence Level
+                </label>
+                <input
+                  type="number"
+                  value={predictionConfidence}
+                  onChange={(e) => setPredictionConfidence(Number(e.target.value))}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
+                />
+              </div>
             </div>
+            
+            <Button onClick={handleAddPrediction} disabled={isPredicting}>
+              {isPredicting ? (
+                <>
+                  <Clock className="mr-2 h-4 w-4 animate-spin" />
+                  Predicting...
+                </>
+              ) : (
+                'Add Prediction'
+              )}
+            </Button>
           </CardContent>
         </Card>
       </div>
       
-      <div className="flex-1 overflow-y-auto space-y-4">
-        {activePrediction && (
-          <div className="mb-4">
-            <h3 className="text-lg font-medium mb-2">Current Prediction</h3>
-            <PredictionCard 
-              type={activePrediction.type} 
-              confidence={activePrediction.confidence}
-              timeLeft={activePrediction.timeLeft}
-            />
-          </div>
-        )}
-        
-        {completedPredictions.length > 0 && (
-          <div>
-            <h3 className="text-lg font-medium mb-2">Past Predictions</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {completedPredictions.map(prediction => (
-                <PredictionCard 
-                  key={prediction.id}
-                  type={prediction.type}
-                  confidence={prediction.confidence}
-                  completed={true}
-                  outcome={prediction.outcome}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-        
-        {!activePrediction && completedPredictions.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
-            <Clock size={48} className="mb-4" />
-            <p>No predictions yet</p>
-            <p className="text-sm">Generate a prediction to start</p>
-          </div>
-        )}
+      <div>
+        <Card className="h-full">
+          <CardHeader>
+            <CardTitle>Pending Predictions</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {pendingPredictions.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No pending predictions</p>
+            ) : (
+              pendingPredictions.map((prediction) => (
+                <div key={prediction.id} className="flex items-center justify-between border rounded-md p-2">
+                  <div>
+                    <p className="text-sm font-medium">{prediction.type.toUpperCase()}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {prediction.confidence}% confidence
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Clock className="mr-1 h-4 w-4" />
+                    <span className="text-sm">{prediction.countdown}s</span>
+                  </div>
+                </div>
+              ))
+            )}
+          </CardContent>
+        </Card>
+      </div>
+      
+      <div>
+        <Card className="h-full">
+          <CardHeader>
+            <CardTitle>Completed Predictions</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {completedPredictions.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No completed predictions</p>
+            ) : (
+              completedPredictions.map((prediction) => (
+                <div key={prediction.id} className="flex items-center justify-between border rounded-md p-2">
+                  <div>
+                    <p className="text-sm font-medium">{prediction.type.toUpperCase()}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {prediction.confidence}% confidence
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {prediction.outcome === 'win' ? (
+                      <BadgeCheck className="text-green-500 h-5 w-5" />
+                    ) : (
+                      <BadgeX className="text-red-500 h-5 w-5" />
+                    )}
+                    <Button variant="outline" size="icon" onClick={() => handleDeletePrediction(prediction.id)}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

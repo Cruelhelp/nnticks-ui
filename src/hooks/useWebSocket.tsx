@@ -1,7 +1,7 @@
-
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
+import { brokerWebSockets } from '@/types/chartTypes';
 
 interface WebSocketOptions {
   wsUrl: string;
@@ -15,20 +15,11 @@ interface WebSocketOptions {
   onClose?: () => void;
 }
 
-interface TickData {
+export interface TickData {
   timestamp: string;
   value: number;
   market: string;
 }
-
-// List of available brokers and their WebSocket URLs
-export const brokerWebSockets = {
-  deriv: 'wss://frontend.binaryws.com/websockets/v3',
-  iqOption: 'wss://iqoption.com/api/ws',
-  binance: 'wss://stream.binance.com:9443/ws',
-  metatrader: 'wss://mt4.websocket.api', // Placeholder
-  binary: 'wss://ws.binaryws.com/websockets/v3'
-};
 
 // Sample subscription formats for different brokers
 export const subscriptionFormats = {
@@ -60,12 +51,10 @@ export function useWebSocket({
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoReconnectRef = useRef(autoReconnect);
   
-  // Update the ref when the prop changes
   useEffect(() => {
     autoReconnectRef.current = autoReconnect;
   }, [autoReconnect]);
 
-  // Store ticks in Supabase (throttled)
   const storeTickInSupabase = useCallback(async (tickData: TickData) => {
     try {
       const { error } = await supabase.from('ticks').insert({
@@ -82,7 +71,6 @@ export function useWebSocket({
     }
   }, []);
 
-  // Throttle function to limit storing ticks to avoid rate limiting
   const throttle = useCallback(<T extends any[]>(
     callback: (...args: T) => void, 
     limit: number
@@ -99,10 +87,8 @@ export function useWebSocket({
     };
   }, []);
 
-  // Throttled version of storing ticks (once every 100ms = max 10 ticks per second)
   const throttledStoreTick = throttle(storeTickInSupabase, 100);
 
-  // Connect to WebSocket
   const connect = useCallback(() => {
     if (!wsUrl) {
       setError(new Error('WebSocket URL is required'));
@@ -119,7 +105,6 @@ export function useWebSocket({
         setError(null);
         setReconnectCount(0);
         
-        // Send subscription message
         if (subscription && Object.keys(subscription).length > 0) {
           ws.send(JSON.stringify(subscription));
         }
@@ -131,10 +116,8 @@ export function useWebSocket({
         try {
           const data = JSON.parse(event.data);
           
-          // Extract tick data based on common broker formats
           let tickData: TickData | null = null;
           
-          // Handle Deriv/Binary.com format
           if (data.tick) {
             tickData = {
               timestamp: new Date(data.tick.epoch * 1000).toISOString(),
@@ -142,7 +125,6 @@ export function useWebSocket({
               market: data.tick.symbol
             };
           }
-          // Handle Binance format
           else if (data.s && data.p) {
             tickData = {
               timestamp: new Date().toISOString(),
@@ -150,7 +132,6 @@ export function useWebSocket({
               market: data.s
             };
           }
-          // Handle IQ Option format
           else if (data.symbol && data.price) {
             tickData = {
               timestamp: new Date().toISOString(),
@@ -158,7 +139,6 @@ export function useWebSocket({
               market: data.symbol
             };
           }
-          // Generic fallback
           else if (data.price !== undefined && data.timestamp !== undefined) {
             tickData = {
               timestamp: new Date(data.timestamp).toISOString(),
@@ -169,7 +149,7 @@ export function useWebSocket({
           
           if (tickData) {
             setLatestTick(tickData);
-            setTicks(prev => [...prev.slice(-999), tickData!]); // Keep last 1000 ticks max
+            setTicks(prev => [...prev.slice(-999), tickData!]);
             throttledStoreTick(tickData);
           }
           
@@ -192,7 +172,6 @@ export function useWebSocket({
         
         if (onClose) onClose();
         
-        // Attempt to reconnect if enabled
         if (autoReconnectRef.current && reconnectCount < maxReconnectAttempts) {
           console.log(`Attempting to reconnect in ${reconnectInterval}ms (${reconnectCount + 1}/${maxReconnectAttempts})`);
           
@@ -219,7 +198,6 @@ export function useWebSocket({
     }
   }, [wsUrl, subscription, reconnectCount, reconnectInterval, maxReconnectAttempts, onOpen, onMessage, onError, onClose, throttledStoreTick]);
   
-  // Disconnect from WebSocket
   const disconnect = useCallback(() => {
     if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
       socketRef.current.close();
@@ -234,7 +212,6 @@ export function useWebSocket({
     setIsConnected(false);
   }, []);
   
-  // Send a message through the WebSocket
   const send = useCallback((message: object | string) => {
     if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
       const messageStr = typeof message === 'string' ? message : JSON.stringify(message);
@@ -246,7 +223,6 @@ export function useWebSocket({
     }
   }, []);
 
-  // Connect when wsUrl or subscription changes
   useEffect(() => {
     if (wsUrl) {
       connect();
@@ -268,3 +244,5 @@ export function useWebSocket({
     send
   };
 }
+
+export { brokerWebSockets };
