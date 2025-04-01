@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
@@ -35,7 +36,7 @@ export function useWebSocket({
   subscription,
   autoReconnect = true,
   reconnectInterval = 5000,
-  maxReconnectAttempts = 10,
+  maxReconnectAttempts = 5, // Reduced from 10 to prevent excessive reconnection attempts
   onMessage,
   onError,
   onOpen,
@@ -50,6 +51,8 @@ export function useWebSocket({
   const socketRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoReconnectRef = useRef(autoReconnect);
+  const connectionStableRef = useRef(true); // Track if connection is stable
+  const lastMessageTimeRef = useRef<number>(0); // Track time of last received message
   
   useEffect(() => {
     autoReconnectRef.current = autoReconnect;
@@ -64,6 +67,7 @@ export function useWebSocket({
       });
       
       if (error) {
+        // Don't show toast for database errors to avoid overwhelming the user
         console.error('Error storing tick in Supabase:', error);
       }
     } catch (err) {
@@ -71,6 +75,7 @@ export function useWebSocket({
     }
   }, []);
 
+  // Throttle to avoid too many database writes
   const throttle = useCallback(<T extends any[]>(
     callback: (...args: T) => void, 
     limit: number
@@ -87,7 +92,7 @@ export function useWebSocket({
     };
   }, []);
 
-  const throttledStoreTick = throttle(storeTickInSupabase, 100);
+  const throttledStoreTick = throttle(storeTickInSupabase, 500); // Increased throttle time
 
   const connect = useCallback(() => {
     if (!wsUrl) {
@@ -97,6 +102,12 @@ export function useWebSocket({
     
     try {
       console.log(`Connecting to WebSocket: ${wsUrl}`);
+      
+      // Disconnect existing connection if any
+      if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+        socketRef.current.close();
+      }
+      
       const ws = new WebSocket(wsUrl);
       
       ws.onopen = () => {
@@ -104,6 +115,8 @@ export function useWebSocket({
         setIsConnected(true);
         setError(null);
         setReconnectCount(0);
+        connectionStableRef.current = true;
+        lastMessageTimeRef.current = Date.now();
         
         if (subscription && Object.keys(subscription).length > 0) {
           ws.send(JSON.stringify(subscription));
@@ -114,7 +127,13 @@ export function useWebSocket({
       
       ws.onmessage = (event) => {
         try {
+          lastMessageTimeRef.current = Date.now();
           const data = JSON.parse(event.data);
+          
+          // Skip heartbeat messages
+          if (data.ping || data.heartbeat) {
+            return;
+          }
           
           let tickData: TickData | null = null;
           
@@ -149,7 +168,7 @@ export function useWebSocket({
           
           if (tickData) {
             setLatestTick(tickData);
-            setTicks(prev => [...prev.slice(-999), tickData!]);
+            setTicks(prev => [...prev.slice(-99), tickData!]); // Keep only last 100 ticks
             throttledStoreTick(tickData);
           }
           
@@ -163,12 +182,14 @@ export function useWebSocket({
       ws.onerror = (event) => {
         console.error('WebSocket error:', event);
         setError(new Error('WebSocket connection error'));
+        connectionStableRef.current = false;
         if (onError) onError(event);
       };
       
       ws.onclose = (event) => {
         console.log('WebSocket closed:', event.code, event.reason);
         setIsConnected(false);
+        connectionStableRef.current = false;
         
         if (onClose) onClose();
         
@@ -185,11 +206,44 @@ export function useWebSocket({
           }, reconnectInterval);
         } else if (reconnectCount >= maxReconnectAttempts) {
           setError(new Error(`Failed to reconnect after ${maxReconnectAttempts} attempts`));
-          toast.error(`Connection lost. Failed to reconnect after ${maxReconnectAttempts} attempts.`);
+          // Use a unique ID for the toast to prevent duplicates
+          toast.error(`Connection lost. Failed to reconnect after ${maxReconnectAttempts} attempts.`, {
+            id: 'reconnect-failure'
+          });
         }
       };
       
       socketRef.current = ws;
+      
+      // Set up connection watchdog
+      const watchdogInterval = setInterval(() => {
+        if (isConnected && lastMessageTimeRef.current > 0) {
+          const now = Date.now();
+          const timeSinceLastMessage = now - lastMessageTimeRef.current;
+          
+          // If no messages received for 15 seconds, consider connection stalled
+          if (timeSinceLastMessage > 15000 && connectionStableRef.current) {
+            console.warn('Connection appears stalled. No messages in 15s.');
+            connectionStableRef.current = false;
+            
+            // Send a ping to check connection
+            if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+              try {
+                socketRef.current.send(JSON.stringify({ ping: 1 }));
+              } catch (err) {
+                console.error('Failed to send ping:', err);
+                // Force reconnect
+                disconnect();
+                if (autoReconnectRef.current) {
+                  setTimeout(() => connect(), 1000);
+                }
+              }
+            }
+          }
+        }
+      }, 5000);
+      
+      return () => clearInterval(watchdogInterval);
       
     } catch (err: any) {
       console.error('Error creating WebSocket:', err);
@@ -199,8 +253,11 @@ export function useWebSocket({
   }, [wsUrl, subscription, reconnectCount, reconnectInterval, maxReconnectAttempts, onOpen, onMessage, onError, onClose, throttledStoreTick]);
   
   const disconnect = useCallback(() => {
-    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-      socketRef.current.close();
+    if (socketRef.current) {
+      if (socketRef.current.readyState === WebSocket.OPEN || 
+          socketRef.current.readyState === WebSocket.CONNECTING) {
+        socketRef.current.close();
+      }
     }
     
     if (reconnectTimeoutRef.current) {
@@ -210,6 +267,8 @@ export function useWebSocket({
     
     socketRef.current = null;
     setIsConnected(false);
+    lastMessageTimeRef.current = 0;
+    setReconnectCount(0);
   }, []);
   
   const send = useCallback((message: object | string) => {
@@ -226,6 +285,8 @@ export function useWebSocket({
   useEffect(() => {
     if (wsUrl) {
       connect();
+    } else {
+      disconnect();
     }
     
     return () => {

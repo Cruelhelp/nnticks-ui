@@ -12,6 +12,7 @@ import Leaderboard from '@/components/Leaderboard';
 import Splash from './Splash';
 import { useSettings } from '@/hooks/useSettings';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabase';
 
 const Index = () => {
   const [showSplash, setShowSplash] = useState(true);
@@ -19,6 +20,7 @@ const Index = () => {
   const [showSidebar, setShowSidebar] = useState(true);
   const [showTerminal, setShowTerminal] = useState(true);
   const { settings } = useSettings();
+  const { user, userDetails } = useAuth();
   
   // Show splash screen
   useEffect(() => {
@@ -28,6 +30,27 @@ const Index = () => {
     
     return () => clearTimeout(timer);
   }, []);
+  
+  // Track user session on component mount
+  useEffect(() => {
+    if (user) {
+      // Update last login time
+      updateUserLoginTime();
+    }
+  }, [user]);
+  
+  const updateUserLoginTime = async () => {
+    if (!user) return;
+    
+    try {
+      await supabase
+        .from('users_extra')
+        .update({ last_login: new Date().toISOString() })
+        .eq('user_id', user.id);
+    } catch (error) {
+      console.error('Failed to update login time:', error);
+    }
+  };
   
   const handleSectionChange = (section: string) => {
     setActiveSection(section);
@@ -88,6 +111,7 @@ const Index = () => {
         toggleSidebar={toggleSidebar} 
         toggleTerminal={toggleTerminal}
         onReset={resetLayout}
+        username={userDetails?.username || 'Guest'}
       />
       
       <div className="flex-1 flex overflow-hidden">

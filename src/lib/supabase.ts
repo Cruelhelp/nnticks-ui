@@ -18,18 +18,30 @@ export interface Database {
           timestamp: string
           value: number
           market: string
+          open?: number
+          high?: number
+          low?: number
+          close?: number
         }
         Insert: {
           id?: number
           timestamp: string
           value: number
           market: string
+          open?: number
+          high?: number
+          low?: number
+          close?: number
         }
         Update: {
           id?: number
           timestamp?: string
           value?: number
           market?: string
+          open?: number
+          high?: number
+          low?: number
+          close?: number
         }
       }
       trade_history: {
@@ -41,6 +53,9 @@ export interface Database {
           prediction: string
           confidence: number
           outcome: string
+          start_price?: number
+          end_price?: number
+          time_period?: number
         }
         Insert: {
           id?: number
@@ -50,6 +65,9 @@ export interface Database {
           prediction: string
           confidence: number
           outcome: string
+          start_price?: number
+          end_price?: number
+          time_period?: number
         }
         Update: {
           id?: number
@@ -59,6 +77,9 @@ export interface Database {
           prediction?: string
           confidence?: number
           outcome?: string
+          start_price?: number
+          end_price?: number
+          time_period?: number
         }
       }
       training_history: {
@@ -69,6 +90,8 @@ export interface Database {
           date: string
           points: number
           accuracy: number
+          model_params?: Json
+          training_data_size?: number
         }
         Insert: {
           id?: number
@@ -77,6 +100,8 @@ export interface Database {
           date: string
           points: number
           accuracy: number
+          model_params?: Json
+          training_data_size?: number
         }
         Update: {
           id?: number
@@ -85,20 +110,28 @@ export interface Database {
           date?: string
           points?: number
           accuracy?: number
+          model_params?: Json
+          training_data_size?: number
         }
       }
       admin_settings: {
         Row: {
           id: number
           paypal_email: string
+          subscription_price?: number
+          trial_period_days?: number
         }
         Insert: {
           id?: number
           paypal_email: string
+          subscription_price?: number
+          trial_period_days?: number
         }
         Update: {
           id?: number
           paypal_email?: string
+          subscription_price?: number
+          trial_period_days?: number
         }
       }
       subscriptions: {
@@ -107,18 +140,27 @@ export interface Database {
           user_id: string
           status: string
           renewal_date: string
+          subscription_type?: string
+          payment_method?: string
+          amount?: number
         }
         Insert: {
           id?: number
           user_id: string
           status: string
           renewal_date: string
+          subscription_type?: string
+          payment_method?: string
+          amount?: number
         }
         Update: {
           id?: number
           user_id?: string
           status?: string
           renewal_date?: string
+          subscription_type?: string
+          payment_method?: string
+          amount?: number
         }
       }
       referrals: {
@@ -127,18 +169,27 @@ export interface Database {
           user_id: string
           referral_code: string
           redeemed: boolean
+          referred_user_id?: string
+          date_created?: string
+          date_redeemed?: string
         }
         Insert: {
           id?: number
           user_id: string
           referral_code: string
           redeemed: boolean
+          referred_user_id?: string
+          date_created?: string
+          date_redeemed?: string
         }
         Update: {
           id?: number
           user_id?: string
           referral_code?: string
           redeemed?: boolean
+          referred_user_id?: string
+          date_created?: string
+          date_redeemed?: string
         }
       }
       users_extra: {
@@ -148,6 +199,11 @@ export interface Database {
           is_banned: boolean
           pro_status: boolean
           username: string
+          avatar_url?: string
+          created_at?: string
+          last_login?: string
+          prediction_count?: number
+          prediction_accuracy?: number
         }
         Insert: {
           user_id: string
@@ -155,6 +211,11 @@ export interface Database {
           is_banned: boolean
           pro_status: boolean
           username: string
+          avatar_url?: string
+          created_at?: string
+          last_login?: string
+          prediction_count?: number
+          prediction_accuracy?: number
         }
         Update: {
           user_id?: string
@@ -162,6 +223,11 @@ export interface Database {
           is_banned?: boolean
           pro_status?: boolean
           username?: string
+          avatar_url?: string
+          created_at?: string
+          last_login?: string
+          prediction_count?: number
+          prediction_accuracy?: number
         }
       }
       user_settings: {
@@ -199,18 +265,94 @@ export interface Database {
           username: string
           accuracy: number
           level: number
+          ranking?: number
+          points?: number
+          predictions_count?: number
+          wins_count?: number
         }
         Insert: {
           user_id: string
           username: string
           accuracy: number
           level: number
+          ranking?: number
+          points?: number
+          predictions_count?: number
+          wins_count?: number
         }
         Update: {
           user_id?: string
           username?: string
           accuracy?: number
           level?: number
+          ranking?: number
+          points?: number
+          predictions_count?: number
+          wins_count?: number
+        }
+      }
+      user_sessions: {
+        Row: {
+          id: number
+          user_id: string
+          start_time: string
+          end_time?: string
+          device_info?: string
+          status: string
+          ip_address?: string
+        }
+        Insert: {
+          id?: number
+          user_id: string
+          start_time: string
+          end_time?: string
+          device_info?: string
+          status: string
+          ip_address?: string
+        }
+        Update: {
+          id?: number
+          user_id?: string
+          start_time?: string
+          end_time?: string
+          device_info?: string
+          status?: string
+          ip_address?: string
+        }
+      }
+      ml_models: {
+        Row: {
+          id: number
+          user_id: string
+          name: string
+          created_at: string
+          updated_at: string
+          model_type: string
+          accuracy: number
+          parameters: Json
+          is_public: boolean
+        }
+        Insert: {
+          id?: number
+          user_id: string
+          name: string
+          created_at: string
+          updated_at?: string
+          model_type: string
+          accuracy: number
+          parameters: Json
+          is_public: boolean
+        }
+        Update: {
+          id?: number
+          user_id?: string
+          name?: string
+          created_at?: string
+          updated_at?: string
+          model_type?: string
+          accuracy?: number
+          parameters?: Json
+          is_public?: boolean
         }
       }
     }
