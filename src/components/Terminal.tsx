@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Resizable } from 'react-resizable-panels';
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { X, Minus, Square, ChevronDown, ChevronUp } from 'lucide-react';
 import { useSettings } from '@/hooks/useSettings';
 import { useAuth } from '@/contexts/AuthContext';
@@ -193,20 +193,11 @@ License: Pro${userDetails?.proStatus ? '' : ' (Trial)'}
   };
   
   // Use custom terminal height from settings
-  const terminalHeight = settings.terminalHeight || 250;
+  const terminalHeight = settings?.terminalHeight || 250;
   
   return (
-    <Resizable
-      axis="y"
-      minConstraints={[window.innerWidth, 100]}
-      maxConstraints={[window.innerWidth, 500]}
-      onResize={(e, data) => {
-        // You can save the new height in settings if needed
-      }}
-      height={isCollapsed ? 40 : terminalHeight}
-      className="w-full"
-    >
-      <Card className="border-t-2 border-t-primary w-full rounded-b-none">
+    <div className="w-full" style={{ height: isCollapsed ? '40px' : `${terminalHeight}px` }}>
+      <Card className="border-t-2 border-t-primary w-full rounded-b-none h-full flex flex-col">
         <div className="flex justify-between items-center p-2 bg-black text-white border-b border-gray-800">
           <div className="flex items-center gap-1.5">
             <div className="w-3 h-3 rounded-full bg-red-500" />
@@ -235,11 +226,11 @@ License: Pro${userDetails?.proStatus ? '' : ' (Trial)'}
         </div>
         
         {!isCollapsed && (
-          <div className="p-3 bg-black text-green-400 h-full overflow-hidden flex flex-col">
+          <div className="p-3 bg-black text-green-400 flex-1 overflow-hidden flex flex-col font-mono">
             <div 
               ref={terminalRef}
               className="terminal-font flex-1 overflow-auto whitespace-pre-wrap"
-              style={{ height: terminalHeight - 80, maxHeight: '100%' }}
+              style={{ maxHeight: 'calc(100% - 30px)' }}
             >
               {history.map((line, index) => (
                 <div key={index} className="terminal-line">
@@ -264,7 +255,7 @@ License: Pro${userDetails?.proStatus ? '' : ' (Trial)'}
           </div>
         )}
       </Card>
-    </Resizable>
+    </div>
   );
 };
 

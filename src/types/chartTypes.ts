@@ -1,18 +1,20 @@
-
 export interface TickData {
   timestamp: string;
   value: number;
   market: string;
 }
 
-export interface ProcessedTickData extends TickData {
-  time: string;
-  formattedValue: number;
-  rsi?: number;
-  ma?: number;
-  bollingerMiddle?: number;
-  bollingerUpper?: number;
-  bollingerLower?: number;
+export interface ProcessedTickData {
+  timestamp: number;
+  price: number;
+  volume?: number;
+  symbol: string;
+  epoch?: number;
+  quote?: number;
+  open?: number;
+  high?: number;
+  low?: number;
+  close?: number;
 }
 
 export interface BrokerConfig {
