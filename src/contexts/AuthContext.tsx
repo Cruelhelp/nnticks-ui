@@ -19,6 +19,7 @@ type AuthContextType = {
   signUp: (email: string, password: string, username: string) => Promise<void>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
+  signInAsGuest: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -144,6 +145,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
+        options: {
+          redirectTo: `${window.location.origin}/`
+        }
       });
 
       if (error) throw error;
@@ -207,6 +211,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const signInAsGuest = async () => {
+    try {
+      // Generate a random guest username
+      const guestUsername = `Guest_${Math.floor(Math.random() * 10000)}`;
+      
+      // We'll set local storage values for the guest session
+      localStorage.setItem('guestMode', 'true');
+      localStorage.setItem('guestUsername', guestUsername);
+      
+      // Create a guest user details object
+      setUserDetails({
+        username: guestUsername,
+        isAdmin: false,
+        isBanned: false,
+        proStatus: false
+      });
+      
+      toast.success(`Signed in as ${guestUsername}`);
+    } catch (error: any) {
+      toast.error(error.message || 'Error signing in as guest');
+      throw error;
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -219,6 +247,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signUp,
         signOut,
         resetPassword,
+        signInAsGuest,
       }}
     >
       {children}

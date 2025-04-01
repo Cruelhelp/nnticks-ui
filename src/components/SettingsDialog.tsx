@@ -1,330 +1,291 @@
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useSettings, UserSettings } from "@/hooks/useSettings";
-import { useAuth } from "@/contexts/AuthContext";
-import { Slider } from "@/components/ui/slider";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import React, { useState, useEffect } from 'react';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { useState, useEffect } from "react";
-import { toast } from "sonner";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Monitor, Moon, SunMedium, PaletteIcon, Globe, Baseline, LayoutGrid, Code } from "lucide-react";
+import { useSettings } from '@/hooks/useSettings';
+import { useTheme } from '@/components/ui/theme-provider';
 
 interface SettingsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-const SettingsDialog = ({ open, onOpenChange }: SettingsDialogProps) => {
+const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onOpenChange }) => {
   const { settings, updateSettings } = useSettings();
-  const { userDetails } = useAuth();
-  const isPro = userDetails?.proStatus || false;
+  const { theme, setTheme } = useTheme();
   
-  const [tempSettings, setTempSettings] = useState<UserSettings>({ ...settings });
-  const [showTerminal, setShowTerminal] = useState(true);
+  const [wsUrl, setWsUrl] = useState<string>(settings?.wsUrl || '');
+  const [apiKey, setApiKey] = useState<string>(settings?.apiKey || '');
+  const [subscription, setSubscription] = useState<string>(settings?.subscription || '');
+  const [selectedFont, setSelectedFont] = useState<string>(settings?.font || 'JetBrains Mono');
+  const [selectedAccent, setSelectedAccent] = useState<string>(settings?.accent || 'green');
+  const [selectedChartStyle, setSelectedChartStyle] = useState<string>(settings?.chartStyle || 'line');
+  const [terminalHeight, setTerminalHeight] = useState<number>(settings?.terminalHeight || 200);
+  const [sidebarWidth, setSidebarWidth] = useState<number>(settings?.sidebarWidth || 150);
   
-  // Update tempSettings when settings change
   useEffect(() => {
-    setTempSettings({ ...settings });
-  }, [settings, open]);
+    if (settings) {
+      setWsUrl(settings.wsUrl || '');
+      setApiKey(settings.apiKey || '');
+      setSubscription(settings.subscription || '');
+      setSelectedFont(settings.font || 'JetBrains Mono');
+      setSelectedAccent(settings.accent || 'green');
+      setSelectedChartStyle(settings.chartStyle || 'line');
+      setTerminalHeight(settings.terminalHeight || 200);
+      setSidebarWidth(settings.sidebarWidth || 150);
+    }
+  }, [settings]);
   
   const handleSave = () => {
-    updateSettings(tempSettings);
-    toast.success("Settings saved successfully");
+    updateSettings({
+      wsUrl,
+      apiKey,
+      subscription: subscription,
+      font: selectedFont as any,
+      accent: selectedAccent as any,
+      chartStyle: selectedChartStyle as any,
+      terminalHeight,
+      sidebarWidth
+    });
+    
     onOpenChange(false);
-    
-    // Apply theme changes immediately
-    applySettings(tempSettings);
   };
   
-  const applySettings = (newSettings: UserSettings) => {
-    // Apply accent color
-    const body = document.body;
-    body.classList.remove('theme-blue', 'theme-purple', 'theme-red');
-    
-    if (newSettings.accent !== 'green') {
-      body.classList.add(`theme-${newSettings.accent}`);
-    }
-    
-    // Apply font
-    document.documentElement.style.fontFamily = newSettings.font;
+  const handleThemeChange = (value: string) => {
+    setTheme(value as any);
   };
   
-  // Show preview of settings changes
-  useEffect(() => {
-    if (open) {
-      // Apply temporary settings for preview
-      applySettings(tempSettings);
-      
-      // Revert to original settings when dialog closes
-      return () => {
-        applySettings(settings);
-      };
-    }
-  }, [tempSettings, open]);
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>Settings</DialogTitle>
+          <DialogDescription>
+            Customize your experience and preferences.
+          </DialogDescription>
         </DialogHeader>
         
         <Tabs defaultValue="appearance">
-          <TabsList>
+          <TabsList className="grid grid-cols-3 mb-4">
             <TabsTrigger value="appearance">Appearance</TabsTrigger>
             <TabsTrigger value="layout">Layout</TabsTrigger>
-            <TabsTrigger value="neural-network" disabled={!isPro}>Neural Network {!isPro && "(Pro)"}</TabsTrigger>
-            <TabsTrigger value="subscription">Subscription</TabsTrigger>
+            <TabsTrigger value="connections">API Connections</TabsTrigger>
           </TabsList>
           
-          <TabsContent value="appearance" className="space-y-4 mt-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Accent Color</Label>
-                <div className="grid grid-cols-4 gap-2">
-                  {(['green', 'blue', 'purple', 'red'] as const).map(color => (
-                    <div 
-                      key={color}
-                      className={`
-                        h-10 rounded-md cursor-pointer border-2 transition-all
-                        ${tempSettings.accent === color ? 'ring-2 ring-offset-2 ring-primary' : ''}
-                      `}
-                      style={{ backgroundColor: `var(--${color}-500)` }}
-                      onClick={() => setTempSettings({...tempSettings, accent: color})}
-                    />
-                  ))}
-                </div>
-                <div className="flex items-center space-x-2 mt-2">
-                  {/* Fix: Wrap RadioGroupItems in a RadioGroup */}
-                  <RadioGroup 
-                    value={tempSettings.accent}
-                    onValueChange={(value) => setTempSettings({...tempSettings, accent: value as UserSettings['accent']})}
-                    className="flex items-center space-x-2"
-                  >
-                    {(['green', 'blue', 'purple', 'red'] as const).map(color => (
-                      <div key={color} className="flex items-center space-x-1">
-                        <RadioGroupItem 
-                          value={color} 
-                          id={color} 
-                        />
-                        <Label htmlFor={color} className="capitalize">{color}</Label>
-                      </div>
-                    ))}
-                  </RadioGroup>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Font</Label>
-                <RadioGroup 
-                  value={tempSettings.font} 
-                  onValueChange={(value) => setTempSettings({...tempSettings, font: value as UserSettings['font']})}
-                >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="JetBrains Mono" id="jetbrains" />
-                    <Label htmlFor="jetbrains" style={{ fontFamily: 'JetBrains Mono' }}>JetBrains Mono</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="Fira Code" id="fira" />
-                    <Label htmlFor="fira" style={{ fontFamily: 'Fira Code' }}>Fira Code</Label>
-                  </div>
-                </RadioGroup>
-              </div>
-            </div>
-            
-            <div className="space-y-2 pt-4">
-              <Label>Chart Style</Label>
-              <div className="grid grid-cols-3 gap-2">
-                {(['line', 'candlestick', 'bar'] as const).map(style => (
-                  <div 
-                    key={style}
-                    className={`
-                      border rounded-md p-4 cursor-pointer transition-all
-                      ${tempSettings.chartStyle === style ? 'ring-2 ring-primary bg-accent' : 'bg-card'}
-                    `}
-                    onClick={() => setTempSettings({...tempSettings, chartStyle: style})}
-                  >
-                    <div className="h-16 flex items-center justify-center">
-                      {style === 'line' && (
-                        <svg className="w-full h-full" viewBox="0 0 100 50">
-                          <path d="M0,25 C20,10 40,40 60,20 S80,30 100,15" 
-                                fill="none" 
-                                stroke="currentColor" 
-                                strokeWidth="2" />
-                        </svg>
-                      )}
-                      {style === 'candlestick' && (
-                        <svg className="w-full h-full" viewBox="0 0 100 50">
-                          <line x1="10" y1="10" x2="10" y2="40" stroke="currentColor" />
-                          <rect x="5" y="15" width="10" height="15" fill="var(--green-500)" />
-                          
-                          <line x1="30" y1="5" x2="30" y2="45" stroke="currentColor" />
-                          <rect x="25" y="20" width="10" height="15" fill="var(--red-500)" />
-                          
-                          <line x1="50" y1="15" x2="50" y2="35" stroke="currentColor" />
-                          <rect x="45" y="18" width="10" height="10" fill="var(--green-500)" />
-                          
-                          <line x1="70" y1="10" x2="70" y2="40" stroke="currentColor" />
-                          <rect x="65" y="15" width="10" height="20" fill="var(--red-500)" />
-                          
-                          <line x1="90" y1="20" x2="90" y2="30" stroke="currentColor" />
-                          <rect x="85" y="22" width="10" height="6" fill="var(--green-500)" />
-                        </svg>
-                      )}
-                      {style === 'bar' && (
-                        <svg className="w-full h-full" viewBox="0 0 100 50">
-                          <rect x="5" y="10" width="10" height="30" fill="var(--green-500)" />
-                          <rect x="25" y="20" width="10" height="20" fill="var(--red-500)" />
-                          <rect x="45" y="15" width="10" height="25" fill="var(--green-500)" />
-                          <rect x="65" y="25" width="10" height="15" fill="var(--red-500)" />
-                          <rect x="85" y="5" width="10" height="35" fill="var(--green-500)" />
-                        </svg>
-                      )}
-                    </div>
-                    <div className="text-center mt-2 capitalize">{style}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="layout" className="space-y-4 mt-4">
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <Label>Show Terminal by Default</Label>
-                <Switch 
-                  checked={showTerminal} 
-                  onCheckedChange={setShowTerminal}
-                />
-              </div>
-            </div>
-          
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <Label>Terminal Height ({tempSettings.terminalHeight}px)</Label>
-              </div>
-              <Slider 
-                min={100} 
-                max={400}
-                step={10}
-                value={[tempSettings.terminalHeight]} 
-                onValueChange={(value) => setTempSettings({...tempSettings, terminalHeight: value[0]})}
-              />
-              <div className="h-24 border border-dashed border-muted-foreground rounded-md p-2 relative">
-                <div 
-                  className="absolute bottom-0 left-0 right-0 bg-muted"
-                  style={{ height: `${tempSettings.terminalHeight / 4}px` }}
-                >
-                  <div className="p-2 text-xs text-muted-foreground">Terminal preview</div>
-                </div>
-              </div>
-            </div>
-            
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <Label>Sidebar Width ({tempSettings.sidebarWidth}px)</Label>
-              </div>
-              <Slider 
-                min={100} 
-                max={300}
-                step={10}
-                value={[tempSettings.sidebarWidth]} 
-                onValueChange={(value) => setTempSettings({...tempSettings, sidebarWidth: value[0]})}
-              />
-              <div className="h-24 border border-dashed border-muted-foreground rounded-md p-2 relative">
-                <div 
-                  className="absolute top-0 bottom-0 left-0 bg-muted"
-                  style={{ width: `${tempSettings.sidebarWidth / 4}px` }}
-                >
-                  <div className="p-2 text-xs text-muted-foreground">Sidebar</div>
-                </div>
-              </div>
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="neural-network" className="space-y-4 mt-4">
-            {isPro ? (
-              <>
-                <div className="space-y-2">
-                  <Label>Learning Rate</Label>
-                  <Slider min={1} max={100} step={1} value={[1]} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Epochs</Label>
-                  <Slider min={10} max={100} step={5} value={[50]} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Layers</Label>
-                  <Input type="number" min={1} max={5} defaultValue={3} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Nodes per layer</Label>
-                  <Input type="number" min={16} max={256} step={16} defaultValue={64} />
-                </div>
-              </>
-            ) : (
-              <div className="p-4 border border-border rounded-md bg-card text-center">
-                <h3 className="font-medium">Pro Feature</h3>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Upgrade to Pro to customize neural network parameters
-                </p>
-                <Button className="mt-4" variant="default">Upgrade to Pro</Button>
-              </div>
-            )}
-          </TabsContent>
-          
-          <TabsContent value="subscription" className="space-y-4 mt-4">
+          <TabsContent value="appearance" className="space-y-4">
             <div className="space-y-4">
-              <div className="p-4 border border-border rounded-md bg-card">
-                <h3 className="font-medium">Current Plan</h3>
-                <p className="text-xl font-bold mt-1">{isPro ? 'Pro' : 'Free'}</p>
-                {isPro && (
-                  <p className="text-sm text-muted-foreground">
-                    Next billing date: 01/01/2026
-                  </p>
-                )}
-              </div>
-              
-              {!isPro && (
-                <div className="p-4 border border-border rounded-md bg-card">
-                  <h3 className="font-medium">Upgrade to Pro</h3>
-                  <ul className="text-sm mt-2 space-y-1">
-                    <li className="flex items-center gap-2">
-                      <span className="text-primary">✓</span> Advanced neural network customization
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <span className="text-primary">✓</span> Full indicator set
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <span className="text-primary">✓</span> Access to all 20 training missions
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <span className="text-primary">✓</span> Model sharing
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <span className="text-primary">✓</span> Leaderboard access
-                    </li>
-                  </ul>
-                  <Button className="w-full mt-4" variant="default">
-                    Subscribe - $10/month
+              <div>
+                <Label>Theme</Label>
+                <div className="grid grid-cols-3 gap-2 mt-2">
+                  <Button 
+                    variant={theme === "light" ? "default" : "outline"} 
+                    onClick={() => handleThemeChange("light")}
+                    className="flex flex-col items-center justify-center gap-1 p-2 h-auto"
+                  >
+                    <SunMedium className="h-5 w-5" />
+                    <span className="text-xs">Light</span>
+                  </Button>
+                  <Button 
+                    variant={theme === "dark" ? "default" : "outline"} 
+                    onClick={() => handleThemeChange("dark")}
+                    className="flex flex-col items-center justify-center gap-1 p-2 h-auto"
+                  >
+                    <Moon className="h-5 w-5" />
+                    <span className="text-xs">Dark</span>
+                  </Button>
+                  <Button 
+                    variant={theme === "system" ? "default" : "outline"} 
+                    onClick={() => handleThemeChange("system")}
+                    className="flex flex-col items-center justify-center gap-1 p-2 h-auto"
+                  >
+                    <Monitor className="h-5 w-5" />
+                    <span className="text-xs">System</span>
                   </Button>
                 </div>
-              )}
+              </div>
               
-              <div className="text-center text-sm text-muted-foreground">
-                Payment processing by PayPal and Stripe
+              <div>
+                <Label>Accent Color</Label>
+                <div className="grid grid-cols-4 gap-2 mt-2">
+                  <Button 
+                    variant="outline" 
+                    className={`h-10 bg-green-500/20 border-green-500/50 hover:bg-green-500/30 ${selectedAccent === 'green' ? 'ring-2 ring-green-500' : ''}`}
+                    onClick={() => setSelectedAccent('green')}
+                  >
+                    <span className="sr-only">Green</span>
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    className={`h-10 bg-blue-500/20 border-blue-500/50 hover:bg-blue-500/30 ${selectedAccent === 'blue' ? 'ring-2 ring-blue-500' : ''}`}
+                    onClick={() => setSelectedAccent('blue')}
+                  >
+                    <span className="sr-only">Blue</span>
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    className={`h-10 bg-purple-500/20 border-purple-500/50 hover:bg-purple-500/30 ${selectedAccent === 'purple' ? 'ring-2 ring-purple-500' : ''}`}
+                    onClick={() => setSelectedAccent('purple')}
+                  >
+                    <span className="sr-only">Purple</span>
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    className={`h-10 bg-red-500/20 border-red-500/50 hover:bg-red-500/30 ${selectedAccent === 'red' ? 'ring-2 ring-red-500' : ''}`}
+                    onClick={() => setSelectedAccent('red')}
+                  >
+                    <span className="sr-only">Red</span>
+                  </Button>
+                </div>
+              </div>
+              
+              <div>
+                <Label>Font</Label>
+                <Select
+                  value={selectedFont}
+                  onValueChange={(value) => setSelectedFont(value)}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select a font" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="JetBrains Mono">JetBrains Mono</SelectItem>
+                    <SelectItem value="Fira Code">Fira Code</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="layout" className="space-y-4">
+            <div className="space-y-4">
+              <div>
+                <Label>Chart Style</Label>
+                <div className="grid grid-cols-3 gap-2 mt-2">
+                  <Button 
+                    variant={selectedChartStyle === "line" ? "default" : "outline"} 
+                    onClick={() => setSelectedChartStyle("line")}
+                    className="flex flex-col items-center justify-center gap-1 p-2 h-auto"
+                  >
+                    <LayoutGrid className="h-5 w-5" />
+                    <span className="text-xs">Line</span>
+                  </Button>
+                  <Button 
+                    variant={selectedChartStyle === "candlestick" ? "default" : "outline"} 
+                    onClick={() => setSelectedChartStyle("candlestick")}
+                    className="flex flex-col items-center justify-center gap-1 p-2 h-auto"
+                  >
+                    <Baseline className="h-5 w-5" />
+                    <span className="text-xs">Candlestick</span>
+                  </Button>
+                  <Button 
+                    variant={selectedChartStyle === "bar" ? "default" : "outline"} 
+                    onClick={() => setSelectedChartStyle("bar")}
+                    className="flex flex-col items-center justify-center gap-1 p-2 h-auto"
+                  >
+                    <Code className="h-5 w-5" />
+                    <span className="text-xs">Bar</span>
+                  </Button>
+                </div>
+              </div>
+              
+              <div>
+                <Label>Terminal Height (px)</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    min={100}
+                    max={600}
+                    value={terminalHeight}
+                    onChange={(e) => setTerminalHeight(Number(e.target.value))}
+                  />
+                  <span className="text-sm text-muted-foreground">px</span>
+                </div>
+              </div>
+              
+              <div>
+                <Label>Sidebar Width (px)</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    min={100}
+                    max={400}
+                    value={sidebarWidth}
+                    onChange={(e) => setSidebarWidth(Number(e.target.value))}
+                  />
+                  <span className="text-sm text-muted-foreground">px</span>
+                </div>
+              </div>
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="connections" className="space-y-4">
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="wsUrl">WebSocket URL</Label>
+                <Input
+                  id="wsUrl"
+                  value={wsUrl}
+                  onChange={(e) => setWsUrl(e.target.value)}
+                  placeholder="wss://example.com/ws"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Enter the WebSocket URL for your data provider.
+                </p>
+              </div>
+              
+              <div>
+                <Label htmlFor="apiKey">API Key</Label>
+                <Input
+                  id="apiKey"
+                  type="password"
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                  placeholder="API Key"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Your API key will be stored securely.
+                </p>
+              </div>
+              
+              <div>
+                <Label htmlFor="subscription">Subscription JSON</Label>
+                <Input
+                  id="subscription"
+                  value={subscription}
+                  onChange={(e) => setSubscription(e.target.value)}
+                  placeholder='{"ticks":"R_10"}'
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  JSON subscription format for your WebSocket connection.
+                </p>
+              </div>
+              
+              <div className="bg-muted p-3 rounded-md">
+                <h4 className="text-sm font-medium mb-1">Sample Formats</h4>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <p className="font-mono">{"Deriv: {\"ticks\":\"R_10\"}"}</p>
+                    <p className="font-mono">{"IQ Option: {\"symbol\":\"EURUSD\"}"}</p>
+                  </div>
+                  <div>
+                    <p className="font-mono">{"Binance: {\"method\":\"SUBSCRIBE\"}"}</p>
+                    <p className="font-mono">{"Binary: {\"ticks\":\"V_75\"}"}</p>
+                  </div>
+                </div>
               </div>
             </div>
           </TabsContent>
         </Tabs>
         
-        <div className="flex justify-end gap-2 mt-4">
+        <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button onClick={handleSave}>Save Changes</Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

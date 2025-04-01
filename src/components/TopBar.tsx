@@ -1,9 +1,9 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import Logo from '@/components/Logo'; // Changed from named import to default import
+import Logo from '@/components/Logo';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Settings, TerminalSquare, Layout, UserCircle, Bell, LogOut, ChevronDown, Menu } from 'lucide-react';
+import { Settings, TerminalSquare, Layout, UserCircle, Bell, LogOut, ChevronDown, Menu, Sidebar } from 'lucide-react';
 import SettingsDialog from '@/components/SettingsDialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
@@ -48,8 +48,8 @@ const TopBar: React.FC<TopBarProps> = ({ toggleSidebar, toggleTerminal, onReset,
     <header className="h-14 border-b flex items-center justify-between px-4 bg-background">
       {/* Left side */}
       <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" onClick={toggleSidebar} className="hidden md:flex">
-          <Menu className="h-5 w-5" /> {/* Replaced SidebarToggle with Menu icon */}
+        <Button variant="ghost" size="icon" onClick={toggleSidebar} className="md:flex">
+          <Sidebar className="h-5 w-5" />
         </Button>
         
         <Logo size={24} />

@@ -1,5 +1,6 @@
 
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import TopBar from '@/components/TopBar';
 import SideBar from '@/components/SideBar';
 import Terminal from '@/components/Terminal';
@@ -13,14 +14,17 @@ import Splash from './Splash';
 import { useSettings } from '@/hooks/useSettings';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 const Index = () => {
   const [showSplash, setShowSplash] = useState(true);
   const [activeSection, setActiveSection] = useState('home');
   const [showSidebar, setShowSidebar] = useState(true);
-  const [showTerminal, setShowTerminal] = useState(true);
+  const [showTerminal, setShowTerminal] = useState(false);
   const { settings } = useSettings();
-  const { user, userDetails } = useAuth();
+  const { user, userDetails, session } = useAuth();
+  const navigate = useNavigate();
+  const isMobile = useMediaQuery('(max-width: 768px)');
   
   // Show splash screen
   useEffect(() => {
@@ -31,6 +35,15 @@ const Index = () => {
     return () => clearTimeout(timer);
   }, []);
   
+  // Check authentication
+  useEffect(() => {
+    // If not logged in and not in guest mode, redirect to login
+    const isGuest = localStorage.getItem('guestMode') === 'true';
+    if (!user && !userDetails && !session && !isGuest) {
+      navigate('/login');
+    }
+  }, [user, userDetails, session, navigate]);
+  
   // Track user session on component mount
   useEffect(() => {
     if (user) {
@@ -38,6 +51,15 @@ const Index = () => {
       updateUserLoginTime();
     }
   }, [user]);
+  
+  // Adjust sidebar and terminal visibility on mobile
+  useEffect(() => {
+    if (isMobile) {
+      setShowSidebar(false);
+    } else {
+      setShowSidebar(true);
+    }
+  }, [isMobile]);
   
   const updateUserLoginTime = async () => {
     if (!user) return;
@@ -54,6 +76,9 @@ const Index = () => {
   
   const handleSectionChange = (section: string) => {
     setActiveSection(section);
+    if (isMobile) {
+      setShowSidebar(false);
+    }
   };
   
   const toggleSidebar = () => {
@@ -66,7 +91,7 @@ const Index = () => {
   
   const resetLayout = () => {
     setShowSidebar(true);
-    setShowTerminal(true);
+    setShowTerminal(false);
   };
   
   // Apply accent color class based on settings
@@ -83,6 +108,22 @@ const Index = () => {
       document.documentElement.style.fontFamily = settings.font;
     }
   }, [settings?.accent, settings?.font]);
+  
+  // Handle resize observation
+  useEffect(() => {
+    const handleResize = () => {
+      // Update layout based on window size if needed
+      if (window.innerWidth < 768 && showSidebar) {
+        setShowSidebar(false);
+      }
+    };
+    
+    window.addEventListener('resize', handleResize);
+    
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [showSidebar]);
   
   if (showSplash) {
     return <Splash />;
@@ -107,21 +148,26 @@ const Index = () => {
     }
   };
   
+  // Get username from user details or localStorage (for guest mode)
+  const username = userDetails?.username || localStorage.getItem('guestUsername') || 'Guest';
+  
   return (
     <div className="h-screen flex flex-col overflow-hidden">
       <TopBar 
         toggleSidebar={toggleSidebar} 
         toggleTerminal={toggleTerminal}
         onReset={resetLayout}
-        username={userDetails?.username || 'Guest'}
+        username={username}
       />
       
       <div className="flex-1 flex overflow-hidden">
         {showSidebar && (
-          <SideBar 
-            activeSection={activeSection} 
-            onSectionChange={handleSectionChange} 
-          />
+          <div className={`${isMobile ? 'absolute z-20 h-full' : ''}`}>
+            <SideBar 
+              activeSection={activeSection} 
+              onSectionChange={handleSectionChange} 
+            />
+          </div>
         )}
         
         <div className="flex-1 flex flex-col overflow-hidden">

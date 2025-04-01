@@ -2,7 +2,7 @@
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
-import { Home, LineChart, PieChart, Dumbbell, History, Trophy, Settings, Shield, FileText } from "lucide-react";
+import { Home, LineChart, FileText, Dumbbell, History, Trophy, Shield } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSettings } from "@/hooks/useSettings";
 
@@ -33,7 +33,6 @@ const SideBar = ({ activeSection, onSectionChange }: SideBarProps) => {
     { id: 'training', icon: Dumbbell, label: 'Training' },
     { id: 'history', icon: History, label: 'History' },
     { id: 'leaderboard', icon: Trophy, label: 'Leaderboard', proOnly: true },
-    { id: 'settings', icon: Settings, label: 'Settings' },
     { id: 'admin', icon: Shield, label: 'Admin', adminOnly: true },
   ];
 

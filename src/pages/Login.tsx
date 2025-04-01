@@ -6,13 +6,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/contexts/AuthContext';
 import Logo from '@/components/Logo';
-import { Github, Mail } from 'lucide-react';
+import { Github, Mail, AlertCircle } from 'lucide-react';
+import { toast } from 'sonner';
 
 const Login = () => {
   const navigate = useNavigate();
-  const { signIn, signUp, signInWithProvider } = useAuth();
+  const { signIn, signUp, signInWithProvider, signInAsGuest } = useAuth();
   
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
@@ -20,16 +22,19 @@ const Login = () => {
   const [signupPassword, setSignupPassword] = useState('');
   const [signupUsername, setSignupUsername] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [authError, setAuthError] = useState('');
   
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setAuthError('');
     
     try {
       await signIn(loginEmail, loginPassword);
       navigate('/');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login error:', error);
+      setAuthError(error.message || 'Failed to sign in');
     } finally {
       setIsLoading(false);
     }
@@ -38,12 +43,14 @@ const Login = () => {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setAuthError('');
     
     try {
       await signUp(signupEmail, signupPassword, signupUsername);
       navigate('/');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Signup error:', error);
+      setAuthError(error.message || 'Failed to create account');
     } finally {
       setIsLoading(false);
     }
@@ -51,15 +58,37 @@ const Login = () => {
   
   const handleProviderSignIn = async (provider: 'google' | 'github') => {
     try {
+      setIsLoading(true);
+      setAuthError('');
       await signInWithProvider(provider);
       // Redirect happens automatically after OAuth flow
-    } catch (error) {
+    } catch (error: any) {
       console.error(`${provider} login error:`, error);
+      if (error.message.includes('provider is not enabled')) {
+        setAuthError('This provider is not enabled. Please make sure OAuth is configured in Supabase.');
+      } else {
+        setAuthError(error.message || `Failed to sign in with ${provider}`);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  const handleGuestSignIn = async () => {
+    try {
+      setIsLoading(true);
+      await signInAsGuest();
+      navigate('/');
+    } catch (error: any) {
+      console.error('Guest login error:', error);
+      setAuthError(error.message || 'Failed to sign in as guest');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4 md:p-0">
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
           <Logo size={48} />
@@ -67,7 +96,7 @@ const Login = () => {
           <p className="text-muted-foreground">Neural Network Prediction for Financial Markets</p>
         </div>
         
-        <Card>
+        <Card className="border-primary/20">
           <CardHeader>
             <CardTitle>Sign In</CardTitle>
             <CardDescription>
@@ -75,11 +104,18 @@ const Login = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {authError && (
+              <Alert variant="destructive" className="mb-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{authError}</AlertDescription>
+              </Alert>
+            )}
+            
             <div className="flex flex-col space-y-4">
               <Button
                 variant="outline"
                 onClick={() => handleProviderSignIn('github')}
-                className="w-full"
+                className="w-full relative"
                 disabled={isLoading}
               >
                 <Github className="mr-2 h-4 w-4" /> Continue with GitHub
@@ -91,6 +127,15 @@ const Login = () => {
                 disabled={isLoading}
               >
                 <Mail className="mr-2 h-4 w-4" /> Continue with Google
+              </Button>
+              
+              <Button
+                variant="ghost"
+                onClick={handleGuestSignIn}
+                className="w-full"
+                disabled={isLoading}
+              >
+                Continue as Guest
               </Button>
               
               <div className="relative my-4">

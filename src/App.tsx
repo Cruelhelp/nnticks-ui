@@ -10,6 +10,7 @@ import NotFound from "./pages/NotFound";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ThemeProvider } from "./components/ui/theme-provider";
 
+// Create client with better defaults for mobile performance
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -27,13 +28,15 @@ const App = () => {
         <ThemeProvider defaultTheme="dark">
           <TooltipProvider>
             <BrowserRouter>
-              <Toaster />
-              <Sonner />
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/login" element={<Login />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
+              <div className="h-full min-h-screen flex flex-col bg-background text-foreground overflow-hidden">
+                <Toaster />
+                <Sonner />
+                <Routes>
+                  <Route path="/" element={<Index />} />
+                  <Route path="/login" element={<Login />} />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </div>
             </BrowserRouter>
           </TooltipProvider>
         </ThemeProvider>
