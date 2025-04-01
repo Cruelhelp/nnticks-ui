@@ -112,6 +112,9 @@ const ChartComponent: React.FC<ChartProps> = ({ tickData, market, showIndicators
   
   const yDomain = [minValue - padding, maxValue + padding];
   
+  // Calculate RSI domain if needed
+  const rsiDomain = [0, 100]; // RSI is always between 0 and 100
+  
   const handleZoomIn = () => {
     setZoomLevel(prev => Math.max(10, prev - 10));
   };
@@ -172,11 +175,25 @@ const ChartComponent: React.FC<ChartProps> = ({ tickData, market, showIndicators
               tickCount={5}
             />
             <YAxis 
+              yAxisId="price"
               domain={yDomain}
               tick={{ fill: 'hsl(var(--muted-foreground))' }}
               stroke="hsl(var(--border))"
               tickFormatter={(value) => value.toFixed(valueDecimals)}
             />
+            
+            {/* Add a second Y-axis for RSI */}
+            {showIndicators && indicators.rsi && (
+              <YAxis 
+                yAxisId="rsi"
+                domain={rsiDomain}
+                orientation="right"
+                tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                stroke="#8884d8"
+                tickFormatter={(value) => `${value}%`}
+              />
+            )}
+            
             <Tooltip 
               contentStyle={{ 
                 backgroundColor: 'hsl(var(--card))', 
@@ -193,6 +210,7 @@ const ChartComponent: React.FC<ChartProps> = ({ tickData, market, showIndicators
               dot={false}
               strokeWidth={2}
               animationDuration={300}
+              yAxisId="price"
             />
             
             {/* Indicators */}
@@ -203,7 +221,7 @@ const ChartComponent: React.FC<ChartProps> = ({ tickData, market, showIndicators
                 stroke="#8884d8" 
                 dot={false}
                 strokeDasharray="5 5"
-                yAxisId={1}
+                yAxisId="rsi"
               />
             )}
             
@@ -213,6 +231,7 @@ const ChartComponent: React.FC<ChartProps> = ({ tickData, market, showIndicators
                 dataKey="ma" 
                 stroke="#ffc658" 
                 dot={false}
+                yAxisId="price"
               />
             )}
             
@@ -224,6 +243,7 @@ const ChartComponent: React.FC<ChartProps> = ({ tickData, market, showIndicators
                   stroke="#82ca9d" 
                   dot={false}
                   strokeDasharray="3 3"
+                  yAxisId="price"
                 />
                 <Line 
                   type="monotone" 
@@ -231,6 +251,7 @@ const ChartComponent: React.FC<ChartProps> = ({ tickData, market, showIndicators
                   stroke="#8884d8" 
                   dot={false}
                   strokeDasharray="3 3"
+                  yAxisId="price"
                 />
                 <Line 
                   type="monotone" 
@@ -238,6 +259,7 @@ const ChartComponent: React.FC<ChartProps> = ({ tickData, market, showIndicators
                   stroke="#8884d8" 
                   dot={false}
                   strokeDasharray="3 3"
+                  yAxisId="price"
                 />
               </>
             )}
