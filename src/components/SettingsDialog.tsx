@@ -98,17 +98,22 @@ const SettingsDialog = ({ open, onOpenChange }: SettingsDialogProps) => {
                   ))}
                 </div>
                 <div className="flex items-center space-x-2 mt-2">
-                  {(['green', 'blue', 'purple', 'red'] as const).map(color => (
-                    <div key={color} className="flex items-center space-x-1">
-                      <RadioGroupItem 
-                        value={color} 
-                        id={color} 
-                        checked={tempSettings.accent === color}
-                        onClick={() => setTempSettings({...tempSettings, accent: color})}
-                      />
-                      <Label htmlFor={color} className="capitalize">{color}</Label>
-                    </div>
-                  ))}
+                  {/* Fix: Wrap RadioGroupItems in a RadioGroup */}
+                  <RadioGroup 
+                    value={tempSettings.accent}
+                    onValueChange={(value) => setTempSettings({...tempSettings, accent: value as UserSettings['accent']})}
+                    className="flex items-center space-x-2"
+                  >
+                    {(['green', 'blue', 'purple', 'red'] as const).map(color => (
+                      <div key={color} className="flex items-center space-x-1">
+                        <RadioGroupItem 
+                          value={color} 
+                          id={color} 
+                        />
+                        <Label htmlFor={color} className="capitalize">{color}</Label>
+                      </div>
+                    ))}
+                  </RadioGroup>
                 </div>
               </div>
 
