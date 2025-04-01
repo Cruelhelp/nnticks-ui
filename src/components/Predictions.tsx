@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Brain, Clock, BadgeCheck, BadgeX } from 'lucide-react';
+import { Brain, Clock, BadgeCheck, BadgeX, X } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 import { neuralNetwork } from '@/lib/neuralNetwork';
@@ -127,21 +128,25 @@ const NeuralNetworkVisual = () => {
       
       {/* Connections between layers */}
       {layers.slice(0, -1).map(layerIdx => (
-        [...Array(nodesPerLayer)].map((_, fromNodeIdx) => (
-          [...Array(nodesPerLayer)].map((_, toNodeIdx) => {
-            const fromId = `node-${layerIdx}-${fromNodeIdx}`;
-            const toId = `node-${layerIdx + 1}-${toNodeIdx}`;
-            return (
-              <NNConnection 
-                key={`${fromId}-to-${toId}`}
-                from={fromId}
-                to={toId}
-                active={activeNodeId === fromId || activeNodeId === toId}
-              />
-            );
-          })
-        ))
-      ).flat(2)}
+        <React.Fragment key={`connections-layer-${layerIdx}`}>
+          {[...Array(nodesPerLayer)].map((_, fromNodeIdx) => (
+            <React.Fragment key={`from-${layerIdx}-${fromNodeIdx}`}>
+              {[...Array(nodesPerLayer)].map((_, toNodeIdx) => {
+                const fromId = `node-${layerIdx}-${fromNodeIdx}`;
+                const toId = `node-${layerIdx + 1}-${toNodeIdx}`;
+                return (
+                  <NNConnection 
+                    key={`${fromId}-to-${toId}`}
+                    from={fromId}
+                    to={toId}
+                    active={activeNodeId === fromId || activeNodeId === toId}
+                  />
+                );
+              })}
+            </React.Fragment>
+          ))}
+        </React.Fragment>
+      ))}
     </div>
   );
 };

@@ -421,26 +421,30 @@ const Training = () => {
                 
                 <svg className="absolute top-0 left-0 w-full h-full">
                   {Array.from({ length: 3 }).map((_, layerIdx) => (
-                    Array.from({ length: layerIdx === 0 ? 3 : 5 }).map((_, fromIdx) => (
-                      Array.from({ length: layerIdx === 2 ? 3 : 5 }).map((_, toIdx) => (
-                        <line
-                          key={`line-${layerIdx}-${fromIdx}-${toIdx}`}
-                          x1={`${25 + layerIdx * 20}%`}
-                          y1={`${layerIdx === 0 
-                            ? (fromIdx + 1) * 25 
-                            : ((fromIdx + 1) * 100) / 6}%`}
-                          x2={`${25 + (layerIdx + 1) * 20}%`}
-                          y2={`${layerIdx === 2 
-                            ? (toIdx + 1) * 25 
-                            : ((toIdx + 1) * 100) / 6}%`}
-                          stroke="currentColor"
-                          strokeOpacity={Math.random() > 0.7 ? 0.8 : 0.2}
-                          strokeWidth={Math.random() > 0.7 ? 2 : 1}
-                          className={Math.random() > 0.7 ? 'text-primary' : 'text-muted-foreground'}
-                        />
-                      ))
-                    ))
-                  ).flat(2)}
+                    <React.Fragment key={`svg-layer-${layerIdx}`}>
+                      {Array.from({ length: layerIdx === 0 ? 3 : 5 }).map((_, fromIdx) => (
+                        <React.Fragment key={`from-${layerIdx}-${fromIdx}`}>
+                          {Array.from({ length: layerIdx === 2 ? 3 : 5 }).map((_, toIdx) => (
+                            <line
+                              key={`line-${layerIdx}-${fromIdx}-${toIdx}`}
+                              x1={`${25 + layerIdx * 20}%`}
+                              y1={`${layerIdx === 0 
+                                ? (fromIdx + 1) * 25 
+                                : ((fromIdx + 1) * 100) / 6}%`}
+                              x2={`${25 + (layerIdx + 1) * 20}%`}
+                              y2={`${layerIdx === 2 
+                                ? (toIdx + 1) * 25 
+                                : ((toIdx + 1) * 100) / 6}%`}
+                              stroke="currentColor"
+                              strokeOpacity={Math.random() > 0.7 ? 0.8 : 0.2}
+                              strokeWidth={Math.random() > 0.7 ? 2 : 1}
+                              className={Math.random() > 0.7 ? 'text-primary' : 'text-muted-foreground'}
+                            />
+                          ))}
+                        </React.Fragment>
+                      ))}
+                    </React.Fragment>
+                  ))}
                 </svg>
               </div>
               
