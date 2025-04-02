@@ -1,73 +1,93 @@
-# Welcome to your Lovable project
 
-## Project info
+<img src="https://i.imgur.com/XYZ123.png" alt="NNticks Logo" width="200"/>
 
-**URL**: https://lovable.dev/projects/84f6c1bb-008c-494e-bbc4-015a5c70ffcb
+# NNticks Trading Platform
 
-## How can I edit this code?
+NNticks is an advanced neural network-based trading platform designed for financial market analysis, prediction, and automated trading. This application leverages cutting-edge machine learning techniques to analyze market patterns and generate predictive insights.
 
-There are several ways of editing your application.
+## Features
 
-**Use Lovable**
+### Market Data Visualization
+- Real-time tick data streaming from multiple brokers
+- High-precision charts with configurable timeframes
+- Custom indicators and trend lines
+- Price action analysis tools
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/84f6c1bb-008c-494e-bbc4-015a5c70ffcb) and start prompting.
+### Neural Network Predictions
+- AI-driven price movement predictions
+- Configurable confidence levels
+- Multiple prediction modes (fast vs. accurate)
+- Visual representation of neural network activity
 
-Changes made via Lovable will be committed automatically to this repo.
+### Training Module
+- Custom neural network training with adjustable parameters
+- Training history tracking and visualization
+- Model performance metrics
+- Automated model saving and deployment
 
-**Use your preferred IDE**
+### Debug Tools
+- WebSocket connection management
+- Real-time data monitoring
+- Connection diagnostics and error tracking
+- System performance metrics
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### User Management
+- Account customization
+- Pro subscription management
+- Personal prediction history
+- Settings persistence
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### Advanced Features (Pro)
+- Leaderboard access
+- Enhanced prediction algorithms
+- Extended history storage
+- Premium market data
 
-Follow these steps:
+### Administrative Tools
+- User management panel
+- System monitoring dashboard
+- Performance analytics
+- Access control
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+## Screenshots
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+### Dashboard
+![Dashboard](https://i.imgur.com/abc123.png)
 
-# Step 3: Install the necessary dependencies.
-npm i
+### Neural Network Visualization
+![Neural Network](https://i.imgur.com/def456.png)
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
+### Prediction Module
+![Predictions](https://i.imgur.com/ghi789.png)
 
-**Edit a file directly in GitHub**
+### Training Interface
+![Training](https://i.imgur.com/jkl012.png)
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## Technical Details
 
-**Use GitHub Codespaces**
+NNticks is built with:
+- React.js + TypeScript for the frontend
+- TailwindCSS + shadcn/ui for styling
+- Supabase for backend and data persistence
+- WebSocket connections for real-time data
+- Custom neural network implementation
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Requirements
 
-## What technologies are used for this project?
+- Modern web browser (Chrome, Firefox, Edge, Safari)
+- Internet connection for real-time data
+- User account (free or pro)
 
-This project is built with:
+## Installation
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+The platform is available as a web application at [nnticks.ai](https://nnticks.ai). No installation required!
 
-## How can I deploy this project?
+For developers looking to contribute:
+1. Clone the repository
+2. Run `npm install`
+3. Configure Supabase credentials
+4. Run `npm run dev`
 
-Simply open [Lovable](https://lovable.dev/projects/84f6c1bb-008c-494e-bbc4-015a5c70ffcb) and click on Share -> Publish.
+## License
 
-## Can I connect a custom domain to my Lovable project?
-
-Yes it is!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+© 2025 NNticks Enterprise Analytics. All rights reserved.

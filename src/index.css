@@ -2,6 +2,8 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
  
 @layer base {
   :root {
@@ -91,6 +93,20 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-family: 'VT323', monospace;
+  }
+  
+  /* Status Badge Variants */
+  .badge-variant-success {
+    @apply bg-green-500/20 text-green-500 border-green-500/30;
+  }
+  
+  .badge-variant-warning {
+    @apply bg-yellow-500/20 text-yellow-500 border-yellow-500/30;
+  }
+  
+  .badge-variant-error {
+    @apply bg-red-500/20 text-red-500 border-red-500/30;
   }
 }
 
@@ -101,14 +117,12 @@
   font-display: swap;
 }
 
-@font-face {
-  font-family: 'Share Tech Mono';
-  src: url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
-  font-display: swap;
+.font-vt323 {
+  font-family: 'VT323', monospace;
 }
 
 .terminal-font {
-  font-family: 'VT323', 'Share Tech Mono', monospace;
+  font-family: 'VT323', monospace;
 }
 
 /* Custom animation classes */

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -33,13 +32,14 @@ const DebugTools = () => {
   const [tickCount, setTickCount] = useState(0);
   const [selectedBroker, setSelectedBroker] = useState('deriv');
   
-  // WebSocket connection
   const { 
     isConnected,
     ticks,
     latestTick, 
     error, 
     reconnectCount,
+    socketAttempts,
+    hasRecentData,
     connect,
     disconnect,
     send
@@ -67,19 +67,16 @@ const DebugTools = () => {
     }
   });
 
-  // Add log entry
   const addLog = (type: 'info' | 'error' | 'message', message: string) => {
     const timestamp = new Date().toLocaleTimeString();
     setLogs(prev => [`${timestamp} [${type}] ${message}`, ...prev].slice(0, 100));
   };
 
-  // Clear logs
   const clearLogs = () => {
     setLogs([]);
     toast.info('Logs cleared');
   };
 
-  // Apply connection settings
   const applySettings = async () => {
     try {
       await updateSettings({
@@ -96,32 +93,31 @@ const DebugTools = () => {
     }
   };
 
-  // Connect to WebSocket
   const handleConnect = () => {
     disconnect();
+    
+    const saveToast = toast.loading('Connecting to WebSocket...');
     setConnectionCount(0);
     setErrorCount(0);
     setTickCount(0);
+    
     setTimeout(() => {
       connect();
+      toast.dismiss(saveToast);
     }, 500);
   };
 
-  // Disconnect from WebSocket
   const handleDisconnect = () => {
     disconnect();
     addLog('info', 'Manually disconnected from WebSocket');
-    toast.info('WebSocket disconnected');
   };
 
-  // Handle broker selection
   const handleBrokerSelect = (broker: string) => {
     setSelectedBroker(broker);
     const format = subscriptionFormats[broker as keyof typeof subscriptionFormats];
     setLocalSubscription(JSON.stringify(format));
   };
 
-  // Reset connection stats
   const resetStats = () => {
     setConnectionCount(0);
     setErrorCount(0);
@@ -129,7 +125,6 @@ const DebugTools = () => {
     toast.info('Connection stats reset');
   };
   
-  // Max connection attempts failsafe
   useEffect(() => {
     if (connectionCount > 50) {
       disconnect();
@@ -137,6 +132,44 @@ const DebugTools = () => {
       addLog('error', 'Connection attempts limit reached (50). Connection stopped for safety.');
     }
   }, [connectionCount, disconnect]);
+
+  const connectionStatusSection = (
+    <Card className="bg-muted/50">
+      <CardContent className="p-4">
+        <div className="text-xs text-muted-foreground">Connection Status</div>
+        <div className="text-lg font-semibold flex items-center mt-1">
+          {hasRecentData ? (
+            <>
+              <Wifi className="h-4 w-4 mr-1 text-green-500" />
+              <span className="text-green-500">ONLINE</span>
+            </>
+          ) : isConnected ? (
+            <>
+              <Wifi className="h-4 w-4 mr-1 text-yellow-500" />
+              <span className="text-yellow-500">CONNECTED</span>
+            </>
+          ) : (
+            <>
+              <WifiOff className="h-4 w-4 mr-1 text-red-500" />
+              <span className="text-red-500">OFFLINE</span>
+            </>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  const connectionButtons = (
+    <div className="flex justify-end space-x-2">
+      <Button variant="outline" onClick={resetStats}>Reset Stats</Button>
+      <Button variant="outline" onClick={applySettings}>Apply Settings</Button>
+      {isConnected ? (
+        <Button variant="destructive" onClick={handleDisconnect}>Disconnect</Button>
+      ) : (
+        <Button onClick={handleConnect}>Connect</Button>
+      )}
+    </div>
+  );
 
   return (
     <div className="h-full flex flex-col space-y-4">
@@ -242,51 +275,11 @@ const DebugTools = () => {
               </div>
               
               <div className="flex justify-end space-x-2">
-                <Button variant="outline" onClick={resetStats}>Reset Stats</Button>
-                <Button variant="outline" onClick={applySettings}>Apply Settings</Button>
-                <Button onClick={handleConnect}>Connect</Button>
+                {connectionButtons}
               </div>
               
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-                <Card className="bg-muted/50">
-                  <CardContent className="p-4">
-                    <div className="text-xs text-muted-foreground">Connection Status</div>
-                    <div className="text-lg font-semibold flex items-center mt-1">
-                      {isConnected ? (
-                        <>
-                          <Wifi className="h-4 w-4 mr-1 text-green-500" />
-                          <span className="text-green-500">Online</span>
-                        </>
-                      ) : (
-                        <>
-                          <WifiOff className="h-4 w-4 mr-1 text-red-500" />
-                          <span className="text-red-500">Offline</span>
-                        </>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-                
-                <Card className="bg-muted/50">
-                  <CardContent className="p-4">
-                    <div className="text-xs text-muted-foreground">Connection Count</div>
-                    <div className="text-lg font-semibold mt-1">{connectionCount}</div>
-                  </CardContent>
-                </Card>
-                
-                <Card className="bg-muted/50">
-                  <CardContent className="p-4">
-                    <div className="text-xs text-muted-foreground">Error Count</div>
-                    <div className="text-lg font-semibold mt-1 text-red-500">{errorCount}</div>
-                  </CardContent>
-                </Card>
-                
-                <Card className="bg-muted/50">
-                  <CardContent className="p-4">
-                    <div className="text-xs text-muted-foreground">Ticks Received</div>
-                    <div className="text-lg font-semibold mt-1">{tickCount}</div>
-                  </CardContent>
-                </Card>
+                {connectionStatusSection}
               </div>
               
               {error && (

@@ -9,6 +9,7 @@ import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ThemeProvider } from "./components/ui/theme-provider";
+import { useEffect } from "react";
 
 // Create client with better defaults for mobile performance
 const queryClient = new QueryClient({
@@ -22,13 +23,28 @@ const queryClient = new QueryClient({
 });
 
 const App = () => {
+  // Apply VT323 font to entire app
+  useEffect(() => {
+    document.documentElement.style.fontFamily = "'VT323', monospace";
+    
+    // Ensure the font is loaded
+    const linkEl = document.createElement('link');
+    linkEl.rel = 'stylesheet';
+    linkEl.href = 'https://fonts.googleapis.com/css2?family=VT323&display=swap';
+    document.head.appendChild(linkEl);
+    
+    return () => {
+      document.head.removeChild(linkEl);
+    };
+  }, []);
+  
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <ThemeProvider defaultTheme="dark" attribute="class">
           <TooltipProvider>
             <BrowserRouter>
-              <div className="h-full min-h-screen flex flex-col bg-background text-foreground overflow-hidden">
+              <div className="h-full min-h-screen flex flex-col bg-background text-foreground overflow-hidden font-vt323">
                 <Toaster />
                 <Sonner />
                 <Routes>

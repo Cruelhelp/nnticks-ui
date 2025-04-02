@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import Logo from '@/components/Logo';
@@ -33,19 +33,26 @@ const TopBar: React.FC<TopBarProps> = ({ toggleSidebar, toggleTerminal, onReset,
   const { user, userDetails, signOut } = useAuth();
   const navigate = useNavigate();
   const { settings } = useSettings();
-  const { isConnected } = useWebSocket({
+  const { isConnected, ticks } = useWebSocket({
     wsUrl: settings.wsUrl,
     subscription: JSON.parse(settings.subscription),
   });
 
+  const hasRecentTicks = ticks.length > 0 && 
+    (new Date().getTime() - new Date(ticks[ticks.length - 1].timestamp).getTime() < 10000);
+  
+  const connectionStatus = hasRecentTicks ? "online" : isConnected ? "connected" : "offline";
+
   const handleSignOut = async () => {
     try {
+      const saveToast = toast.loading('Signing out...');
       await signOut();
       // Clear local storage
       localStorage.removeItem('userSettings');
       localStorage.removeItem('guestMode');
       localStorage.removeItem('guestUsername');
       
+      toast.dismiss(saveToast);
       toast.success('Successfully logged out');
       navigate('/login');
     } catch (error) {
@@ -53,12 +60,12 @@ const TopBar: React.FC<TopBarProps> = ({ toggleSidebar, toggleTerminal, onReset,
       toast.error('Failed to sign out');
     }
   };
-  
+
   // Sample notifications
   const notifications = [
     {
-      title: isConnected ? 'Connection established' : 'Connection offline',
-      description: isConnected ? 'WebSocket connection active' : 'WebSocket connection inactive',
+      title: hasRecentTicks ? 'Live data incoming' : (isConnected ? 'Connection established' : 'Connection offline'),
+      description: hasRecentTicks ? 'Live tick data streaming' : (isConnected ? 'WebSocket connected but no data' : 'WebSocket disconnected'),
       timestamp: new Date().getTime() - 5 * 60 * 1000, // 5 minutes ago
       read: false
     },
@@ -100,31 +107,78 @@ const TopBar: React.FC<TopBarProps> = ({ toggleSidebar, toggleTerminal, onReset,
     }, 100);
   };
 
+  // Handle avatar click for upload
+  const handleAvatarClick = async () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      
+      const saveToast = toast.loading('Uploading avatar...');
+      
+      try {
+        // Upload to Supabase storage
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${user?.id}.${fileExt}`;
+        
+        const { error: uploadError, data } = await supabase.storage
+          .from('avatars')
+          .upload(fileName, file, { upsert: true });
+        
+        if (uploadError) throw uploadError;
+        
+        // Get public URL
+        const { data: { publicUrl } } = supabase.storage
+          .from('avatars')
+          .getPublicUrl(fileName);
+        
+        // Update user profile
+        await supabase.from('users_extra').update({
+          avatar_url: publicUrl
+        }).eq('user_id', user?.id);
+        
+        toast.dismiss(saveToast);
+        toast.success('Avatar updated successfully');
+        
+        // Refresh page to show new avatar
+        window.location.reload();
+      } catch (error) {
+        console.error('Error uploading avatar:', error);
+        toast.dismiss(saveToast);
+        toast.error('Failed to upload avatar');
+      }
+    };
+    input.click();
+  };
+
   return (
-    <header className="h-14 border-b flex items-center justify-between px-4 bg-background">
+    <header className="h-14 border-b flex items-center justify-between px-4 bg-background font-vt323">
       {/* Left side */}
       <div className="flex items-center gap-2">
         <Button variant="ghost" size="icon" onClick={toggleSidebar} className="md:flex">
           <Menu className="h-5 w-5" />
         </Button>
         
-        <a href="/" className="flex items-center hover:opacity-80 transition-opacity">
-          <Logo size={24} />
-          <span className="font-bold tracking-tight ml-2">NNticks</span>
-        </a>
+        <Logo size={24} />
         
         {userDetails?.proStatus && (
-          <Badge className="font-semibold">PRO</Badge>
+          <Badge className="font-vt323">PRO</Badge>
         )}
         
         <div className="ml-4 flex items-center">
-          {isConnected ? (
-            <span className="flex items-center text-xs text-green-500">
-              <Wifi className="h-3 w-3 mr-1" /> Online
+          {hasRecentTicks ? (
+            <span className="flex items-center text-xs text-green-500 font-vt323">
+              <Wifi className="h-3 w-3 mr-1" /> ONLINE
+            </span>
+          ) : isConnected ? (
+            <span className="flex items-center text-xs text-yellow-500 font-vt323">
+              <Wifi className="h-3 w-3 mr-1" /> CONNECTED
             </span>
           ) : (
-            <span className="flex items-center text-xs text-red-500">
-              <WifiOff className="h-3 w-3 mr-1" /> Offline
+            <span className="flex items-center text-xs text-red-500 font-vt323">
+              <WifiOff className="h-3 w-3 mr-1" /> OFFLINE
             </span>
           )}
         </div>
@@ -134,7 +188,7 @@ const TopBar: React.FC<TopBarProps> = ({ toggleSidebar, toggleTerminal, onReset,
       <div className="flex items-center gap-2">
         <Button 
           variant="link"
-          className="mr-4 flex items-center gap-1.5 hover:opacity-80 transition-opacity"
+          className="mr-4 flex items-center gap-1.5 hover:opacity-80 transition-opacity font-vt323"
           onClick={handleNavigateToAccount}
         >
           <UserCircle className="h-4 w-4 text-muted-foreground" />
@@ -154,7 +208,7 @@ const TopBar: React.FC<TopBarProps> = ({ toggleSidebar, toggleTerminal, onReset,
               )}
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-80">
+          <DropdownMenuContent align="end" className="w-80 font-vt323">
             <DropdownMenuLabel className="flex justify-between items-center">
               <span>Notifications</span>
               <Button variant="outline" size="sm">Mark all read</Button>
@@ -196,16 +250,16 @@ const TopBar: React.FC<TopBarProps> = ({ toggleSidebar, toggleTerminal, onReset,
         
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="relative h-9 w-9 rounded-full">
+            <Button variant="ghost" className="relative h-9 w-9 rounded-full" onClick={handleAvatarClick}>
               <Avatar className="h-9 w-9">
                 <AvatarImage src={userDetails?.avatar_url || undefined} alt={username} />
-                <AvatarFallback className="bg-primary/10 text-primary">
+                <AvatarFallback className="bg-primary/10 text-primary font-vt323">
                   {username.substring(0, 2).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuContent align="end" className="w-56 font-vt323">
             <DropdownMenuLabel>
               <div className="flex flex-col space-y-1">
                 <p className="text-sm font-medium leading-none">{username}</p>
