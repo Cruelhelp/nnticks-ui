@@ -11,10 +11,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
-import { Menu, Bell, TerminalSquare, Settings, ChevronDown, LogOut, FileEdit, Code, HelpCircle, BookOpen, UserCircle } from 'lucide-react';
+import { Menu, Bell, TerminalSquare, Settings, LogOut, HelpCircle, BookOpen, UserCircle } from 'lucide-react';
 import SettingsDialog from '@/components/SettingsDialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { supabase } from '@/lib/supabase';
 
 interface TopBarProps {
@@ -76,6 +77,48 @@ const TopBar: React.FC<TopBarProps> = ({ toggleSidebar, toggleTerminal, onReset,
     return `${Math.floor(seconds)} second${seconds === 1 ? '' : 's'} ago`;
   };
 
+  // User dropdown component
+  const UserDropdown = () => {
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" className="relative h-9 w-9 rounded-full">
+            <Avatar className="h-9 w-9">
+              <AvatarImage src={userDetails?.avatar_url || undefined} alt={username} />
+              <AvatarFallback className="bg-primary/10 text-primary">
+                {username.substring(0, 2).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuLabel>
+            <div className="flex flex-col space-y-1">
+              <p className="text-sm font-medium leading-none">{username}</p>
+              <p className="text-xs leading-none text-muted-foreground">
+                {user?.email || 'Guest User'}
+              </p>
+            </div>
+          </DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => navigate('/account')}>
+            <UserCircle className="mr-2 h-4 w-4" />
+            <span>Account Settings</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => window.open("https://docs.nnticks.com", "_blank")}>
+            <Settings className="mr-2 h-4 w-4" />
+            <span>Preferences</span>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={handleSignOut}>
+            <LogOut className="mr-2 h-4 w-4" />
+            <span>Log out</span>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  };
+
   return (
     <header className="h-14 border-b flex items-center justify-between px-4 bg-background">
       {/* Left side */}
@@ -92,66 +135,6 @@ const TopBar: React.FC<TopBarProps> = ({ toggleSidebar, toggleTerminal, onReset,
         {userDetails?.proStatus && (
           <Badge className="font-semibold">PRO</Badge>
         )}
-      </div>
-      
-      {/* Menu Bar */}
-      <div className="hidden md:flex items-center gap-4 ml-4">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-8">File</Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            <DropdownMenuItem>New Connection</DropdownMenuItem>
-            <DropdownMenuItem>Save Configuration</DropdownMenuItem>
-            <DropdownMenuItem>Export Data</DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleSignOut}>Exit</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-        
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-8">Edit</Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            <DropdownMenuItem onClick={() => setSettingsOpen(true)}>Settings</DropdownMenuItem>
-            <DropdownMenuItem>Clear History</DropdownMenuItem>
-            <DropdownMenuItem>Preferences</DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>Reset Application</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-        
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-8">View</Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            <DropdownMenuItem onClick={toggleSidebar}>Toggle Sidebar</DropdownMenuItem>
-            <DropdownMenuItem onClick={toggleTerminal}>Toggle Terminal</DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>Full Screen</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-        
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-8">Help</Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            <DropdownMenuItem>
-              <BookOpen className="mr-2 h-4 w-4" /> Documentation
-            </DropdownMenuItem>
-            <DropdownMenuItem>
-              <Code className="mr-2 h-4 w-4" /> API Reference
-            </DropdownMenuItem>
-            <DropdownMenuItem>
-              <HelpCircle className="mr-2 h-4 w-4" /> Support
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>About NNticks</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
       </div>
       
       {/* Right side */}
@@ -214,34 +197,7 @@ const TopBar: React.FC<TopBarProps> = ({ toggleSidebar, toggleTerminal, onReset,
           <Settings className="h-5 w-5" />
         </Button>
         
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon">
-              <ChevronDown className="h-5 w-5" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {!userDetails?.proStatus && (
-              <>
-                <DropdownMenuItem className="bg-gradient-to-r from-purple-500/20 to-indigo-500/20 border-purple-500/30 hover:from-purple-500/30 hover:to-indigo-500/30">
-                  <div className="flex flex-col">
-                    <span className="font-medium">Get PRO access</span>
-                    <span className="text-xs">Advanced features & models</span>
-                  </div>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-              </>
-            )}
-            <DropdownMenuItem onClick={() => navigate('/account')}>
-              <UserCircle className="mr-2 h-4 w-4" />
-              <span>Account</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleSignOut}>
-              <LogOut className="mr-2 h-4 w-4" />
-              <span>Sign out</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <UserDropdown />
       </div>
       
       <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />

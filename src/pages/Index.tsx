@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TopBar from '@/components/TopBar';
@@ -115,11 +114,11 @@ const Index = () => {
       document.documentElement.style.fontFamily = settings.font;
     }
     
-    // Set the background to black
+    // Set the background to deep black (darker than before)
     document.body.style.backgroundColor = '#000000';
     document.documentElement.style.backgroundColor = '#000000';
     
-    // Update card and component colors
+    // Update card and component colors - make them darker for a richer UI
     document.documentElement.style.setProperty('--background', '0 0% 0%');
     document.documentElement.style.setProperty('--card', '0 0% 3%');
     document.documentElement.style.setProperty('--muted', '0 0% 9%');

@@ -1,4 +1,3 @@
-
 import { 
   LineChart, 
   Line, 
@@ -48,14 +47,15 @@ const LineChartView: React.FC<ChartProps> = ({ data, height = 350 }) => {
     const min = Math.min(...values);
     const max = Math.max(...values);
     
-    // If the range is very small, create a more dynamic range
-    if (max - min < 1) {
-      const middle = (max + min) / 2;
-      const padding = Math.max(0.5, (max - min) * 10); // At least 0.5 range or 10x the actual range
-      return [middle - padding, middle + padding];
-    }
+    // Create a more dynamic range for small changes
+    // If the data range is very small, amplify the differences
+    const middle = (max + min) / 2;
+    const range = max - min;
     
-    return [min - (max - min) * 0.1, max + (max - min) * 0.1];
+    // Use a dynamic padding based on the data magnitude
+    const padding = Math.max(0.02, range * 5);
+    
+    return [middle - padding, middle + padding];
   };
 
   return (
@@ -108,7 +108,7 @@ const LineChartView: React.FC<ChartProps> = ({ data, height = 350 }) => {
 const AreaChartView: React.FC<ChartProps> = ({ data, height = 350 }) => {
   const { theme } = useTheme();
   
-  // Calculate a dynamic domain for Y axis
+  // Calculate a dynamic domain for Y axis with enhanced visualization of small changes
   const calculateYAxisDomain = () => {
     if (data.length === 0) return ['auto', 'auto'];
     
@@ -116,13 +116,11 @@ const AreaChartView: React.FC<ChartProps> = ({ data, height = 350 }) => {
     const min = Math.min(...values);
     const max = Math.max(...values);
     
-    if (max - min < 1) {
-      const middle = (max + min) / 2;
-      const padding = Math.max(0.5, (max - min) * 10);
-      return [middle - padding, middle + padding];
-    }
+    const middle = (max + min) / 2;
+    const range = max - min;
+    const padding = Math.max(0.02, range * 5);
     
-    return [min - (max - min) * 0.1, max + (max - min) * 0.1];
+    return [middle - padding, middle + padding];
   };
   
   return (
@@ -174,7 +172,7 @@ const AreaChartView: React.FC<ChartProps> = ({ data, height = 350 }) => {
 const BarChartView: React.FC<ChartProps> = ({ data, height = 350 }) => {
   const { theme } = useTheme();
   
-  // Calculate a dynamic domain for Y axis
+  // Calculate a dynamic domain for Y axis with enhanced visualization
   const calculateYAxisDomain = () => {
     if (data.length === 0) return ['auto', 'auto'];
     
@@ -182,13 +180,11 @@ const BarChartView: React.FC<ChartProps> = ({ data, height = 350 }) => {
     const min = Math.min(...values);
     const max = Math.max(...values);
     
-    if (max - min < 1) {
-      const middle = (max + min) / 2;
-      const padding = Math.max(0.5, (max - min) * 10);
-      return [middle - padding, middle + padding];
-    }
+    const middle = (max + min) / 2;
+    const range = max - min;
+    const padding = Math.max(0.02, range * 5);
     
-    return [min - (max - min) * 0.1, max + (max - min) * 0.1];
+    return [middle - padding, middle + padding];
   };
   
   return (
@@ -249,7 +245,7 @@ const CandlestickChart: React.FC<ChartProps> = ({ data, height = 350 }) => {
     );
   }
   
-  // Calculate a dynamic domain for Y axis
+  // Calculate a dynamic domain for Y axis with enhanced visualization
   const calculateYAxisDomain = () => {
     if (formattedData.length === 0) return ['auto', 'auto'];
     
@@ -257,13 +253,11 @@ const CandlestickChart: React.FC<ChartProps> = ({ data, height = 350 }) => {
     const min = Math.min(...allValues);
     const max = Math.max(...allValues);
     
-    if (max - min < 1) {
-      const middle = (max + min) / 2;
-      const padding = Math.max(0.5, (max - min) * 10);
-      return [middle - padding, middle + padding];
-    }
+    const middle = (max + min) / 2;
+    const range = max - min;
+    const padding = Math.max(0.02, range * 5);
     
-    return [min - (max - min) * 0.1, max + (max - min) * 0.1];
+    return [middle - padding, middle + padding];
   };
   
   return (
@@ -331,14 +325,14 @@ const CandlestickChart: React.FC<ChartProps> = ({ data, height = 350 }) => {
 const ScatterPlotView: React.FC<ChartProps> = ({ data, height = 350 }) => {
   const { theme } = useTheme();
   
-  // Process the data to include value changes for plotting
+  // Process the data to include value changes for plotting with enhanced visualization
   const processedData = data.map((item, index, arr) => ({
     ...item,
     change: index > 0 ? item.value - arr[index - 1].value : 0,
     size: 20 // Constant size for all points
   }));
 
-  // Calculate dynamic domains for X and Y axes
+  // Calculate dynamic domains for X and Y axes with enhanced visualization
   const calculateXAxisDomain = () => {
     if (processedData.length === 0) return ['auto', 'auto'];
     
@@ -346,27 +340,24 @@ const ScatterPlotView: React.FC<ChartProps> = ({ data, height = 350 }) => {
     const min = Math.min(...values);
     const max = Math.max(...values);
     
-    if (max - min < 1) {
-      const middle = (max + min) / 2;
-      const padding = Math.max(0.5, (max - min) * 10);
-      return [middle - padding, middle + padding];
-    }
+    const middle = (max + min) / 2;
+    const range = max - min;
+    const padding = Math.max(0.02, range * 5);
     
-    return [min - (max - min) * 0.1, max + (max - min) * 0.1];
+    return [middle - padding, middle + padding];
   };
   
   const calculateYAxisDomain = () => {
-    if (processedData.length <= 1) return [-0.1, 0.1]; // Default range for insufficient data
+    if (processedData.length <= 1) return [-0.01, 0.01]; // Default range for insufficient data
     
     const values = processedData.map(item => item.change);
     const min = Math.min(...values);
     const max = Math.max(...values);
     
-    if (max - min < 0.001) {
-      return [-0.01, 0.01]; // Force a minimum range
-    }
+    // Use a dynamic padding based on the data magnitude for better visualization
+    const padding = Math.max(0.001, Math.abs(max - min) * 2);
     
-    return [min - Math.abs(min) * 0.5, max + Math.abs(max) * 0.5];
+    return [min - padding, max + padding];
   };
 
   return (
@@ -464,18 +455,18 @@ const Charts: React.FC = () => {
         let baseValue = 6000 + Math.random() * 10;
         
         const newData = Array.from({ length: 30 }, (_, i) => {
-          // Create small, realistic variations
-          baseValue += (Math.random() - 0.5) * 0.1;
+          // Create small, realistic variations with more fluctuation
+          baseValue += (Math.random() - 0.5) * 0.5;
           return {
             timestamp: new Date(now - (29-i) * 60000).toLocaleTimeString(),
             value: parseFloat(baseValue.toFixed(5)),
             price: parseFloat(baseValue.toFixed(5)),
             market: selectedMarket,
-            // Adding mock candlestick data
-            open: parseFloat((baseValue - Math.random() * 0.05).toFixed(5)),
+            // Adding mock candlestick data with more variation
+            open: parseFloat((baseValue - Math.random() * 0.25).toFixed(5)),
             close: parseFloat(baseValue.toFixed(5)),
-            high: parseFloat((baseValue + Math.random() * 0.08).toFixed(5)),
-            low: parseFloat((baseValue - Math.random() * 0.1).toFixed(5))
+            high: parseFloat((baseValue + Math.random() * 0.3).toFixed(5)),
+            low: parseFloat((baseValue - Math.random() * 0.4).toFixed(5))
           };
         });
         setTickData(newData);
@@ -517,6 +508,9 @@ const Charts: React.FC = () => {
         dataStr = JSON.stringify(tickData, null, 2);
       }
       
+      // Add company logo and copyright information to exports
+      dataStr = "NNticks Enterprise Analytics © 2025\n\n" + dataStr;
+      
       const blob = new Blob([dataStr], { type: format === 'csv' ? 'text/csv' : 'application/json' });
       const url = window.URL.createObjectURL(blob);
       
@@ -531,7 +525,7 @@ const Charts: React.FC = () => {
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
       
-      toast.success(`Data exported as ${format.toUpperCase()}`);
+      toast.success(`Data exported as ${format.toUpperCase()} with company branding`);
     } catch (error) {
       console.error('Error exporting data:', error);
       toast.error('Failed to export data');
@@ -594,7 +588,7 @@ const Charts: React.FC = () => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <CardTitle>Chart Controls</CardTitle>
-                  <Badge variant={ws.isConnected ? "success" : "destructive"}>
+                  <Badge variant={ws.isConnected ? "default" : "destructive"}>
                     {ws.isConnected ? "Connected" : "Disconnected"}
                   </Badge>
                 </div>

@@ -3,7 +3,7 @@ import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 
-type UserDetailsType = {
+export type UserDetailsType = {
   username: string;
   isAdmin: boolean;
   isBanned: boolean;
@@ -69,7 +69,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     try {
-      // Set up auth state listener
       const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
@@ -81,10 +80,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       });
 
-      // Get initial session
       setData();
 
-      // Cleanup listener
       return () => {
         if (listener?.subscription) {
           listener.subscription.unsubscribe();
@@ -125,7 +122,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           await supabase.auth.signOut();
         }
       } else {
-        // Create default user_extra entry if not exists
         const username = user?.email?.split('@')[0] || `user_${Math.floor(Math.random() * 10000)}`;
         
         const { error: insertError } = await supabase
@@ -242,14 +238,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInAsGuest = async () => {
     try {
-      // Generate a random guest username
       const guestUsername = `Guest_${Math.floor(Math.random() * 10000)}`;
       
-      // We'll set local storage values for the guest session
       localStorage.setItem('guestMode', 'true');
       localStorage.setItem('guestUsername', guestUsername);
       
-      // Create a guest user details object
       setUserDetails({
         username: guestUsername,
         isAdmin: false,
@@ -268,7 +261,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!user) throw new Error('No user is logged in');
 
     try {
-      // Map our UserDetailsType fields to database field names
       const mappedDetails: any = {};
       
       if (details.username !== undefined) mappedDetails.username = details.username;
@@ -284,7 +276,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (error) throw error;
       
-      // Update local state
       setUserDetails(prev => {
         if (!prev) return details as UserDetailsType;
         return { ...prev, ...details };
