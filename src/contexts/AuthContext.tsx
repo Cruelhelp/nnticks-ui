@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
@@ -44,43 +43,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const setData = async () => {
-      const {
-        data: { session },
-        error,
-      } = await supabase.auth.getSession();
+      try {
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.getSession();
 
-      if (error) {
-        console.error(error);
+        if (error) {
+          console.error(error);
+          setLoading(false);
+          return;
+        }
+
+        setSession(session);
+        setUser(session?.user ?? null);
+        
+        if (session?.user) {
+          await fetchUserDetails(session.user.id);
+        }
+      } catch (error) {
+        console.error("Error initializing auth:", error);
+      } finally {
         setLoading(false);
-        return;
       }
+    };
 
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        await fetchUserDetails(session.user.id);
-      }
-      
+    try {
+      // Set up auth state listener
+      const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        
+        if (session?.user) {
+          await fetchUserDetails(session.user.id);
+        } else {
+          setUserDetails(null);
+        }
+      });
+
+      // Get initial session
+      setData();
+
+      // Cleanup listener
+      return () => {
+        if (listener?.subscription) {
+          listener.subscription.unsubscribe();
+        }
+      };
+    } catch (error) {
+      console.error("Error setting up auth listener:", error);
       setLoading(false);
-    };
-
-    const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        await fetchUserDetails(session.user.id);
-      } else {
-        setUserDetails(null);
-      }
-    });
-
-    setData();
-
-    return () => {
-      listener?.subscription.unsubscribe();
-    };
+    }
   }, []);
 
   const fetchUserDetails = async (userId: string) => {
@@ -282,6 +295,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       toast.error(error.message || 'Failed to update profile');
       throw error;
     }
+  };
+
+  const dummyContext: AuthContextType = {
+    session: null,
+    user: null,
+    userDetails: null,
+    loading: false,
+    signIn: async () => {},
+    signInWithProvider: async () => {},
+    signUp: async () => {},
+    signOut: async () => {},
+    resetPassword: async () => {},
+    signInAsGuest: async () => {},
+    updateUserDetails: async () => {}
   };
 
   return (

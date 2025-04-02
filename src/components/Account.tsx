@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -49,13 +48,11 @@ const Account = () => {
     bestResult: 0
   });
 
-  // Load user stats
   useEffect(() => {
     if (!user) return;
     
     const loadStats = async () => {
       try {
-        // Load training stats
         const { data: trainData, error: trainError } = await supabase
           .from('training_history')
           .select('*')
@@ -63,7 +60,6 @@ const Account = () => {
           
         if (trainError) throw trainError;
         
-        // Load trade stats
         const { data: tradeData, error: tradeError } = await supabase
           .from('trade_history')
           .select('*')
@@ -71,13 +67,11 @@ const Account = () => {
           
         if (tradeError) throw tradeError;
         
-        // Load tick stats
         const { data: tickData, error: tickError } = await supabase
           .rpc('get_tick_count', { user_id_param: user.id });
           
         if (tickError) throw tickError;
 
-        // Process training stats
         if (trainData && trainData.length) {
           const bestAccuracy = Math.max(...trainData.map(t => t.accuracy || 0));
           setTrainingSummary({
@@ -88,7 +82,6 @@ const Account = () => {
           });
         }
         
-        // Process trading stats
         if (tradeData && tradeData.length) {
           const wins = tradeData.filter(t => t.outcome === 'win').length;
           const totalTrades = tradeData.length;
@@ -96,7 +89,7 @@ const Account = () => {
           setTradingSummary({
             totalTrades,
             winRate: totalTrades > 0 ? (wins / totalTrades) * 100 : 0,
-            avgProfit: 0.0, // We don't track actual profit in this demo
+            avgProfit: 0.0,
             bestResult: 0.0
           });
         }
@@ -130,7 +123,6 @@ const Account = () => {
     
     setIsUpdating(true);
     try {
-      // Update user details in Supabase
       await updateUserDetails({
         username: userData.username,
         full_name: userData.fullName,
@@ -149,7 +141,6 @@ const Account = () => {
 
   const handleExportData = (type: 'pdf' | 'csv') => {
     toast.success(`Exporting ${type.toUpperCase()} data...`);
-    // In a real app, this would generate a PDF or CSV with user data
     setTimeout(() => {
       toast.success(`${type.toUpperCase()} exported successfully`);
     }, 1500);

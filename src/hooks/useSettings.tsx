@@ -36,7 +36,8 @@ const SettingsContext = createContext<SettingsContextType | undefined>(undefined
 
 export const SettingsProvider = ({ children }: { children: ReactNode }) => {
   const [settings, setSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
-  const { user } = useAuth();
+  const auth = useAuth();
+  const user = auth?.user;
 
   useEffect(() => {
     const loadSettings = async () => {
