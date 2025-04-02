@@ -11,7 +11,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { neuralNetwork } from '@/lib/neuralNetwork';
-import { Brain, Save, Download, Play, FileBarChart, FileCode, Settings, Activity, Share2 } from 'lucide-react';
+import { 
+  Brain, Save, Download, Play, FileBarChart, FileCode, Settings, Activity, 
+  Share2, BarChart as LucideBarChart 
+} from 'lucide-react';
 import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -485,7 +488,7 @@ const NeuralNet: React.FC = () => {
                       <div className="text-3xl font-bold">{(1 - accuracy/100).toFixed(3)}</div>
                       
                       <div className="mt-4 text-sm">
-                        <BarChart className="h-4 w-4 mb-1 inline-block" /> Loss curve visualization
+                        <LucideBarChart className="h-4 w-4 mb-1 inline-block" /> Loss curve visualization
                       </div>
                     </div>
                   </CardContent>
