@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 export type UserSettings = {
   theme: string;
   accent: 'green' | 'blue' | 'purple' | 'red';
-  font: 'JetBrains Mono' | 'Fira Code' | 'Courier New' | 'Consolas' | 'Menlo' | 'Monaco' | 'Roboto Mono' | 'Source Code Pro';
+  font: 'JetBrains Mono' | 'Fira Code' | 'Courier New' | 'Consolas' | 'Menlo' | 'Monaco' | 'Roboto Mono' | 'Source Code Pro' | 'VT323';
   chartStyle: 'line' | 'candlestick' | 'bar';
   terminalHeight: number;
   sidebarWidth: number;

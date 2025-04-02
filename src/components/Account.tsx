@@ -1,10 +1,3 @@
-
-// Import account component content from external file and modify it to:
-// 1. Fix the Switch component TypeScript errors
-// 2. Add PayPal integration for Pro upgrade
-// 3. Update UI for settings changes to apply immediately
-// 4. Add copyright and branding information
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';

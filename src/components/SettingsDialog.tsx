@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -17,7 +16,7 @@ type SettingsDialogProps = {
   onOpenChange: (open: boolean) => void;
 };
 
-type FontOption = 'JetBrains Mono' | 'Fira Code' | 'Courier New' | 'Consolas' | 'Menlo' | 'Monaco' | 'Roboto Mono' | 'Source Code Pro';
+type FontOption = 'JetBrains Mono' | 'Fira Code' | 'Courier New' | 'Consolas' | 'Menlo' | 'Monaco' | 'Roboto Mono' | 'Source Code Pro' | 'VT323';
 type AccentColor = 'green' | 'blue' | 'purple' | 'red';
 type ChartStyle = 'line' | 'candlestick' | 'bar';
 
@@ -26,7 +25,6 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onOpenChange }) =
   const [localSettings, setLocalSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
   const [isLoading, setIsLoading] = useState(false);
   
-  // Update local state when settings change
   useEffect(() => {
     setLocalSettings(settings);
   }, [settings]);
@@ -204,6 +202,7 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onOpenChange }) =
                     <SelectItem value="Monaco">Monaco</SelectItem>
                     <SelectItem value="Roboto Mono">Roboto Mono</SelectItem>
                     <SelectItem value="Source Code Pro">Source Code Pro</SelectItem>
+                    <SelectItem value="VT323">VT323 (Pixel)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
