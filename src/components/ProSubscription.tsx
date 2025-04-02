@@ -18,12 +18,12 @@ const ProSubscription: React.FC<ProSubscriptionProps> = ({ onSuccess }) => {
   const { user, updateUserDetails } = useAuth();
   
   const initialPayPalOptions = {
-    "client-id": "AQJc87I4AEuM_c9OOfqKBhLHtqeM6wF61YqvGta59_5WNtdWu1pyVBRMU0VtgRLlk3y9qNMWfPem2-CU",
-    "enable-funding": "venmo,card",
-    "disable-funding": "",
-    "buyer-country": "US",
-    "currency": "USD",
-    "components": "buttons",
+    clientId: "AQJc87I4AEuM_c9OOfqKBhLHtqeM6wF61YqvGta59_5WNtdWu1pyVBRMU0VtgRLlk3y9qNMWfPem2-CU",
+    enableFunding: "venmo,card",
+    disableFunding: "",
+    buyerCountry: "US",
+    currency: "USD",
+    components: "buttons",
   };
 
   const handlePaymentSuccess = async (details: any) => {
@@ -104,7 +104,7 @@ const ProSubscription: React.FC<ProSubscriptionProps> = ({ onSuccess }) => {
     };
     
     await handlePaymentSuccess(captureDetails);
-    return true;
+    // Remove the boolean return value to fix the TypeScript error
   };
 
   return (
