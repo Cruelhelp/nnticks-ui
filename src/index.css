@@ -2,8 +2,6 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-@import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
  
 @layer base {
   :root {
@@ -93,7 +91,7 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family: 'VT323', monospace;
+    font-family: 'Roboto Mono', monospace;
   }
   
   /* Status Badge Variants */
@@ -111,18 +109,8 @@
 }
 
 /* Terminal font */
-@font-face {
-  font-family: 'VT323';
-  src: url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
-  font-display: swap;
-}
-
-.font-vt323 {
-  font-family: 'VT323', monospace;
-}
-
 .terminal-font {
-  font-family: 'VT323', monospace;
+  font-family: 'Roboto Mono', monospace;
 }
 
 /* Custom animation classes */

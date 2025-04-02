@@ -9,31 +9,31 @@ NNticks is an advanced neural network-based trading platform designed for financ
 
 ### Market Data Visualization
 - Real-time tick data streaming from multiple brokers
-- High-precision charts with configurable timeframes
+- High-precision charts with configurable timeframes (displaying up to 5 decimal places)
 - Custom indicators and trend lines
 - Price action analysis tools
 
 ### Neural Network Predictions
-- AI-driven price movement predictions
-- Configurable confidence levels
-- Multiple prediction modes (fast vs. accurate)
+- AI-driven price movement predictions with multiple confidence modes
+- Fast mode: More frequent predictions with lower confidence
+- Accurate mode: Less frequent predictions with higher confidence
 - Visual representation of neural network activity
 
 ### Training Module
 - Custom neural network training with adjustable parameters
-- Training history tracking and visualization
-- Model performance metrics
-- Automated model saving and deployment
+- Automatic saving of training progress to database
+- Live training on real-time market data
+- Model performance metrics and optimization
 
 ### Debug Tools
-- WebSocket connection management
+- WebSocket connection management with fail-safe limits
 - Real-time data monitoring
 - Connection diagnostics and error tracking
 - System performance metrics
 
 ### User Management
 - Account customization
-- Pro subscription management
+- Pro subscription management ($10 USD)
 - Personal prediction history
 - Settings persistence
 
@@ -52,16 +52,16 @@ NNticks is an advanced neural network-based trading platform designed for financ
 ## Screenshots
 
 ### Dashboard
-![Dashboard](https://i.imgur.com/abc123.png)
+![Dashboard](https://example.com/screenshots/dashboard.png)
 
 ### Neural Network Visualization
-![Neural Network](https://i.imgur.com/def456.png)
+![Neural Network](https://example.com/screenshots/neural-network.png)
 
 ### Prediction Module
-![Predictions](https://i.imgur.com/ghi789.png)
+![Predictions](https://example.com/screenshots/predictions.png)
 
 ### Training Interface
-![Training](https://i.imgur.com/jkl012.png)
+![Training](https://example.com/screenshots/training.png)
 
 ## Technical Details
 
@@ -91,3 +91,4 @@ For developers looking to contribute:
 ## License
 
 © 2025 NNticks Enterprise Analytics. All rights reserved.
+

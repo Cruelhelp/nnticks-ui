@@ -1,6 +1,35 @@
 
 # CHANGELOG
 
+## Version 1.1.0 (2025-04-04)
+
+### Added
+- Modern font update: Changed from VT323 to Roboto Mono for better readability
+- Price precision settings to display 5 decimal places in charts for micro-movements
+- Improved admin panel with user management functionality
+- Export functionality for predictions with NNticks branding
+- Auto-save and auto-load functionality for neural network training progress
+- Multiple prediction modes with different confidence levels
+- Improved debug tools with fail-safe connection limits
+
+### Fixed
+- Connection status indicators consolidated to reduce duplicate information
+- Fixed connection retry system to limit to 5 attempts
+- Fixed toast notifications for connections to prevent notification spam
+- Fixed avatar upload functionality
+- Fixed settings save button
+- Fixed PayPal button redirection
+- Fixed history tracking and visualization
+- Connected account settings between sidebar and topbar menu
+- Fixed white theme selection
+
+### Changed
+- Connection status indicators now accurately show online/offline/connected states
+- Limited WebSocket connection attempts to 5 to prevent excessive reconnection attempts
+- Improved chart axis precision to show micro price movements
+- Updated README.md with screenshots and feature descriptions
+- Updated status badges for better visibility
+
 ## Version 1.0.0 (2025-04-03)
 
 ### Added

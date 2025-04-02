@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import Logo from '@/components/Logo';
@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
-import { Menu, Bell, TerminalSquare, Settings, LogOut, HelpCircle, BookOpen, UserCircle, Wifi, WifiOff } from 'lucide-react';
+import { Menu, Bell, TerminalSquare, Settings, LogOut, UserCircle, Wifi, WifiOff, Shield } from 'lucide-react';
 import SettingsDialog from '@/components/SettingsDialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
@@ -154,7 +154,7 @@ const TopBar: React.FC<TopBarProps> = ({ toggleSidebar, toggleTerminal, onReset,
   };
 
   return (
-    <header className="h-14 border-b flex items-center justify-between px-4 bg-background font-vt323">
+    <header className="h-14 border-b flex items-center justify-between px-4 bg-background">
       {/* Left side */}
       <div className="flex items-center gap-2">
         <Button variant="ghost" size="icon" onClick={toggleSidebar} className="md:flex">
@@ -164,20 +164,21 @@ const TopBar: React.FC<TopBarProps> = ({ toggleSidebar, toggleTerminal, onReset,
         <Logo size={24} />
         
         {userDetails?.proStatus && (
-          <Badge className="font-vt323">PRO</Badge>
+          <Badge>PRO</Badge>
         )}
         
+        {/* Single connection status indicator */}
         <div className="ml-4 flex items-center">
           {hasRecentTicks ? (
-            <span className="flex items-center text-xs text-green-500 font-vt323">
+            <span className="flex items-center text-xs text-green-500">
               <Wifi className="h-3 w-3 mr-1" /> ONLINE
             </span>
           ) : isConnected ? (
-            <span className="flex items-center text-xs text-yellow-500 font-vt323">
+            <span className="flex items-center text-xs text-yellow-500">
               <Wifi className="h-3 w-3 mr-1" /> CONNECTED
             </span>
           ) : (
-            <span className="flex items-center text-xs text-red-500 font-vt323">
+            <span className="flex items-center text-xs text-red-500">
               <WifiOff className="h-3 w-3 mr-1" /> OFFLINE
             </span>
           )}
@@ -188,12 +189,23 @@ const TopBar: React.FC<TopBarProps> = ({ toggleSidebar, toggleTerminal, onReset,
       <div className="flex items-center gap-2">
         <Button 
           variant="link"
-          className="mr-4 flex items-center gap-1.5 hover:opacity-80 transition-opacity font-vt323"
+          className="mr-4 flex items-center gap-1.5 hover:opacity-80 transition-opacity"
           onClick={handleNavigateToAccount}
         >
           <UserCircle className="h-4 w-4 text-muted-foreground" />
           <span className="text-sm font-medium">{username}</span>
         </Button>
+
+        {userDetails?.isAdmin && (
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="mr-2"
+            onClick={() => navigate('/admin')}
+          >
+            <Shield className="h-4 w-4 mr-2" /> Admin
+          </Button>
+        )}
         
         <Button variant="ghost" size="icon" onClick={toggleTerminal}>
           <TerminalSquare className="h-5 w-5" />
@@ -208,7 +220,7 @@ const TopBar: React.FC<TopBarProps> = ({ toggleSidebar, toggleTerminal, onReset,
               )}
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-80 font-vt323">
+          <DropdownMenuContent align="end" className="w-80">
             <DropdownMenuLabel className="flex justify-between items-center">
               <span>Notifications</span>
               <Button variant="outline" size="sm">Mark all read</Button>
@@ -253,13 +265,13 @@ const TopBar: React.FC<TopBarProps> = ({ toggleSidebar, toggleTerminal, onReset,
             <Button variant="ghost" className="relative h-9 w-9 rounded-full" onClick={handleAvatarClick}>
               <Avatar className="h-9 w-9">
                 <AvatarImage src={userDetails?.avatar_url || undefined} alt={username} />
-                <AvatarFallback className="bg-primary/10 text-primary font-vt323">
+                <AvatarFallback className="bg-primary/10 text-primary">
                   {username.substring(0, 2).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56 font-vt323">
+          <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>
               <div className="flex flex-col space-y-1">
                 <p className="text-sm font-medium leading-none">{username}</p>

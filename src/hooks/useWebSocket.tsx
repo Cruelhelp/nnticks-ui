@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
@@ -53,8 +52,8 @@ export function useWebSocket({
   const socketRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoReconnectRef = useRef(autoReconnect);
-  const connectionStableRef = useRef(true); // Track if connection is stable
-  const lastMessageTimeRef = useRef<number>(0); // Track time of last received message
+  const connectionStableRef = useRef(true);
+  const lastMessageTimeRef = useRef<number>(0);
   const maxAttemptsRef = useRef(maxReconnectAttempts);
   const failSafeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const socketAttempts = useRef(0);
@@ -65,13 +64,12 @@ export function useWebSocket({
     maxAttemptsRef.current = maxReconnectAttempts;
   }, [autoReconnect, maxReconnectAttempts]);
 
-  // Check for recent data every second
   useEffect(() => {
     const checkDataInterval = setInterval(() => {
       if (ticks.length > 0) {
         const latestTickTime = new Date(ticks[ticks.length - 1].timestamp).getTime();
         const now = Date.now();
-        setHasRecentData(now - latestTickTime < 10000); // Data received in last 10 seconds
+        setHasRecentData(now - latestTickTime < 10000);
       } else {
         setHasRecentData(false);
       }
@@ -89,7 +87,6 @@ export function useWebSocket({
       });
       
       if (error) {
-        // Don't show toast for database errors to avoid overwhelming the user
         console.error('Error storing tick in Supabase:', error);
       }
     } catch (err) {
@@ -97,7 +94,6 @@ export function useWebSocket({
     }
   }, []);
 
-  // Throttle to avoid too many database writes
   const throttle = useCallback(<T extends any[]>(
     callback: (...args: T) => void, 
     limit: number
@@ -121,37 +117,33 @@ export function useWebSocket({
       return;
     }
     
-    // Prevent multiple simultaneous connection attempts
     connectingRef.current = true;
     
-    // Set connection status to connecting
     setConnectionStatus('connecting');
     socketAttempts.current += 1;
     
-    // Hard limit on connection attempts
     if (socketAttempts.current > maxAttemptsRef.current) {
-      console.error(`Connection attempts limit reached (${maxAttemptsRef.current}). Connection stopped for safety.`);
-      toast.error(`Connection attempts limit reached (${maxAttemptsRef.current}). Please try again later.`);
+      console.error(`Maximum connection attempts reached (${maxAttemptsRef.current}). Connection stopped.`);
+      toast.error(`Connection attempts limit reached (${maxAttemptsRef.current}). Please try again manually.`, {
+        id: 'max-connection-attempts'
+      });
       setConnectionStatus('error');
-      setError(new Error(`Connection attempts limit reached (${maxAttemptsRef.current}). Please try again later.`));
+      setError(new Error(`Maximum connection attempts reached (${maxAttemptsRef.current}). Please try again manually.`));
       connectingRef.current = false;
       return;
     }
     
-    // Set a failsafe timeout to prevent excessive connection attempts
     if (failSafeTimeoutRef.current) {
       clearTimeout(failSafeTimeoutRef.current);
     }
     
     failSafeTimeoutRef.current = setTimeout(() => {
-      // Reset socket attempts count every 30 seconds to prevent lockout
       socketAttempts.current = 0;
     }, 30000);
     
     try {
-      console.log(`Connecting to WebSocket: ${wsUrl}`);
+      console.log(`Connecting to WebSocket: ${wsUrl} (Attempt ${socketAttempts.current}/${maxAttemptsRef.current})`);
       
-      // Disconnect existing connection if any
       if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
         socketRef.current.close();
       }
@@ -174,10 +166,11 @@ export function useWebSocket({
         
         if (onOpen) onOpen();
         
-        // Reset socket attempts when successfully connected
         socketAttempts.current = 0;
         
-        toast.success('Connection established');
+        if (socketAttempts.current === 1) {
+          toast.success('Connection established', { id: 'connection-established' });
+        }
       };
       
       ws.onmessage = (event) => {
@@ -185,7 +178,6 @@ export function useWebSocket({
           lastMessageTimeRef.current = Date.now();
           const data = JSON.parse(event.data);
           
-          // Skip heartbeat messages
           if (data.ping || data.heartbeat) {
             return;
           }
@@ -222,8 +214,10 @@ export function useWebSocket({
           }
           
           if (tickData) {
+            tickData.value = parseFloat(tickData.value.toFixed(5));
+            
             setLatestTick(tickData);
-            setTicks(prev => [...prev.slice(-99), tickData!]); // Keep only last 100 ticks
+            setTicks(prev => [...prev.slice(-99), tickData!]);
             throttledStoreTick(tickData);
           }
           
@@ -266,7 +260,6 @@ export function useWebSocket({
         } else if (reconnectCount >= maxAttemptsRef.current) {
           setError(new Error(`Failed to reconnect after ${maxAttemptsRef.current} attempts`));
           setConnectionStatus('error');
-          // Use a unique ID for the toast to prevent duplicates
           toast.error(`Connection lost. Failed to reconnect after ${maxAttemptsRef.current} attempts.`, {
             id: 'reconnect-failure'
           });
@@ -275,24 +268,20 @@ export function useWebSocket({
       
       socketRef.current = ws;
       
-      // Set up connection watchdog
       const watchdogInterval = setInterval(() => {
         if (isConnected && lastMessageTimeRef.current > 0) {
           const now = Date.now();
           const timeSinceLastMessage = now - lastMessageTimeRef.current;
           
-          // If no messages received for 15 seconds, consider connection stalled
           if (timeSinceLastMessage > 15000 && connectionStableRef.current) {
             console.warn('Connection appears stalled. No messages in 15s.');
             connectionStableRef.current = false;
             
-            // Send a ping to check connection
             if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
               try {
                 socketRef.current.send(JSON.stringify({ ping: 1 }));
               } catch (err) {
                 console.error('Failed to send ping:', err);
-                // Force reconnect
                 disconnect();
                 if (autoReconnectRef.current) {
                   setTimeout(() => connect(), 1000);

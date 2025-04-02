@@ -19,7 +19,7 @@ export default {
     },
     extend: {
       fontFamily: {
-        'vt323': ['"VT323"', 'monospace'],
+        'mono': ['"Roboto Mono"', 'monospace'],
       },
       colors: {
         border: "hsl(var(--border))",

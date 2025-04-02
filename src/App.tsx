@@ -10,6 +10,7 @@ import NotFound from "./pages/NotFound";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ThemeProvider } from "./components/ui/theme-provider";
 import { useEffect } from "react";
+import AdminPanel from "./components/AdminPanel";
 
 // Create client with better defaults for mobile performance
 const queryClient = new QueryClient({
@@ -23,14 +24,14 @@ const queryClient = new QueryClient({
 });
 
 const App = () => {
-  // Apply VT323 font to entire app
+  // Apply Roboto Mono font to entire app
   useEffect(() => {
-    document.documentElement.style.fontFamily = "'VT323', monospace";
+    document.documentElement.style.fontFamily = "'Roboto Mono', monospace";
     
     // Ensure the font is loaded
     const linkEl = document.createElement('link');
     linkEl.rel = 'stylesheet';
-    linkEl.href = 'https://fonts.googleapis.com/css2?family=VT323&display=swap';
+    linkEl.href = 'https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;700&display=swap';
     document.head.appendChild(linkEl);
     
     return () => {
@@ -44,12 +45,13 @@ const App = () => {
         <ThemeProvider defaultTheme="dark" attribute="class">
           <TooltipProvider>
             <BrowserRouter>
-              <div className="h-full min-h-screen flex flex-col bg-background text-foreground overflow-hidden font-vt323">
+              <div className="h-full min-h-screen flex flex-col bg-background text-foreground overflow-hidden font-mono">
                 <Toaster />
                 <Sonner />
                 <Routes>
                   <Route path="/" element={<Index />} />
                   <Route path="/login" element={<Login />} />
+                  <Route path="/admin" element={<AdminPanel />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </div>
