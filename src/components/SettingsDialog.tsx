@@ -1,210 +1,220 @@
 
 import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Monitor, Moon, SunMedium, PaletteIcon, Globe, Baseline, LayoutGrid, Code } from "lucide-react";
-import { useSettings } from '@/hooks/useSettings';
-import { useTheme } from 'next-themes';
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Switch } from "@/components/ui/switch";
-import { Slider } from "@/components/ui/slider";
-import { toast } from "sonner";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Switch } from '@/components/ui/switch';
+import { Slider } from '@/components/ui/slider';
+import { toast } from 'sonner';
+import { useSettings, DEFAULT_SETTINGS, UserSettings } from '@/hooks/useSettings';
 
-interface SettingsDialogProps {
+type SettingsDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-}
+};
+
+type FontOption = 'JetBrains Mono' | 'Fira Code' | 'Courier New' | 'Consolas' | 'Menlo' | 'Monaco' | 'Roboto Mono' | 'Source Code Pro';
+type AccentColor = 'green' | 'blue' | 'purple' | 'red';
+type ChartStyle = 'line' | 'candlestick' | 'bar';
 
 const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onOpenChange }) => {
   const { settings, updateSettings } = useSettings();
-  const { theme, setTheme } = useTheme();
+  const [localSettings, setLocalSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
+  const [isLoading, setIsLoading] = useState(false);
   
-  const [wsUrl, setWsUrl] = useState<string>(settings?.wsUrl || '');
-  const [apiKey, setApiKey] = useState<string>(settings?.apiKey || '');
-  const [subscription, setSubscription] = useState<string>(settings?.subscription || '');
-  const [selectedFont, setSelectedFont] = useState<string>(settings?.font || 'JetBrains Mono');
-  const [selectedAccent, setSelectedAccent] = useState<string>(settings?.accent || 'green');
-  const [selectedChartStyle, setSelectedChartStyle] = useState<string>(settings?.chartStyle || 'line');
-  const [terminalHeight, setTerminalHeight] = useState<number>(settings?.terminalHeight || 200);
-  const [sidebarWidth, setSidebarWidth] = useState<number>(settings?.sidebarWidth || 200);
-  
+  // Update local state when settings change
   useEffect(() => {
-    if (settings) {
-      setWsUrl(settings.wsUrl || 'wss://ws.binaryws.com/websockets/v3?app_id=1089');
-      setApiKey(settings.apiKey || '');
-      setSubscription(settings.subscription || '{"ticks":"R_10"}');
-      setSelectedFont(settings.font || 'JetBrains Mono');
-      setSelectedAccent(settings.accent || 'green');
-      setSelectedChartStyle(settings.chartStyle || 'line');
-      setTerminalHeight(settings.terminalHeight || 200);
-      setSidebarWidth(settings.sidebarWidth || 200);
-    }
+    setLocalSettings(settings);
   }, [settings]);
   
-  const handleSave = () => {
-    updateSettings({
-      wsUrl,
-      apiKey,
-      subscription,
-      font: selectedFont,
-      accent: selectedAccent,
-      chartStyle: selectedChartStyle,
-      terminalHeight,
-      sidebarWidth
-    });
-    
-    // Apply theme
-    if (theme !== 'dark' && theme !== 'light') {
-      setTheme('dark');
+  const handleThemeChange = (theme: string) => {
+    setLocalSettings({ ...localSettings, theme });
+  };
+  
+  const handleAccentChange = (accent: AccentColor) => {
+    setLocalSettings({ ...localSettings, accent });
+  };
+  
+  const handleFontChange = (font: FontOption) => {
+    setLocalSettings({ ...localSettings, font });
+  };
+  
+  const handleChartStyleChange = (chartStyle: ChartStyle) => {
+    setLocalSettings({ ...localSettings, chartStyle });
+  };
+  
+  const handleTerminalHeightChange = (height: number[]) => {
+    setLocalSettings({ ...localSettings, terminalHeight: height[0] });
+  };
+  
+  const handleSidebarWidthChange = (width: number[]) => {
+    setLocalSettings({ ...localSettings, sidebarWidth: width[0] });
+  };
+  
+  const handleAPIKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setLocalSettings({ ...localSettings, apiKey: e.target.value });
+  };
+  
+  const handleWebSocketURLChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setLocalSettings({ ...localSettings, wsUrl: e.target.value });
+  };
+  
+  const handleSubscriptionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setLocalSettings({ ...localSettings, subscription: e.target.value });
+  };
+  
+  const handleSaveSettings = async () => {
+    setIsLoading(true);
+    try {
+      await updateSettings(localSettings);
+      toast.success('Settings saved successfully');
+      onOpenChange(false);
+    } catch (error) {
+      console.error('Failed to save settings:', error);
+      toast.error('Failed to save settings');
+    } finally {
+      setIsLoading(false);
     }
-    
-    // Show confirmation toast
-    toast.success("Settings saved successfully!");
-    onOpenChange(false);
   };
   
-  const handleThemeChange = (value: string) => {
-    setTheme(value);
+  const handleResetSettings = () => {
+    setLocalSettings(DEFAULT_SETTINGS);
+    toast.info('Settings reset to default values');
   };
-  
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-xl">
+      <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>Settings</DialogTitle>
           <DialogDescription>
-            Customize your experience and preferences.
+            Customize your application preferences
           </DialogDescription>
         </DialogHeader>
         
-        <Tabs defaultValue="appearance">
-          <TabsList className="grid grid-cols-4 mb-4">
+        <Tabs defaultValue="appearance" className="mt-5">
+          <TabsList className="grid grid-cols-4">
             <TabsTrigger value="appearance">Appearance</TabsTrigger>
+            <TabsTrigger value="api">API</TabsTrigger>
             <TabsTrigger value="layout">Layout</TabsTrigger>
-            <TabsTrigger value="connections">API Connections</TabsTrigger>
             <TabsTrigger value="advanced">Advanced</TabsTrigger>
           </TabsList>
           
-          <TabsContent value="appearance" className="space-y-4">
-            <div>
-              <Label>Theme</Label>
-              <div className="grid grid-cols-3 gap-2 mt-2">
-                <Button 
-                  variant={theme === "light" ? "default" : "outline"} 
-                  onClick={() => handleThemeChange("light")}
-                  className="flex flex-col items-center justify-center gap-1 p-2 h-auto"
-                >
-                  <SunMedium className="h-5 w-5" />
-                  <span className="text-xs">Light</span>
-                </Button>
-                <Button 
-                  variant={theme === "dark" ? "default" : "outline"} 
-                  onClick={() => handleThemeChange("dark")}
-                  className="flex flex-col items-center justify-center gap-1 p-2 h-auto"
-                >
-                  <Moon className="h-5 w-5" />
-                  <span className="text-xs">Dark</span>
-                </Button>
-                <Button 
-                  variant={theme === "system" ? "default" : "outline"} 
-                  onClick={() => handleThemeChange("system")}
-                  className="flex flex-col items-center justify-center gap-1 p-2 h-auto"
-                >
-                  <Monitor className="h-5 w-5" />
-                  <span className="text-xs">System</span>
-                </Button>
-              </div>
-            </div>
-            
-            <div>
-              <Label>Accent Color</Label>
-              <RadioGroup 
-                value={selectedAccent}
-                onValueChange={setSelectedAccent}
-                className="grid grid-cols-4 gap-2 mt-2"
-              >
-                <div>
-                  <RadioGroupItem value="green" id="green" className="peer sr-only" />
-                  <Label
-                    htmlFor="green"
-                    className="flex flex-col items-center justify-between rounded-md border-2 border-muted p-2 hover:border-accent peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
-                  >
-                    <div className="w-10 h-10 rounded-full bg-green-500"></div>
-                    <span className="mt-1 text-xs">Green</span>
-                  </Label>
-                </div>
-                
-                <div>
-                  <RadioGroupItem value="blue" id="blue" className="peer sr-only" />
-                  <Label
-                    htmlFor="blue"
-                    className="flex flex-col items-center justify-between rounded-md border-2 border-muted p-2 hover:border-accent peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
-                  >
-                    <div className="w-10 h-10 rounded-full bg-blue-500"></div>
-                    <span className="mt-1 text-xs">Blue</span>
-                  </Label>
-                </div>
-                
-                <div>
-                  <RadioGroupItem value="purple" id="purple" className="peer sr-only" />
-                  <Label
-                    htmlFor="purple"
-                    className="flex flex-col items-center justify-between rounded-md border-2 border-muted p-2 hover:border-accent peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
-                  >
-                    <div className="w-10 h-10 rounded-full bg-purple-500"></div>
-                    <span className="mt-1 text-xs">Purple</span>
-                  </Label>
-                </div>
-                
-                <div>
-                  <RadioGroupItem value="red" id="red" className="peer sr-only" />
-                  <Label
-                    htmlFor="red"
-                    className="flex flex-col items-center justify-between rounded-md border-2 border-muted p-2 hover:border-accent peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
-                  >
-                    <div className="w-10 h-10 rounded-full bg-red-500"></div>
-                    <span className="mt-1 text-xs">Red</span>
-                  </Label>
-                </div>
-              </RadioGroup>
-            </div>
-            
-            <div>
-              <Label htmlFor="font">Font</Label>
-              <Select
-                value={selectedFont}
-                onValueChange={setSelectedFont}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select a font" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="JetBrains Mono">JetBrains Mono</SelectItem>
-                  <SelectItem value="Fira Code">Fira Code</SelectItem>
-                  <SelectItem value="Courier New">Courier New</SelectItem>
-                  <SelectItem value="Consolas">Consolas</SelectItem>
-                  <SelectItem value="Menlo">Menlo</SelectItem>
-                  <SelectItem value="Monaco">Monaco</SelectItem>
-                  <SelectItem value="Roboto Mono">Roboto Mono</SelectItem>
-                  <SelectItem value="Source Code Pro">Source Code Pro</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="layout" className="space-y-4">
+          <TabsContent value="appearance" className="space-y-4 py-4">
             <div className="space-y-4">
               <div>
-                <Label>Chart Style</Label>
-                <Select
-                  value={selectedChartStyle}
-                  onValueChange={setSelectedChartStyle}
+                <Label className="text-base">Theme</Label>
+                <RadioGroup 
+                  className="grid grid-cols-2 gap-4 mt-2" 
+                  value={localSettings.theme}
+                  onValueChange={handleThemeChange}
                 >
-                  <SelectTrigger className="w-full">
+                  <div>
+                    <RadioGroupItem value="light" id="light" className="peer sr-only" />
+                    <Label
+                      htmlFor="light"
+                      className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-white p-4 hover:bg-gray-100 hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-sun"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+                      <span className="mt-2 text-xs">Light</span>
+                    </Label>
+                  </div>
+                  
+                  <div>
+                    <RadioGroupItem value="dark" id="dark" className="peer sr-only" />
+                    <Label
+                      htmlFor="dark"
+                      className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-gray-950 text-white p-4 hover:bg-gray-900 hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-moon"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+                      <span className="mt-2 text-xs">Dark</span>
+                    </Label>
+                  </div>
+                </RadioGroup>
+              </div>
+              
+              <div>
+                <Label className="text-base">Accent Color</Label>
+                <RadioGroup 
+                  className="grid grid-cols-4 gap-2 mt-2" 
+                  value={localSettings.accent as string}
+                  onValueChange={(value) => handleAccentChange(value as AccentColor)}
+                >
+                  <div>
+                    <RadioGroupItem value="green" id="green" className="peer sr-only" />
+                    <Label
+                      htmlFor="green"
+                      className="flex flex-col items-center justify-center rounded-md border-2 border-muted p-1 hover:border-accent peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary aspect-square"
+                    >
+                      <div className="w-10 h-10 rounded-full bg-green-600"></div>
+                    </Label>
+                  </div>
+                  
+                  <div>
+                    <RadioGroupItem value="blue" id="blue" className="peer sr-only" />
+                    <Label
+                      htmlFor="blue"
+                      className="flex flex-col items-center justify-center rounded-md border-2 border-muted p-1 hover:border-accent peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary aspect-square"
+                    >
+                      <div className="w-10 h-10 rounded-full bg-blue-600"></div>
+                    </Label>
+                  </div>
+                  
+                  <div>
+                    <RadioGroupItem value="purple" id="purple" className="peer sr-only" />
+                    <Label
+                      htmlFor="purple"
+                      className="flex flex-col items-center justify-center rounded-md border-2 border-muted p-1 hover:border-accent peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary aspect-square"
+                    >
+                      <div className="w-10 h-10 rounded-full bg-purple-600"></div>
+                    </Label>
+                  </div>
+                  
+                  <div>
+                    <RadioGroupItem value="red" id="red" className="peer sr-only" />
+                    <Label
+                      htmlFor="red"
+                      className="flex flex-col items-center justify-center rounded-md border-2 border-muted p-1 hover:border-accent peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary aspect-square"
+                    >
+                      <div className="w-10 h-10 rounded-full bg-red-600"></div>
+                    </Label>
+                  </div>
+                </RadioGroup>
+              </div>
+              
+              <div>
+                <Label htmlFor="font">Font</Label>
+                <Select 
+                  value={localSettings.font as string} 
+                  onValueChange={(value) => handleFontChange(value as FontOption)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a font" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="JetBrains Mono">JetBrains Mono</SelectItem>
+                    <SelectItem value="Fira Code">Fira Code</SelectItem>
+                    <SelectItem value="Courier New">Courier New</SelectItem>
+                    <SelectItem value="Consolas">Consolas</SelectItem>
+                    <SelectItem value="Menlo">Menlo</SelectItem>
+                    <SelectItem value="Monaco">Monaco</SelectItem>
+                    <SelectItem value="Roboto Mono">Roboto Mono</SelectItem>
+                    <SelectItem value="Source Code Pro">Source Code Pro</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div>
+                <Label htmlFor="chart-style">Default Chart Style</Label>
+                <Select 
+                  value={localSettings.chartStyle as string} 
+                  onValueChange={(value) => handleChartStyleChange(value as ChartStyle)}
+                >
+                  <SelectTrigger>
                     <SelectValue placeholder="Select chart style" />
                   </SelectTrigger>
                   <SelectContent>
@@ -214,26 +224,89 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onOpenChange }) =
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="api" className="space-y-4 py-4">
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="api-key">API Key</Label>
+                <Input
+                  id="api-key"
+                  type="password"
+                  placeholder="Enter your API key"
+                  value={localSettings.apiKey}
+                  onChange={handleAPIKeyChange}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  API key for your broker service
+                </p>
+              </div>
               
               <div>
-                <Label className="mb-2">Terminal Height: {terminalHeight}px</Label>
+                <Label htmlFor="ws-url">WebSocket URL</Label>
+                <Input
+                  id="ws-url"
+                  placeholder="wss://example.com/websocket"
+                  value={localSettings.wsUrl}
+                  onChange={handleWebSocketURLChange}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  WebSocket endpoint for real-time market data
+                </p>
+              </div>
+              
+              <div>
+                <Label htmlFor="subscription">Subscription Format</Label>
+                <Input
+                  id="subscription"
+                  placeholder='{"ticks":"R_10"}'
+                  value={localSettings.subscription}
+                  onChange={handleSubscriptionChange}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  JSON format for market data subscription
+                </p>
+              </div>
+              
+              <div className="rounded-md bg-muted p-4 text-sm">
+                <h4 className="font-medium">Connection Status</h4>
+                <div className="mt-2 flex items-center">
+                  <div className={`h-3 w-3 rounded-full ${localSettings.apiKey ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                  <span className="ml-2">
+                    {localSettings.apiKey ? 'API Key configured' : 'API Key missing'}
+                  </span>
+                </div>
+                <div className="mt-2">
+                  <p className="text-xs text-muted-foreground">
+                    Go to <strong>Debug</strong> section for advanced connection management
+                  </p>
+                </div>
+              </div>
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="layout" className="space-y-4 py-4">
+            <div className="space-y-4">
+              <div>
+                <Label className="mb-2">Terminal Height: {localSettings.terminalHeight}px</Label>
                 <Slider
-                  value={[terminalHeight]}
+                  value={[localSettings.terminalHeight]}
                   min={100}
                   max={500}
                   step={10}
-                  onValueChange={(value) => setTerminalHeight(value[0])}
+                  onValueChange={handleTerminalHeightChange}
                 />
               </div>
               
               <div>
-                <Label className="mb-2">Sidebar Width: {sidebarWidth}px</Label>
+                <Label className="mb-2">Sidebar Width: {localSettings.sidebarWidth}px</Label>
                 <Slider
-                  value={[sidebarWidth]}
+                  value={[localSettings.sidebarWidth]}
                   min={150}
                   max={300}
                   step={10}
-                  onValueChange={(value) => setSidebarWidth(value[0])}
+                  onValueChange={handleSidebarWidthChange}
                 />
               </div>
               
@@ -249,65 +322,7 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onOpenChange }) =
             </div>
           </TabsContent>
           
-          <TabsContent value="connections" className="space-y-4">
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="apiKey">API Key</Label>
-                <Input
-                  id="apiKey"
-                  type="password"
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  placeholder="Enter your API key"
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Your API key will be stored securely.
-                </p>
-              </div>
-              
-              <div>
-                <Label htmlFor="wsUrl">WebSocket URL</Label>
-                <Input
-                  id="wsUrl"
-                  value={wsUrl}
-                  onChange={(e) => setWsUrl(e.target.value)}
-                  placeholder="wss://ws.binaryws.com/websockets/v3?app_id=1089"
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  WebSocket endpoint for real-time market data
-                </p>
-              </div>
-              
-              <div>
-                <Label htmlFor="subscription">Subscription Format</Label>
-                <Input
-                  id="subscription"
-                  value={subscription}
-                  onChange={(e) => setSubscription(e.target.value)}
-                  placeholder='{"ticks":"R_10"}'
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  JSON subscription format for your WebSocket connection
-                </p>
-              </div>
-              
-              <div className="bg-muted p-3 rounded-md">
-                <h4 className="text-sm font-medium mb-1">Sample Formats</h4>
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div>
-                    <p className="font-mono">{"Deriv: {\"ticks\":\"R_10\"}"}</p>
-                    <p className="font-mono">{"IQ Option: {\"symbol\":\"EURUSD\"}"}</p>
-                  </div>
-                  <div>
-                    <p className="font-mono">{"Binance: {\"method\":\"SUBSCRIBE\"}"}</p>
-                    <p className="font-mono">{"Binary: {\"ticks\":\"V_75\"}"}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="advanced" className="space-y-4">
+          <TabsContent value="advanced" className="space-y-4 py-4">
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -340,16 +355,7 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onOpenChange }) =
               </div>
               
               <div>
-                <Button variant="outline" className="w-full" onClick={() => {
-                  setWsUrl('wss://ws.binaryws.com/websockets/v3?app_id=1089');
-                  setApiKey('');
-                  setSubscription('{"ticks":"R_10"}');
-                  setSelectedFont('JetBrains Mono');
-                  setSelectedAccent('green');
-                  setSelectedChartStyle('line');
-                  setTerminalHeight(200);
-                  setSidebarWidth(200);
-                }}>
+                <Button variant="outline" className="w-full" onClick={handleResetSettings}>
                   Reset All Settings
                 </Button>
               </div>
@@ -358,8 +364,12 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onOpenChange }) =
         </Tabs>
         
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={handleSave}>Save Changes</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button onClick={handleSaveSettings} disabled={isLoading}>
+            {isLoading ? 'Saving...' : 'Save changes'}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

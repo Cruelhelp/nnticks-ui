@@ -4,15 +4,26 @@ import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 
+type UserDetailsType = {
+  username: string;
+  isAdmin: boolean;
+  isBanned: boolean;
+  proStatus: boolean;
+  full_name?: string;
+  avatar_url?: string;
+  api_key?: string;
+  notifications?: {
+    email: boolean;
+    app: boolean;
+    training: boolean;
+    predictions: boolean;
+  };
+};
+
 type AuthContextType = {
   session: Session | null;
   user: User | null;
-  userDetails: {
-    username: string;
-    isAdmin: boolean;
-    isBanned: boolean;
-    proStatus: boolean;
-  } | null;
+  userDetails: UserDetailsType | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signInWithProvider: (provider: 'google' | 'github') => Promise<void>;
@@ -20,6 +31,7 @@ type AuthContextType = {
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   signInAsGuest: () => Promise<void>;
+  updateUserDetails: (details: Partial<UserDetailsType>) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -27,7 +39,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
-  const [userDetails, setUserDetails] = useState<AuthContextType['userDetails']>(null);
+  const [userDetails, setUserDetails] = useState<UserDetailsType | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -88,7 +100,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           username: data.username,
           isAdmin: data.is_admin,
           isBanned: data.is_banned,
-          proStatus: data.pro_status
+          proStatus: data.pro_status,
+          full_name: data.full_name,
+          avatar_url: data.avatar_url,
+          api_key: data.api_key,
+          notifications: data.notifications
         });
 
         if (data.is_banned) {
@@ -235,6 +251,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const updateUserDetails = async (details: Partial<UserDetailsType>) => {
+    if (!user) throw new Error('No user is logged in');
+
+    try {
+      // Map our UserDetailsType fields to database field names
+      const mappedDetails: any = {};
+      
+      if (details.username !== undefined) mappedDetails.username = details.username;
+      if (details.full_name !== undefined) mappedDetails.full_name = details.full_name;
+      if (details.avatar_url !== undefined) mappedDetails.avatar_url = details.avatar_url;
+      if (details.api_key !== undefined) mappedDetails.api_key = details.api_key;
+      if (details.notifications !== undefined) mappedDetails.notifications = details.notifications;
+
+      const { error } = await supabase
+        .from('users_extra')
+        .update(mappedDetails)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+      
+      // Update local state
+      setUserDetails(prev => {
+        if (!prev) return details as UserDetailsType;
+        return { ...prev, ...details };
+      });
+      
+      toast.success('Profile updated successfully');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to update profile');
+      throw error;
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -248,6 +297,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signOut,
         resetPassword,
         signInAsGuest,
+        updateUserDetails,
       }}
     >
       {children}

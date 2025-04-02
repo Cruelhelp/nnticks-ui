@@ -5,30 +5,33 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Switch } from '@/components/ui/switch';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSettings } from '@/hooks/useSettings';
+import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
-import { User, Brain, Save, Download, Key, Clock, BarChart, Users, FileText } from 'lucide-react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { 
+  User, Brain, Save, Download, Key, Bell, Clock, BarChart, Users, DownloadCloud,
+  ArrowUpRight, Shield, CreditCard, ChevronRight
+} from 'lucide-react';
 
 const Account = () => {
   const { user, userDetails, updateUserDetails } = useAuth();
-  const { settings } = useSettings();
+  const { settings, updateSettings } = useSettings();
   const [isUpdating, setIsUpdating] = useState(false);
   const [userData, setUserData] = useState({
     username: userDetails?.username || '',
     email: user?.email || '',
     fullName: userDetails?.full_name || '',
     apiKey: userDetails?.api_key || '',
-    notifications: {
-      email: true,
-      app: true,
-      predictions: true,
-      training: true
+    notificationSettings: {
+      email: userDetails?.notifications?.email || false,
+      app: userDetails?.notifications?.app || true,
+      training: userDetails?.notifications?.training || true,
+      predictions: userDetails?.notifications?.predictions || true,
     }
   });
   
@@ -45,7 +48,7 @@ const Account = () => {
     avgProfit: 0,
     bestResult: 0
   });
-  
+
   // Load user stats
   useEffect(() => {
     if (!user) return;
@@ -105,6 +108,23 @@ const Account = () => {
     loadStats();
   }, [user]);
 
+  useEffect(() => {
+    if (userDetails) {
+      setUserData({
+        username: userDetails.username || '',
+        email: user?.email || '',
+        fullName: userDetails.full_name || '',
+        apiKey: userDetails.api_key || '',
+        notificationSettings: {
+          email: userDetails.notifications?.email || false,
+          app: userDetails.notifications?.app || true,
+          training: userDetails.notifications?.training || true,
+          predictions: userDetails.notifications?.predictions || true,
+        }
+      });
+    }
+  }, [userDetails, user]);
+
   const handleUpdateProfile = async () => {
     if (!user) return;
     
@@ -115,7 +135,7 @@ const Account = () => {
         username: userData.username,
         full_name: userData.fullName,
         api_key: userData.apiKey,
-        notifications: userData.notifications
+        notifications: userData.notificationSettings
       });
       
       toast.success('Profile updated successfully');
@@ -126,32 +146,33 @@ const Account = () => {
       setIsUpdating(false);
     }
   };
-  
+
   const handleExportData = (type: 'pdf' | 'csv') => {
     toast.success(`Exporting ${type.toUpperCase()} data...`);
+    // In a real app, this would generate a PDF or CSV with user data
     setTimeout(() => {
-      toast.success(`Data exported as ${type.toUpperCase()}`);
+      toast.success(`${type.toUpperCase()} exported successfully`);
     }, 1500);
   };
 
   return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold mb-4">Account Settings</h2>
+    <div className="container mx-auto max-w-5xl p-4">
+      <h1 className="text-2xl font-bold mb-6">Account</h1>
       
       <Tabs defaultValue="profile" className="space-y-4">
         <TabsList>
           <TabsTrigger value="profile">Profile</TabsTrigger>
-          <TabsTrigger value="stats">Stats</TabsTrigger>
+          <TabsTrigger value="stats">Stats & Analytics</TabsTrigger>
           <TabsTrigger value="api">API Settings</TabsTrigger>
-          <TabsTrigger value="preferences">Preferences</TabsTrigger>
+          <TabsTrigger value="subscription">Subscription</TabsTrigger>
         </TabsList>
         
         <TabsContent value="profile" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Personal Information</CardTitle>
+              <CardTitle>Profile Information</CardTitle>
               <CardDescription>
-                Update your personal details and profile settings
+                Manage your personal information and account settings
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -166,13 +187,13 @@ const Account = () => {
                   <h3 className="text-lg font-medium">{userData.fullName || userData.username}</h3>
                   <p className="text-sm text-muted-foreground">{userData.email}</p>
                   {userDetails?.proStatus && (
-                    <Badge className="mt-1">PRO</Badge>
+                    <Badge className="mt-1 bg-gradient-to-r from-purple-500 to-indigo-500">PRO</Badge>
                   )}
                 </div>
               </div>
               
-              <div className="space-y-4 pt-4">
-                <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-4 pt-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="username">Username</Label>
                     <Input 
@@ -195,91 +216,109 @@ const Account = () => {
                   />
                 </div>
               </div>
-              
-              <div className="space-y-4 pt-4">
-                <h4 className="text-sm font-medium">Notification Preferences</h4>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="emailNotification" className="flex items-center gap-2">
-                      Email Notifications
-                    </Label>
-                    <Switch 
-                      id="emailNotification" 
-                      checked={userData.notifications.email}
-                      onCheckedChange={(checked) => {
-                        setUserData({
-                          ...userData,
-                          notifications: {
-                            ...userData.notifications,
-                            email: checked
-                          }
-                        })
-                      }}
-                    />
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="appNotification" className="flex items-center gap-2">
-                      App Notifications
-                    </Label>
-                    <Switch 
-                      id="appNotification" 
-                      checked={userData.notifications.app}
-                      onCheckedChange={(checked) => {
-                        setUserData({
-                          ...userData,
-                          notifications: {
-                            ...userData.notifications,
-                            app: checked
-                          }
-                        })
-                      }}
-                    />
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="predictionNotification" className="flex items-center gap-2">
-                      Prediction Notifications
-                    </Label>
-                    <Switch 
-                      id="predictionNotification" 
-                      checked={userData.notifications.predictions}
-                      onCheckedChange={(checked) => {
-                        setUserData({
-                          ...userData,
-                          notifications: {
-                            ...userData.notifications,
-                            predictions: checked
-                          }
-                        })
-                      }}
-                    />
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="trainingNotification" className="flex items-center gap-2">
-                      Training Notifications
-                    </Label>
-                    <Switch 
-                      id="trainingNotification" 
-                      checked={userData.notifications.training}
-                      onCheckedChange={(checked) => {
-                        setUserData({
-                          ...userData,
-                          notifications: {
-                            ...userData.notifications,
-                            training: checked
-                          }
-                        })
-                      }}
-                    />
-                  </div>
+            </CardContent>
+            <CardFooter>
+              <Button onClick={handleUpdateProfile} disabled={isUpdating}>
+                {isUpdating ? 'Updating...' : 'Save Changes'}
+              </Button>
+            </CardFooter>
+          </Card>
+          
+          <Card>
+            <CardHeader>
+              <CardTitle>Notification Preferences</CardTitle>
+              <CardDescription>
+                Customize how you receive notifications
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label>Email Notifications</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Receive updates and alerts via email
+                  </p>
                 </div>
+                <Switch 
+                  checked={userData.notificationSettings.email}
+                  onCheckedChange={(checked) => 
+                    setUserData({
+                      ...userData, 
+                      notificationSettings: {
+                        ...userData.notificationSettings,
+                        email: checked
+                      }
+                    })
+                  }
+                />
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label>App Notifications</Label>
+                  <p className="text-sm text-muted-foreground">
+                    In-app alerts and notifications
+                  </p>
+                </div>
+                <Switch 
+                  checked={userData.notificationSettings.app}
+                  onCheckedChange={(checked) => 
+                    setUserData({
+                      ...userData, 
+                      notificationSettings: {
+                        ...userData.notificationSettings,
+                        app: checked
+                      }
+                    })
+                  }
+                />
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label>Training Notifications</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Get notified when model training completes
+                  </p>
+                </div>
+                <Switch 
+                  checked={userData.notificationSettings.training}
+                  onCheckedChange={(checked) => 
+                    setUserData({
+                      ...userData, 
+                      notificationSettings: {
+                        ...userData.notificationSettings,
+                        training: checked
+                      }
+                    })
+                  }
+                />
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label>Prediction Notifications</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Get notified about important prediction outcomes
+                  </p>
+                </div>
+                <Switch 
+                  checked={userData.notificationSettings.predictions}
+                  onCheckedChange={(checked) => 
+                    setUserData({
+                      ...userData, 
+                      notificationSettings: {
+                        ...userData.notificationSettings,
+                        predictions: checked
+                      }
+                    })
+                  }
+                />
               </div>
             </CardContent>
             <CardFooter>
               <Button onClick={handleUpdateProfile} disabled={isUpdating}>
-                {isUpdating ? 'Saving...' : 'Save Changes'}
+                {isUpdating ? 'Updating...' : 'Save Changes'}
               </Button>
             </CardFooter>
           </Card>
@@ -302,8 +341,8 @@ const Account = () => {
                     <dd className="text-sm font-semibold">{trainingSummary.totalModels}</dd>
                   </div>
                   <div className="flex justify-between">
-                    <dt className="text-sm font-medium text-muted-foreground">Total Ticks:</dt>
-                    <dd className="text-sm font-semibold">{trainingSummary.totalTicks}</dd>
+                    <dt className="text-sm font-medium text-muted-foreground">Total Ticks Processed:</dt>
+                    <dd className="text-sm font-semibold">{trainingSummary.totalTicks.toLocaleString()}</dd>
                   </div>
                   <div className="flex justify-between">
                     <dt className="text-sm font-medium text-muted-foreground">Best Accuracy:</dt>
@@ -313,8 +352,8 @@ const Account = () => {
               </CardContent>
               <CardFooter>
                 <Button className="w-full" onClick={() => handleExportData('pdf')} variant="outline">
-                  <Download className="mr-2 h-4 w-4" />
-                  Export Training Data (PDF)
+                  <DownloadCloud className="mr-2 h-4 w-4" />
+                  Export Training Data
                 </Button>
               </CardFooter>
             </Card>
@@ -345,8 +384,8 @@ const Account = () => {
               </CardContent>
               <CardFooter>
                 <Button className="w-full" onClick={() => handleExportData('csv')} variant="outline">
-                  <FileText className="mr-2 h-4 w-4" />
-                  Export Trading History (CSV)
+                  <DownloadCloud className="mr-2 h-4 w-4" />
+                  Export Trading History
                 </Button>
               </CardFooter>
             </Card>
@@ -356,12 +395,12 @@ const Account = () => {
             <CardHeader>
               <CardTitle>Usage & Limits</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent>
               <div className="space-y-4">
                 <div>
                   <div className="flex justify-between text-sm mb-1">
                     <span>Tick Storage</span>
-                    <span>{Math.min(trainingSummary.totalTicks, 10000)} / {userDetails?.proStatus ? "Unlimited" : "10,000"}</span>
+                    <span>{Math.min(trainingSummary.totalTicks, 10000).toLocaleString()} / {userDetails?.proStatus ? "Unlimited" : "10,000"}</span>
                   </div>
                   <div className="h-2 bg-secondary rounded-full overflow-hidden">
                     <div 
@@ -383,8 +422,21 @@ const Account = () => {
                     />
                   </div>
                 </div>
+                
+                <div className="border-t pt-4">
+                  <p className="text-sm text-muted-foreground">
+                    {userDetails?.proStatus 
+                      ? "You're on the Pro plan with unlimited storage and features."
+                      : "Upgrade to Pro for unlimited storage and additional features."}
+                  </p>
+                </div>
               </div>
             </CardContent>
+            {!userDetails?.proStatus && (
+              <CardFooter>
+                <Button className="w-full" variant="default">Upgrade to Pro</Button>
+              </CardFooter>
+            )}
           </Card>
         </TabsContent>
         
@@ -398,11 +450,11 @@ const Account = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="apiKey">API Key</Label>
+                <Label htmlFor="api-key">API Key</Label>
                 <div className="flex gap-2">
                   <Input 
-                    id="apiKey" 
-                    value={userData.apiKey}
+                    id="api-key" 
+                    value={userData.apiKey} 
                     onChange={(e) => setUserData({...userData, apiKey: e.target.value})}
                     type="password"
                     placeholder="Enter your API key"
@@ -415,99 +467,136 @@ const Account = () => {
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="wsUrl">WebSocket URL</Label>
+                <Label htmlFor="ws-url">WebSocket URL</Label>
                 <Input 
-                  id="wsUrl" 
-                  value={settings.wsUrl || ''}
-                  disabled
+                  id="ws-url" 
+                  value={settings.wsUrl}
+                  onChange={(e) => updateSettings({ wsUrl: e.target.value })}
                   placeholder="wss://example.com/websocket"
                 />
                 <p className="text-sm text-muted-foreground">
-                  This can be configured in Settings
+                  WebSocket endpoint for real-time market data
                 </p>
               </div>
               
-              <div className="pt-2">
-                <div className="rounded-md bg-muted p-4 text-sm">
-                  <h4 className="font-medium">Connection Status</h4>
-                  <div className="mt-2 flex items-center">
-                    <div className={`h-3 w-3 rounded-full ${userData.apiKey ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                    <span className="ml-2">
-                      {userData.apiKey ? 'API Key Configured' : 'API Key Missing'}
-                    </span>
-                  </div>
+              <div className="space-y-2">
+                <Label htmlFor="subscription">Subscription Format</Label>
+                <Input 
+                  id="subscription" 
+                  value={settings.subscription}
+                  onChange={(e) => updateSettings({ subscription: e.target.value })}
+                  placeholder='{"ticks":"R_10"}'
+                />
+                <p className="text-sm text-muted-foreground">
+                  JSON format for market data subscription
+                </p>
+              </div>
+              
+              <div className="space-y-2 pt-2">
+                <Label>Connection Status</Label>
+                <div className="flex items-center space-x-2">
+                  <div className={`h-3 w-3 rounded-full ${userData.apiKey ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                  <p className="text-sm">{userData.apiKey ? 'API Key Configured' : 'API Key Missing'}</p>
                 </div>
               </div>
             </CardContent>
-            <CardFooter>
+            <CardFooter className="flex justify-between">
               <Button onClick={handleUpdateProfile} disabled={isUpdating}>
-                {isUpdating ? 'Saving...' : 'Save Changes'}
+                {isUpdating ? 'Updating...' : 'Save Changes'}
+              </Button>
+              <Button variant="outline" onClick={() => toast.info('Testing connection...')}>
+                Test Connection
               </Button>
             </CardFooter>
           </Card>
-        </TabsContent>
-        
-        <TabsContent value="preferences" className="space-y-4">
+          
           <Card>
             <CardHeader>
-              <CardTitle>User Preferences</CardTitle>
+              <CardTitle>Debug Tools</CardTitle>
               <CardDescription>
-                Customize your NNticks experience
+                Monitoring and debugging tools for API connections
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="rounded-md bg-muted p-4 font-mono text-sm overflow-auto max-h-40">
+                <p className="text-green-500">[System] WebSocket initialized</p>
+                <p className="text-muted-foreground">[Info] Connecting to {settings.wsUrl}</p>
+                <p className="text-muted-foreground">[Info] Subscription: {settings.subscription}</p>
+                <p className="text-green-500">[Success] Connection established</p>
+                {!userData.apiKey && (
+                  <p className="text-red-500">[Error] API key not configured</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="subscription">
+          <Card>
+            <CardHeader>
+              <CardTitle>Subscription</CardTitle>
+              <CardDescription>
+                Manage your subscription and billing information
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="language">Language</Label>
-                <Select defaultValue="en">
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select language" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="en">English</SelectItem>
-                    <SelectItem value="es">Spanish</SelectItem>
-                    <SelectItem value="fr">French</SelectItem>
-                    <SelectItem value="de">German</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="timezone">Timezone</Label>
-                <Select defaultValue="utc">
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select timezone" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="utc">UTC</SelectItem>
-                    <SelectItem value="est">Eastern Standard Time</SelectItem>
-                    <SelectItem value="pst">Pacific Standard Time</SelectItem>
-                    <SelectItem value="gmt">Greenwich Mean Time</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="space-y-3 pt-2">
-                <h4 className="text-sm font-medium">Privacy Options</h4>
-                
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="analytics" className="flex items-center gap-2">
-                    Allow Analytics
-                  </Label>
-                  <Switch id="analytics" defaultChecked />
+              <div className="rounded-md border p-4">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h3 className="font-semibold">
+                      {userDetails?.proStatus ? 'Pro Plan' : 'Free Plan'}
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      {userDetails?.proStatus
+                        ? 'Full access to all features and unlimited storage'
+                        : 'Basic access with limited features'}
+                    </p>
+                  </div>
+                  <Badge className={userDetails?.proStatus ? 'bg-primary' : 'bg-muted'}>
+                    {userDetails?.proStatus ? 'Active' : 'Free'}
+                  </Badge>
                 </div>
                 
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="marketing" className="flex items-center gap-2">
-                    Marketing Communications
-                  </Label>
-                  <Switch id="marketing" />
-                </div>
+                {userDetails?.proStatus && (
+                  <div className="mt-4 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Next billing date:</span>
+                      <span>May 15, 2025</span>
+                    </div>
+                  </div>
+                )}
               </div>
+              
+              {!userDetails?.proStatus && (
+                <div className="rounded-md border p-4 bg-muted/50">
+                  <h3 className="font-semibold">Pro Plan Benefits</h3>
+                  <ul className="text-sm space-y-2 mt-2">
+                    <li className="flex items-center">
+                      <ArrowUpRight className="h-4 w-4 mr-2 text-primary" />
+                      Unlimited tick data storage
+                    </li>
+                    <li className="flex items-center">
+                      <ArrowUpRight className="h-4 w-4 mr-2 text-primary" />
+                      Advanced neural network models
+                    </li>
+                    <li className="flex items-center">
+                      <ArrowUpRight className="h-4 w-4 mr-2 text-primary" />
+                      Priority support and feature access
+                    </li>
+                    <li className="flex items-center">
+                      <ArrowUpRight className="h-4 w-4 mr-2 text-primary" />
+                      Extended historical data
+                    </li>
+                  </ul>
+                </div>
+              )}
             </CardContent>
             <CardFooter>
-              <Button onClick={handleUpdateProfile} disabled={isUpdating}>
-                {isUpdating ? 'Saving...' : 'Save Changes'}
-              </Button>
+              {userDetails?.proStatus ? (
+                <Button variant="outline" className="w-full">Manage Subscription</Button>
+              ) : (
+                <Button className="w-full">Upgrade to Pro</Button>
+              )}
             </CardFooter>
           </Card>
         </TabsContent>

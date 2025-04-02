@@ -1,134 +1,147 @@
 
-import { useState, useEffect, createContext, useContext, PropsWithChildren } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 
 export type UserSettings = {
-  wsUrl: string;
-  apiKey: string;
-  subscription: string;
-  font: 'JetBrains Mono' | 'Fira Code' | 'Courier New' | 'Consolas' | 'Menlo' | 'Monaco' | 'Roboto Mono' | 'Source Code Pro';
+  theme: string;
   accent: 'green' | 'blue' | 'purple' | 'red';
+  font: 'JetBrains Mono' | 'Fira Code' | 'Courier New' | 'Consolas' | 'Menlo' | 'Monaco' | 'Roboto Mono' | 'Source Code Pro';
   chartStyle: 'line' | 'candlestick' | 'bar';
   terminalHeight: number;
   sidebarWidth: number;
-  theme?: string;
+  wsUrl: string;
+  apiKey: string;
+  subscription: string;
 };
 
 export const DEFAULT_SETTINGS: UserSettings = {
-  wsUrl: 'wss://ws.binaryws.com/websockets/v3?app_id=1089',
-  apiKey: '',
-  subscription: '{"ticks":"R_10"}',
-  font: 'JetBrains Mono',
+  theme: 'dark',
   accent: 'green',
+  font: 'JetBrains Mono',
   chartStyle: 'line',
   terminalHeight: 200,
   sidebarWidth: 200,
+  wsUrl: 'wss://ws.binaryws.com/websockets/v3?app_id=1089',
+  apiKey: '',
+  subscription: '{"ticks":"R_10"}',
 };
 
 interface SettingsContextType {
   settings: UserSettings;
-  updateSettings: (newSettings: Partial<UserSettings>) => Promise<void>;
+  updateSettings: (settings: Partial<UserSettings>) => Promise<void>;
 }
 
-const SettingsContext = createContext<SettingsContextType>({
-  settings: DEFAULT_SETTINGS,
-  updateSettings: async () => {},
-});
+const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
 
-export const SettingsProvider = ({ children }: PropsWithChildren) => {
+export const SettingsProvider = ({ children }: { children: ReactNode }) => {
   const [settings, setSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
   const { user } = useAuth();
 
-  // Load settings from localStorage or Supabase
   useEffect(() => {
     const loadSettings = async () => {
-      try {
-        // First try to get from local storage
-        const savedSettings = localStorage.getItem('user_settings');
-        
-        if (savedSettings) {
-          setSettings({ ...DEFAULT_SETTINGS, ...JSON.parse(savedSettings) });
+      // First, try to load from local storage
+      const storedSettings = localStorage.getItem('userSettings');
+      
+      if (storedSettings) {
+        try {
+          const parsedSettings = JSON.parse(storedSettings);
+          setSettings({ ...DEFAULT_SETTINGS, ...parsedSettings });
+        } catch (error) {
+          console.error('Error parsing settings from localStorage:', error);
         }
-        
-        // If logged in, get settings from Supabase
-        if (user) {
+      }
+      
+      // If authenticated, try to load from Supabase
+      if (user) {
+        try {
           const { data, error } = await supabase
             .from('user_settings')
             .select('*')
             .eq('user_id', user.id)
             .single();
             
-          if (error && error.code !== 'PGRST116') {
-            // PGRST116 is "no rows returned" error, other errors are issues
+          if (error) {
             console.error('Error loading settings:', error);
+            return;
           }
           
           if (data) {
-            // Format the data to match our settings structure
-            const dbSettings: UserSettings = {
-              wsUrl: data.ws_url || DEFAULT_SETTINGS.wsUrl,
-              apiKey: data.api_key || DEFAULT_SETTINGS.apiKey,
-              subscription: data.subscription || DEFAULT_SETTINGS.subscription,
-              font: data.font as any || DEFAULT_SETTINGS.font,
-              accent: data.accent as any || DEFAULT_SETTINGS.accent,
-              chartStyle: data.chart_style as any || DEFAULT_SETTINGS.chartStyle,
-              terminalHeight: data.terminal_height || DEFAULT_SETTINGS.terminalHeight,
-              sidebarWidth: data.sidebar_width || DEFAULT_SETTINGS.sidebarWidth,
-              theme: data.theme || 'dark',
+            const userSettings: Partial<UserSettings> = {
+              theme: data.theme,
+              accent: data.accent as UserSettings['accent'],
+              font: data.font as UserSettings['font'],
+              chartStyle: data.chart_style as UserSettings['chartStyle'],
+              terminalHeight: data.terminal_height,
+              sidebarWidth: data.sidebar_width,
+              wsUrl: data.ws_url,
+              apiKey: data.api_key,
+              subscription: data.subscription,
             };
             
-            // Save to localStorage and state
-            localStorage.setItem('user_settings', JSON.stringify(dbSettings));
-            setSettings(dbSettings);
+            setSettings({ ...DEFAULT_SETTINGS, ...userSettings });
+            
+            // Save to localStorage for faster future loads
+            localStorage.setItem('userSettings', JSON.stringify(userSettings));
           }
+        } catch (error) {
+          console.error('Error loading settings:', error);
         }
-      } catch (error) {
-        console.error('Failed to load settings:', error);
       }
     };
-
+    
     loadSettings();
   }, [user]);
 
   const updateSettings = async (newSettings: Partial<UserSettings>) => {
-    try {
-      const updatedSettings = { ...settings, ...newSettings };
-      
-      // Save to localStorage
-      localStorage.setItem('user_settings', JSON.stringify(updatedSettings));
-      setSettings(updatedSettings);
-      
-      // If logged in, save to Supabase
-      if (user) {
-        // Convert to database structure
-        const dbSettings = {
-          user_id: user.id,
-          ws_url: updatedSettings.wsUrl,
-          api_key: updatedSettings.apiKey,
-          subscription: updatedSettings.subscription,
-          font: updatedSettings.font,
-          accent: updatedSettings.accent,
-          chart_style: updatedSettings.chartStyle,
-          terminal_height: updatedSettings.terminalHeight,
-          sidebar_width: updatedSettings.sidebarWidth,
-          theme: updatedSettings.theme || 'dark',
-          updated_at: new Date().toISOString(),
-        };
-        
-        // Upsert settings
+    const updatedSettings = { ...settings, ...newSettings };
+    
+    // Update local state
+    setSettings(updatedSettings);
+    
+    // Save to localStorage
+    localStorage.setItem('userSettings', JSON.stringify(updatedSettings));
+    
+    // If authenticated, save to Supabase
+    if (user) {
+      try {
         const { error } = await supabase
           .from('user_settings')
-          .upsert(dbSettings, { onConflict: 'user_id' });
+          .upsert({
+            user_id: user.id,
+            theme: updatedSettings.theme,
+            accent: updatedSettings.accent,
+            font: updatedSettings.font,
+            chart_style: updatedSettings.chartStyle,
+            terminal_height: updatedSettings.terminalHeight,
+            sidebar_width: updatedSettings.sidebarWidth,
+            ws_url: updatedSettings.wsUrl,
+            api_key: updatedSettings.apiKey,
+            subscription: updatedSettings.subscription,
+            updated_at: new Date().toISOString(),
+          }, { onConflict: 'user_id' });
           
         if (error) {
-          console.error('Error saving settings to Supabase:', error);
+          console.error('Error saving settings:', error);
+          throw error;
         }
+      } catch (error) {
+        console.error('Error saving settings:', error);
+        throw error;
       }
-    } catch (error) {
-      console.error('Failed to update settings:', error);
-      throw error;
     }
+    
+    // Apply theme if it changed
+    if (newSettings.theme) {
+      document.documentElement.classList.toggle('dark', newSettings.theme === 'dark');
+    }
+    
+    // Apply font if it changed
+    if (newSettings.font) {
+      document.documentElement.style.fontFamily = newSettings.font;
+    }
+    
+    return Promise.resolve();
   };
 
   return (
@@ -138,4 +151,12 @@ export const SettingsProvider = ({ children }: PropsWithChildren) => {
   );
 };
 
-export const useSettings = () => useContext(SettingsContext);
+export const useSettings = () => {
+  const context = useContext(SettingsContext);
+  
+  if (context === undefined) {
+    throw new Error('useSettings must be used within a SettingsProvider');
+  }
+  
+  return context;
+};
