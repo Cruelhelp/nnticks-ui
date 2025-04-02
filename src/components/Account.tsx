@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -232,7 +233,7 @@ const Account = () => {
                 </div>
                 <Switch 
                   checked={userData.notificationSettings.email}
-                  onCheckedChange={(checked: boolean) => 
+                  onCheckedChange={(checked) => 
                     setUserData({
                       ...userData, 
                       notificationSettings: {
@@ -253,7 +254,7 @@ const Account = () => {
                 </div>
                 <Switch 
                   checked={userData.notificationSettings.app}
-                  onCheckedChange={(checked: boolean) => 
+                  onCheckedChange={(checked) => 
                     setUserData({
                       ...userData, 
                       notificationSettings: {
@@ -274,7 +275,7 @@ const Account = () => {
                 </div>
                 <Switch 
                   checked={userData.notificationSettings.training}
-                  onCheckedChange={(checked: boolean) => 
+                  onCheckedChange={(checked) => 
                     setUserData({
                       ...userData, 
                       notificationSettings: {
@@ -295,7 +296,7 @@ const Account = () => {
                 </div>
                 <Switch 
                   checked={userData.notificationSettings.predictions}
-                  onCheckedChange={(checked: boolean) => 
+                  onCheckedChange={(checked) => 
                     setUserData({
                       ...userData, 
                       notificationSettings: {
