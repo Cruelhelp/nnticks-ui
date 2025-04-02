@@ -232,7 +232,7 @@ const Account = () => {
                 </div>
                 <Switch 
                   checked={userData.notificationSettings.email}
-                  onCheckedChange={(checked) => 
+                  onCheckedChange={(checked: boolean) => 
                     setUserData({
                       ...userData, 
                       notificationSettings: {
@@ -253,7 +253,7 @@ const Account = () => {
                 </div>
                 <Switch 
                   checked={userData.notificationSettings.app}
-                  onCheckedChange={(checked) => 
+                  onCheckedChange={(checked: boolean) => 
                     setUserData({
                       ...userData, 
                       notificationSettings: {
@@ -274,7 +274,7 @@ const Account = () => {
                 </div>
                 <Switch 
                   checked={userData.notificationSettings.training}
-                  onCheckedChange={(checked) => 
+                  onCheckedChange={(checked: boolean) => 
                     setUserData({
                       ...userData, 
                       notificationSettings: {
@@ -295,7 +295,7 @@ const Account = () => {
                 </div>
                 <Switch 
                   checked={userData.notificationSettings.predictions}
-                  onCheckedChange={(checked) => 
+                  onCheckedChange={(checked: boolean) => 
                     setUserData({
                       ...userData, 
                       notificationSettings: {
