@@ -35,7 +35,7 @@ const SideBar = ({ activeSection, onSectionChange }: SideBarProps) => {
     { id: 'debug', icon: Bug, label: 'Debug' },
     { id: 'account', icon: UserCog, label: 'Account' },
     { id: 'leaderboard', icon: Trophy, label: 'Leaderboard', proOnly: true },
-    { id: 'admin', icon: Shield, label: 'Admin', adminOnly: true },
+    { id: 'admin', icon: Shield, label: 'Admin' },
   ];
 
   const handleClick = (id: string) => {

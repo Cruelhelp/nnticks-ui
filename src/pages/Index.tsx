@@ -13,6 +13,7 @@ import Leaderboard from '@/components/Leaderboard';
 import NeuralNet from '@/components/NeuralNet';
 import DebugTools from '@/components/DebugTools';
 import Account from '@/components/Account';
+import AdminPanel from '@/components/AdminPanel';
 import Splash from './Splash';
 import { useSettings } from '@/hooks/useSettings';
 import { useAuth } from '@/contexts/AuthContext';
@@ -56,6 +57,19 @@ const Index = () => {
       updateUserLoginTime();
     }
   }, [user]);
+  
+  // Listen for navigation events from TopBar
+  useEffect(() => {
+    const handleNavigateEvent = (event: CustomEvent) => {
+      setActiveSection(event.detail);
+    };
+    
+    document.addEventListener('navigate-section', handleNavigateEvent as EventListener);
+    
+    return () => {
+      document.removeEventListener('navigate-section', handleNavigateEvent as EventListener);
+    };
+  }, []);
   
   // Adjust sidebar and terminal visibility on mobile
   useEffect(() => {
@@ -163,6 +177,8 @@ const Index = () => {
         return <DebugTools />;
       case 'account':
         return <Account />;
+      case 'admin':
+        return <AdminPanel />;
       default:
         return <Home onSectionChange={handleSectionChange} />;
     }

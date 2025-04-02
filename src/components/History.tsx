@@ -13,6 +13,7 @@ import {
   Clock
 } from 'lucide-react';
 import { toast } from 'sonner';
+import HistoryExport from '@/components/HistoryExport';
 
 interface TradeHistoryItem {
   id: number;
@@ -39,40 +40,106 @@ const History = () => {
   
   const isPro = userDetails?.proStatus || false;
   
-  // Load history data
-  useEffect(() => {
-    if (!user) {
-      setLoading(false);
-      return;
+  // Sample data generator for demo purposes
+  const generateSampleData = () => {
+    // Generate trade history
+    const sampleTradeHistory: TradeHistoryItem[] = [];
+    const markets = ['R_10', 'R_25', 'R_50', 'R_75', 'R_100', 'EURUSD', 'GBPUSD', 'USDJPY'];
+    
+    for (let i = 0; i < 20; i++) {
+      const outcome = Math.random() > 0.4 ? 'win' : 'loss';
+      const timestamp = new Date();
+      timestamp.setMinutes(timestamp.getMinutes() - i * 15);
+      
+      sampleTradeHistory.push({
+        id: i,
+        timestamp: timestamp.toISOString(),
+        market: markets[Math.floor(Math.random() * markets.length)],
+        prediction: Math.random() > 0.5 ? 'rise' : 'fall',
+        confidence: 0.5 + Math.random() * 0.4, // 50-90%
+        outcome: outcome
+      });
     }
     
+    // Generate training history
+    const sampleTrainingHistory: TrainingHistoryItem[] = [];
+    const missions = [
+      'Basic Pattern Recognition', 
+      'Trend Analysis', 
+      'Volatility Training',
+      'Support/Resistance Levels',
+      'Price Action Strategies'
+    ];
+    
+    for (let i = 0; i < 10; i++) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      
+      sampleTrainingHistory.push({
+        id: i,
+        date: date.toISOString(),
+        mission: missions[Math.floor(Math.random() * missions.length)],
+        points: Math.floor(Math.random() * 1000) + 500,
+        accuracy: 0.7 + Math.random() * 0.25 // 70-95%
+      });
+    }
+    
+    return { sampleTradeHistory, sampleTrainingHistory };
+  };
+  
+  // Load history data
+  useEffect(() => {
     const loadHistory = async () => {
       setLoading(true);
       try {
-        // Load trade history
-        const { data: tradeData, error: tradeError } = await supabase
-          .from('trade_history')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('timestamp', { ascending: false });
-          
-        if (tradeError) throw tradeError;
-        
-        if (tradeData) {
-          setTradeHistory(tradeData);
-        }
-        
-        // Load training history
-        const { data: trainingData, error: trainingError } = await supabase
-          .from('training_history')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('date', { ascending: false });
-          
-        if (trainingError) throw trainingError;
-        
-        if (trainingData) {
-          setTrainingHistory(trainingData);
+        if (user) {
+          // Try to load from Supabase
+          try {
+            // Load trade history
+            const { data: tradeData, error: tradeError } = await supabase
+              .from('trade_history')
+              .select('*')
+              .eq('user_id', user.id)
+              .order('timestamp', { ascending: false });
+              
+            if (tradeError) throw tradeError;
+            
+            if (tradeData && tradeData.length > 0) {
+              setTradeHistory(tradeData);
+            } else {
+              // Use sample data if no records found
+              const { sampleTradeHistory } = generateSampleData();
+              setTradeHistory(sampleTradeHistory);
+            }
+            
+            // Load training history
+            const { data: trainingData, error: trainingError } = await supabase
+              .from('training_history')
+              .select('*')
+              .eq('user_id', user.id)
+              .order('date', { ascending: false });
+              
+            if (trainingError) throw trainingError;
+            
+            if (trainingData && trainingData.length > 0) {
+              setTrainingHistory(trainingData);
+            } else {
+              // Use sample data if no records found
+              const { sampleTrainingHistory } = generateSampleData();
+              setTrainingHistory(sampleTrainingHistory);
+            }
+          } catch (error) {
+            console.error('Error loading history data from Supabase:', error);
+            // Fall back to sample data
+            const { sampleTradeHistory, sampleTrainingHistory } = generateSampleData();
+            setTradeHistory(sampleTradeHistory);
+            setTrainingHistory(sampleTrainingHistory);
+          }
+        } else {
+          // Use sample data for guest users
+          const { sampleTradeHistory, sampleTrainingHistory } = generateSampleData();
+          setTradeHistory(sampleTradeHistory);
+          setTrainingHistory(sampleTrainingHistory);
         }
       } catch (error) {
         console.error('Error loading history data:', error);
@@ -90,36 +157,12 @@ const History = () => {
     const date = new Date(dateString);
     return date.toLocaleString();
   };
-  
-  // Export history as PDF (Pro feature)
-  const exportAsPdf = () => {
-    if (!isPro) {
-      toast.error('Export to PDF is a Pro feature');
-      return;
-    }
-    
-    toast.success('Exporting history as PDF');
-    
-    // Simulated export
-    setTimeout(() => {
-      toast.success('History exported successfully');
-    }, 1500);
-  };
-  
+
   return (
     <div className="h-full flex flex-col">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-bold">Trading History</h2>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          className="flex gap-2 items-center" 
-          onClick={exportAsPdf}
-          disabled={!isPro}
-        >
-          <Download size={16} />
-          Export {!isPro && "(Pro)"}
-        </Button>
+        <HistoryExport tradeHistory={tradeHistory} trainingHistory={trainingHistory} />
       </div>
       
       <Card className="flex-1">

@@ -18,7 +18,7 @@ export type UserSettings = {
 export const DEFAULT_SETTINGS: UserSettings = {
   theme: 'dark',
   accent: 'green',
-  font: 'JetBrains Mono',
+  font: 'VT323',
   chartStyle: 'line',
   terminalHeight: 200,
   sidebarWidth: 200,

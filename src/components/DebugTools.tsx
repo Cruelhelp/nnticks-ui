@@ -1,342 +1,443 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+
+import { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useWebSocket } from '@/hooks/useWebSocket';
-import { useSettings } from '@/hooks/useSettings';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
-import { AlertCircle, RefreshCw, Play, Pause, Download } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useSettings } from '@/hooks/useSettings';
+import { useWebSocket, subscriptionFormats } from '@/hooks/useWebSocket';
 import { toast } from 'sonner';
-import { Progress } from '@/components/ui/progress';
+import { 
+  Wifi, 
+  WifiOff, 
+  AlertTriangle, 
+  TerminalSquare, 
+  BarChart3,
+  Shield,
+  Database
+} from 'lucide-react';
 
 const DebugTools = () => {
-  const { settings } = useSettings();
-  const [autoScroll, setAutoScroll] = useState(true);
-  const [pauseLogs, setPauseLogs] = useState(false);
-  const [logs, setLogs] = useState<Array<{type: string, message: string, timestamp: Date}>>([]);
+  const { settings, updateSettings } = useSettings();
+  const [localWsUrl, setLocalWsUrl] = useState(settings.wsUrl);
+  const [localSubscription, setLocalSubscription] = useState(settings.subscription);
+  const [autoReconnect, setAutoReconnect] = useState(true);
+  const [maxAttempts, setMaxAttempts] = useState(5);
+  const [logs, setLogs] = useState<string[]>([]);
+  const [connectionCount, setConnectionCount] = useState(0);
+  const [errorCount, setErrorCount] = useState(0);
   const [tickCount, setTickCount] = useState(0);
-  const [connectionAttempts, setConnectionAttempts] = useState(0);
-  const [filterErrors, setFilterErrors] = useState(false);
-  const logsEndRef = useRef<HTMLDivElement>(null);
+  const [selectedBroker, setSelectedBroker] = useState('deriv');
   
-  // Connect to WebSocket
-  const ws = useWebSocket({
-    wsUrl: settings.wsUrl || 'wss://ws.binaryws.com/websockets/v3?app_id=1089',
-    subscription: settings.subscription ? JSON.parse(settings.subscription) : { ticks: 'R_10' },
+  // WebSocket connection
+  const { 
+    isConnected,
+    ticks,
+    latestTick, 
+    error, 
+    reconnectCount,
+    connect,
+    disconnect,
+    send
+  } = useWebSocket({
+    wsUrl: settings.wsUrl,
+    subscription: JSON.parse(settings.subscription),
+    autoReconnect: autoReconnect,
+    maxReconnectAttempts: maxAttempts,
+    onOpen: () => {
+      addLog('info', 'Connection established');
+      setConnectionCount(prev => prev + 1);
+    },
     onMessage: (data) => {
-      if (!pauseLogs) {
-        if (data.tick) {
-          setTickCount(prev => prev + 1);
-          addLog('info', `Tick received for ${data.tick.symbol}: ${data.tick.quote}`);
-        } else if (data.error) {
-          addLog('error', `API Error: ${JSON.stringify(data.error)}`);
-        } else {
-          addLog('info', `Received: ${JSON.stringify(data)}`);
-        }
+      if (!data.tick && !data.ping) {
+        addLog('message', `Data received: ${JSON.stringify(data).substring(0, 100)}...`);
       }
+      setTickCount(prev => prev + 1);
     },
     onError: (error) => {
-      setConnectionAttempts(prev => prev + 1);
-      addLog('error', `WebSocket error: ${error.message || JSON.stringify(error)}`);
-    },
-    onOpen: () => {
-      addLog('success', `Connection established to ${settings.wsUrl}`);
+      addLog('error', `Connection error: ${error}`);
+      setErrorCount(prev => prev + 1);
     },
     onClose: () => {
-      addLog('warning', 'Connection closed');
+      addLog('info', 'Connection closed');
     }
   });
 
-  useEffect(() => {
-    // Add initial logs
-    addLog('system', 'Debug console initialized');
-    addLog('info', `WebSocket URL: ${settings.wsUrl || 'default'}`);
-    addLog('info', `Subscription: ${settings.subscription || '{"ticks":"R_10"}'}`);
-  }, []);
-  
-  useEffect(() => {
-    scrollToBottom();
-  }, [logs]);
-  
-  const addLog = (type: string, message: string) => {
-    if (filterErrors && type !== 'error') return;
-    
-    setLogs(prev => {
-      const newLogs = [...prev, {
-        type,
-        message,
-        timestamp: new Date()
-      }];
-      
-      // Keep only last 100 logs for performance
-      if (newLogs.length > 100) {
-        return newLogs.slice(-100);
-      }
-      return newLogs;
-    });
+  // Add log entry
+  const addLog = (type: 'info' | 'error' | 'message', message: string) => {
+    const timestamp = new Date().toLocaleTimeString();
+    setLogs(prev => [`${timestamp} [${type}] ${message}`, ...prev].slice(0, 100));
   };
-  
-  const scrollToBottom = () => {
-    if (autoScroll && logsEndRef.current) {
-      logsEndRef.current.scrollIntoView({ behavior: "smooth" });
-    }
-  };
-  
-  const getLogClass = (type: string) => {
-    switch(type) {
-      case 'error': return 'text-red-500';
-      case 'warning': return 'text-yellow-500';
-      case 'success': return 'text-green-500';
-      case 'system': return 'text-purple-500';
-      default: return 'text-muted-foreground';
-    }
-  };
-  
-  const handleClearLogs = () => {
+
+  // Clear logs
+  const clearLogs = () => {
     setLogs([]);
-    addLog('system', 'Logs cleared');
+    toast.info('Logs cleared');
   };
-  
-  const handleToggleConnection = () => {
-    if (ws.isConnected) {
-      ws.disconnect();
-      addLog('system', 'Connection manually closed');
-    } else {
-      ws.connect();
-      addLog('system', 'Connection attempt initiated');
-    }
-  };
-  
-  const handleExportLogs = () => {
+
+  // Apply connection settings
+  const applySettings = async () => {
     try {
-      const logText = logs.map(log => 
-        `[${log.timestamp.toISOString()}] [${log.type.toUpperCase()}] ${log.message}`
-      ).join('\n');
+      await updateSettings({
+        wsUrl: localWsUrl,
+        subscription: localSubscription
+      });
       
-      const blob = new Blob([logText], { type: 'text/plain' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `nnticks-logs-${new Date().toISOString()}.txt`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      
-      toast.success('Logs exported successfully');
+      addLog('info', 'Settings applied successfully');
+      toast.success('Connection settings updated');
     } catch (error) {
-      console.error('Error exporting logs:', error);
-      toast.error('Failed to export logs');
+      console.error('Failed to update settings:', error);
+      addLog('error', `Failed to update settings: ${error}`);
+      toast.error('Failed to update settings');
     }
   };
+
+  // Connect to WebSocket
+  const handleConnect = () => {
+    disconnect();
+    setConnectionCount(0);
+    setErrorCount(0);
+    setTickCount(0);
+    setTimeout(() => {
+      connect();
+    }, 500);
+  };
+
+  // Disconnect from WebSocket
+  const handleDisconnect = () => {
+    disconnect();
+    addLog('info', 'Manually disconnected from WebSocket');
+    toast.info('WebSocket disconnected');
+  };
+
+  // Handle broker selection
+  const handleBrokerSelect = (broker: string) => {
+    setSelectedBroker(broker);
+    const format = subscriptionFormats[broker as keyof typeof subscriptionFormats];
+    setLocalSubscription(JSON.stringify(format));
+  };
+
+  // Reset connection stats
+  const resetStats = () => {
+    setConnectionCount(0);
+    setErrorCount(0);
+    setTickCount(0);
+    toast.info('Connection stats reset');
+  };
   
+  // Max connection attempts failsafe
+  useEffect(() => {
+    if (connectionCount > 50) {
+      disconnect();
+      toast.error('Connection attempts limit reached (50). Connection stopped for safety.');
+      addLog('error', 'Connection attempts limit reached (50). Connection stopped for safety.');
+    }
+  }, [connectionCount, disconnect]);
+
   return (
-    <div>
-      <h2 className="text-2xl font-bold mb-4">Debug Tools</h2>
+    <div className="h-full flex flex-col space-y-4">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold">Debug Tools</h2>
+        <div className="flex items-center gap-2">
+          {isConnected ? (
+            <>
+              <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/20">
+                <Wifi className="h-3 w-3 mr-1" /> Connected
+              </Badge>
+              <Button variant="destructive" size="sm" onClick={handleDisconnect}>Disconnect</Button>
+            </>
+          ) : (
+            <>
+              <Badge variant="outline" className="bg-red-500/10 text-red-500 border-red-500/20">
+                <WifiOff className="h-3 w-3 mr-1" /> Disconnected
+              </Badge>
+              <Button variant="default" size="sm" onClick={handleConnect}>Connect</Button>
+            </>
+          )}
+        </div>
+      </div>
       
-      <Tabs defaultValue="console" className="space-y-4">
+      <Tabs defaultValue="connection">
         <TabsList>
-          <TabsTrigger value="console">Console</TabsTrigger>
-          <TabsTrigger value="connection">Connection</TabsTrigger>
-          <TabsTrigger value="performance">Performance</TabsTrigger>
+          <TabsTrigger value="connection"><Wifi className="h-4 w-4 mr-2" /> Connection</TabsTrigger>
+          <TabsTrigger value="logs"><TerminalSquare className="h-4 w-4 mr-2" /> Logs</TabsTrigger>
+          <TabsTrigger value="data"><Database className="h-4 w-4 mr-2" /> Data</TabsTrigger>
+          <TabsTrigger value="admin"><Shield className="h-4 w-4 mr-2" /> Admin</TabsTrigger>
         </TabsList>
-        
-        <TabsContent value="console" className="space-y-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <div className="flex justify-between items-center">
-                <CardTitle>Debug Console</CardTitle>
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center space-x-2">
-                    <Checkbox 
-                      id="errors-only" 
-                      checked={filterErrors}
-                      onCheckedChange={(checked) => setFilterErrors(!!checked)}
-                    />
-                    <label 
-                      htmlFor="errors-only" 
-                      className="text-sm font-medium leading-none cursor-pointer"
-                    >
-                      Errors only
-                    </label>
-                  </div>
-                  <Button size="sm" variant="outline" onClick={handleClearLogs}>Clear</Button>
-                  <Button size="sm" variant="outline" onClick={handleExportLogs}>
-                    <Download className="h-4 w-4 mr-1" /> Export
-                  </Button>
-                </div>
-              </div>
-              <CardDescription>
-                Real-time WebSocket and API connection logs
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="bg-muted rounded-md p-4 font-mono text-sm h-[400px] overflow-auto">
-                {logs.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-                    <AlertCircle className="h-8 w-8 mb-2" />
-                    <p>No logs available</p>
-                  </div>
-                ) : (
-                  logs.map((log, i) => (
-                    <div key={i} className={`${getLogClass(log.type)} mb-1`}>
-                      <span className="text-muted-foreground mr-2">
-                        [{log.timestamp.toLocaleTimeString()}]
-                      </span>
-                      <span className="font-semibold">
-                        [{log.type.toUpperCase()}]
-                      </span>{' '}
-                      {log.message}
-                    </div>
-                  ))
-                )}
-                <div ref={logsEndRef} />
-              </div>
-            </CardContent>
-            <CardFooter className="flex justify-between">
-              <div className="flex items-center space-x-2">
-                <Checkbox 
-                  id="auto-scroll" 
-                  checked={autoScroll}
-                  onCheckedChange={(checked) => setAutoScroll(!!checked)}
-                />
-                <label 
-                  htmlFor="auto-scroll" 
-                  className="text-sm font-medium leading-none cursor-pointer"
-                >
-                  Auto-scroll
-                </label>
-              </div>
-              
-              <Button
-                size="sm"
-                variant={pauseLogs ? "default" : "outline"}
-                onClick={() => setPauseLogs(!pauseLogs)}
-              >
-                {pauseLogs ? <Play className="h-4 w-4 mr-1" /> : <Pause className="h-4 w-4 mr-1" />}
-                {pauseLogs ? 'Resume' : 'Pause'}
-              </Button>
-            </CardFooter>
-          </Card>
-        </TabsContent>
         
         <TabsContent value="connection" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Connection Status</CardTitle>
-              <CardDescription>
-                WebSocket connection details and status
-              </CardDescription>
+              <CardTitle>WebSocket Connection</CardTitle>
+              <CardDescription>Configure and manage WebSocket connection settings</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <div className={`h-3 w-3 rounded-full ${ws.isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                  <span className="font-medium">
-                    Status: {ws.isConnected ? 'Connected' : 'Disconnected'}
-                  </span>
-                </div>
-                <Badge variant={ws.isConnected ? "default" : "destructive"}>
-                  {ws.isConnected ? 'Online' : 'Offline'}
-                </Badge>
-              </div>
-              
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <h4 className="text-sm font-medium text-muted-foreground">WebSocket URL</h4>
-                  <p className="text-sm font-mono bg-muted p-2 rounded-sm overflow-hidden overflow-ellipsis">
-                    {settings.wsUrl || 'default'}
-                  </p>
+                  <Label htmlFor="broker">Broker</Label>
+                  <Select value={selectedBroker} onValueChange={handleBrokerSelect}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select broker" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="deriv">Deriv</SelectItem>
+                      <SelectItem value="iqOption">IQ Option</SelectItem>
+                      <SelectItem value="binance">Binance</SelectItem>
+                      <SelectItem value="metatrader">MetaTrader</SelectItem>
+                      <SelectItem value="binary">Binary.com</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
+                
                 <div className="space-y-2">
-                  <h4 className="text-sm font-medium text-muted-foreground">Subscription</h4>
-                  <p className="text-sm font-mono bg-muted p-2 rounded-sm overflow-hidden overflow-ellipsis">
-                    {settings.subscription || '{"ticks":"R_10"}'}
-                  </p>
+                  <Label htmlFor="wsurl">WebSocket URL</Label>
+                  <Input 
+                    id="wsurl" 
+                    value={localWsUrl} 
+                    onChange={(e) => setLocalWsUrl(e.target.value)}
+                    placeholder="wss://example.com/websocket"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="subscription">Subscription Format</Label>
+                  <Input 
+                    id="subscription" 
+                    value={localSubscription} 
+                    onChange={(e) => setLocalSubscription(e.target.value)}
+                    placeholder='{"ticks":"R_10"}'
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="max-attempts">Max Reconnect Attempts</Label>
+                  <Select 
+                    value={maxAttempts.toString()} 
+                    onValueChange={(value) => setMaxAttempts(parseInt(value))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select max attempts" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="3">3 attempts</SelectItem>
+                      <SelectItem value="5">5 attempts</SelectItem>
+                      <SelectItem value="10">10 attempts</SelectItem>
+                      <SelectItem value="20">20 attempts</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <h4 className="text-sm font-medium text-muted-foreground">Connection Attempts</h4>
-                  <p className="text-xl font-semibold">{connectionAttempts}</p>
-                </div>
-                <div className="space-y-1">
-                  <h4 className="text-sm font-medium text-muted-foreground">Ticks Received</h4>
-                  <p className="text-xl font-semibold">{tickCount}</p>
-                </div>
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="auto-reconnect"
+                  checked={autoReconnect}
+                  onCheckedChange={setAutoReconnect}
+                />
+                <Label htmlFor="auto-reconnect">Auto Reconnect</Label>
               </div>
               
-              <div className="space-y-2 pt-2">
-                <h4 className="text-sm font-medium text-muted-foreground">Last 5 ticks</h4>
-                <div className="bg-muted rounded-md p-2">
-                  {ws.ticks.slice(-5).map((tick, i) => (
-                    <div key={i} className="text-sm font-mono">
-                      <span className="text-muted-foreground">{new Date(tick.timestamp).toLocaleTimeString()}</span>: {tick.value.toFixed(6)}
+              <div className="flex justify-end space-x-2">
+                <Button variant="outline" onClick={resetStats}>Reset Stats</Button>
+                <Button variant="outline" onClick={applySettings}>Apply Settings</Button>
+                <Button onClick={handleConnect}>Connect</Button>
+              </div>
+              
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+                <Card className="bg-muted/50">
+                  <CardContent className="p-4">
+                    <div className="text-xs text-muted-foreground">Connection Status</div>
+                    <div className="text-lg font-semibold flex items-center mt-1">
+                      {isConnected ? (
+                        <>
+                          <Wifi className="h-4 w-4 mr-1 text-green-500" />
+                          <span className="text-green-500">Online</span>
+                        </>
+                      ) : (
+                        <>
+                          <WifiOff className="h-4 w-4 mr-1 text-red-500" />
+                          <span className="text-red-500">Offline</span>
+                        </>
+                      )}
                     </div>
-                  ))}
-                  {ws.ticks.length === 0 && (
-                    <div className="text-sm text-muted-foreground">No tick data available</div>
-                  )}
-                </div>
+                  </CardContent>
+                </Card>
+                
+                <Card className="bg-muted/50">
+                  <CardContent className="p-4">
+                    <div className="text-xs text-muted-foreground">Connection Count</div>
+                    <div className="text-lg font-semibold mt-1">{connectionCount}</div>
+                  </CardContent>
+                </Card>
+                
+                <Card className="bg-muted/50">
+                  <CardContent className="p-4">
+                    <div className="text-xs text-muted-foreground">Error Count</div>
+                    <div className="text-lg font-semibold mt-1 text-red-500">{errorCount}</div>
+                  </CardContent>
+                </Card>
+                
+                <Card className="bg-muted/50">
+                  <CardContent className="p-4">
+                    <div className="text-xs text-muted-foreground">Ticks Received</div>
+                    <div className="text-lg font-semibold mt-1">{tickCount}</div>
+                  </CardContent>
+                </Card>
               </div>
+              
+              {error && (
+                <div className="bg-red-500/10 border border-red-500/20 text-red-500 p-4 rounded-md flex items-start gap-2">
+                  <AlertTriangle className="h-5 w-5 mt-0.5" />
+                  <div>
+                    <p className="font-medium">Connection Error</p>
+                    <p className="text-sm opacity-90">{error.message}</p>
+                  </div>
+                </div>
+              )}
             </CardContent>
-            <CardFooter className="flex gap-2">
-              <Button onClick={handleToggleConnection} className="flex-1">
-                {ws.isConnected ? 'Disconnect' : 'Connect'}
-              </Button>
-              <Button variant="outline" className="flex-1" onClick={() => ws.connect()}>
-                <RefreshCw className="mr-2 h-4 w-4" /> Reconnect
-              </Button>
-            </CardFooter>
           </Card>
         </TabsContent>
         
-        <TabsContent value="performance" className="space-y-4">
+        <TabsContent value="logs">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Connection Logs</CardTitle>
+                <CardDescription>Real-time logs of WebSocket activity</CardDescription>
+              </div>
+              <Button variant="outline" size="sm" onClick={clearLogs}>Clear</Button>
+            </CardHeader>
+            <CardContent>
+              <div className="h-96 overflow-auto border rounded-md p-4 bg-black text-green-400 font-mono text-sm">
+                {logs.length === 0 ? (
+                  <div className="text-muted-foreground text-center py-4">No logs yet</div>
+                ) : (
+                  logs.map((log, index) => (
+                    <div key={index} className="mb-1">
+                      {log.includes('[error]') ? (
+                        <span className="text-red-400">{log}</span>
+                      ) : log.includes('[message]') ? (
+                        <span className="text-blue-400">{log}</span>
+                      ) : (
+                        <span>{log}</span>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="data">
           <Card>
             <CardHeader>
-              <CardTitle>Performance Metrics</CardTitle>
-              <CardDescription>
-                Monitor system and network performance
-              </CardDescription>
+              <CardTitle>Market Data</CardTitle>
+              <CardDescription>Latest tick data received from WebSocket</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Memory Usage</span>
-                  <span>64MB</span>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex justify-between">
+                  <div>Latest tick received: {ticks.length > 0 ? 'Yes' : 'No'}</div>
+                  <div>Total ticks: {ticks.length}</div>
                 </div>
-                <Progress value={20} className="h-2" />
-              </div>
-              
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Network Latency</span>
-                  <span>53ms</span>
-                </div>
-                <Progress value={10} className="h-2" />
-              </div>
-              
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Tick Processing Rate</span>
-                  <span>{tickCount > 0 ? '1.2 ticks/s' : '0 ticks/s'}</span>
-                </div>
-                <Progress value={30} className="h-2" />
-              </div>
-              
-              <div className="rounded-md border p-3 mt-4">
-                <h4 className="text-sm font-medium mb-2">System Information</h4>
-                <div className="space-y-1 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Browser:</span>
-                    <span>{navigator.userAgent.split(' ').slice(-1)[0].split('/')[0]}</span>
+                
+                {latestTick && (
+                  <div className="space-y-2">
+                    <div className="font-medium">Latest Tick</div>
+                    <div className="bg-muted p-4 rounded-md">
+                      <div><span className="font-medium">Time:</span> {new Date(latestTick.timestamp).toLocaleTimeString()}</div>
+                      <div><span className="font-medium">Market:</span> {latestTick.market}</div>
+                      <div><span className="font-medium">Value:</span> {latestTick.value}</div>
+                    </div>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Screen:</span>
-                    <span>{window.innerWidth}x{window.innerHeight}</span>
+                )}
+                
+                <div>
+                  <div className="font-medium mb-2">Recent Ticks</div>
+                  <div className="h-64 overflow-auto border rounded-md">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="bg-muted/50">
+                          <th className="text-left p-2">Time</th>
+                          <th className="text-left p-2">Market</th>
+                          <th className="text-left p-2">Value</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {ticks.slice().reverse().map((tick, index) => (
+                          <tr key={index} className="border-t">
+                            <td className="p-2">{new Date(tick.timestamp).toLocaleTimeString()}</td>
+                            <td className="p-2">{tick.market}</td>
+                            <td className="p-2">{tick.value}</td>
+                          </tr>
+                        ))}
+                        {ticks.length === 0 && (
+                          <tr>
+                            <td colSpan={3} className="p-4 text-center text-muted-foreground">
+                              No tick data available
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
                   </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="admin">
+          <Card>
+            <CardHeader>
+              <CardTitle>Admin Tools</CardTitle>
+              <CardDescription>Advanced administrative functions</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                <div>
+                  <h3 className="font-medium mb-2">Debug Mode</h3>
+                  <div className="flex items-center space-x-2">
+                    <Switch id="debug-mode" />
+                    <Label htmlFor="debug-mode">Enable Debug Mode</Label>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Show detailed technical information in the application
+                  </p>
+                </div>
+                
+                <div>
+                  <h3 className="font-medium mb-2">Performance Monitoring</h3>
+                  <div className="flex items-center space-x-2">
+                    <Switch id="perf-monitor" defaultChecked />
+                    <Label htmlFor="perf-monitor">Monitor Performance</Label>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Track and log application performance metrics
+                  </p>
+                </div>
+                
+                <div>
+                  <h3 className="font-medium mb-2">WebSocket Options</h3>
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <Switch id="ws-compression" />
+                      <Label htmlFor="ws-compression">Enable WebSocket Compression</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Switch id="ping-pong" defaultChecked />
+                      <Label htmlFor="ping-pong">Enable Ping/Pong Messages</Label>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="pt-4 border-t">
+                  <Button variant="destructive">Reset All Application Data</Button>
                 </div>
               </div>
             </CardContent>

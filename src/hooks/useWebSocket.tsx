@@ -47,16 +47,21 @@ export function useWebSocket({
   const [latestTick, setLatestTick] = useState<TickData | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const [reconnectCount, setReconnectCount] = useState(0);
+  const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected');
   
   const socketRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoReconnectRef = useRef(autoReconnect);
   const connectionStableRef = useRef(true); // Track if connection is stable
   const lastMessageTimeRef = useRef<number>(0); // Track time of last received message
+  const maxAttemptsRef = useRef(maxReconnectAttempts);
+  const failSafeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const socketAttempts = useRef(0);
   
   useEffect(() => {
     autoReconnectRef.current = autoReconnect;
-  }, [autoReconnect]);
+    maxAttemptsRef.current = maxReconnectAttempts;
+  }, [autoReconnect, maxReconnectAttempts]);
 
   const storeTickInSupabase = useCallback(async (tickData: TickData) => {
     try {
@@ -97,8 +102,31 @@ export function useWebSocket({
   const connect = useCallback(() => {
     if (!wsUrl) {
       setError(new Error('WebSocket URL is required'));
+      setConnectionStatus('error');
       return;
     }
+    
+    // Set connection status to connecting
+    setConnectionStatus('connecting');
+    socketAttempts.current += 1;
+    
+    if (socketAttempts.current > 50) {
+      console.error('Too many connection attempts (50+). Stopping to prevent potential abuse.');
+      toast.error('Too many connection attempts. Connection stopped for safety.');
+      setConnectionStatus('error');
+      setError(new Error('Too many connection attempts. Connection stopped for safety.'));
+      return;
+    }
+    
+    // Set a failsafe timeout to prevent excessive connection attempts
+    if (failSafeTimeoutRef.current) {
+      clearTimeout(failSafeTimeoutRef.current);
+    }
+    
+    failSafeTimeoutRef.current = setTimeout(() => {
+      // Reset socket attempts count every 30 seconds to prevent lockout
+      socketAttempts.current = 0;
+    }, 30000);
     
     try {
       console.log(`Connecting to WebSocket: ${wsUrl}`);
@@ -113,6 +141,7 @@ export function useWebSocket({
       ws.onopen = () => {
         console.log('WebSocket connected');
         setIsConnected(true);
+        setConnectionStatus('connected');
         setError(null);
         setReconnectCount(0);
         connectionStableRef.current = true;
@@ -123,6 +152,9 @@ export function useWebSocket({
         }
         
         if (onOpen) onOpen();
+        
+        // Reset socket attempts when successfully connected
+        socketAttempts.current = 0;
       };
       
       ws.onmessage = (event) => {
@@ -182,6 +214,7 @@ export function useWebSocket({
       ws.onerror = (event) => {
         console.error('WebSocket error:', event);
         setError(new Error('WebSocket connection error'));
+        setConnectionStatus('error');
         connectionStableRef.current = false;
         if (onError) onError(event);
       };
@@ -189,12 +222,13 @@ export function useWebSocket({
       ws.onclose = (event) => {
         console.log('WebSocket closed:', event.code, event.reason);
         setIsConnected(false);
+        setConnectionStatus('disconnected');
         connectionStableRef.current = false;
         
         if (onClose) onClose();
         
-        if (autoReconnectRef.current && reconnectCount < maxReconnectAttempts) {
-          console.log(`Attempting to reconnect in ${reconnectInterval}ms (${reconnectCount + 1}/${maxReconnectAttempts})`);
+        if (autoReconnectRef.current && reconnectCount < maxAttemptsRef.current) {
+          console.log(`Attempting to reconnect in ${reconnectInterval}ms (${reconnectCount + 1}/${maxAttemptsRef.current})`);
           
           if (reconnectTimeoutRef.current) {
             clearTimeout(reconnectTimeoutRef.current);
@@ -204,10 +238,11 @@ export function useWebSocket({
             setReconnectCount(prev => prev + 1);
             connect();
           }, reconnectInterval);
-        } else if (reconnectCount >= maxReconnectAttempts) {
-          setError(new Error(`Failed to reconnect after ${maxReconnectAttempts} attempts`));
+        } else if (reconnectCount >= maxAttemptsRef.current) {
+          setError(new Error(`Failed to reconnect after ${maxAttemptsRef.current} attempts`));
+          setConnectionStatus('error');
           // Use a unique ID for the toast to prevent duplicates
-          toast.error(`Connection lost. Failed to reconnect after ${maxReconnectAttempts} attempts.`, {
+          toast.error(`Connection lost. Failed to reconnect after ${maxAttemptsRef.current} attempts.`, {
             id: 'reconnect-failure'
           });
         }
@@ -248,9 +283,10 @@ export function useWebSocket({
     } catch (err: any) {
       console.error('Error creating WebSocket:', err);
       setError(err);
+      setConnectionStatus('error');
       if (onError) onError(err);
     }
-  }, [wsUrl, subscription, reconnectCount, reconnectInterval, maxReconnectAttempts, onOpen, onMessage, onError, onClose, throttledStoreTick]);
+  }, [wsUrl, subscription, reconnectCount, reconnectInterval, onOpen, onMessage, onError, onClose, throttledStoreTick]);
   
   const disconnect = useCallback(() => {
     if (socketRef.current) {
@@ -265,10 +301,17 @@ export function useWebSocket({
       reconnectTimeoutRef.current = null;
     }
     
+    if (failSafeTimeoutRef.current) {
+      clearTimeout(failSafeTimeoutRef.current);
+      failSafeTimeoutRef.current = null;
+    }
+    
     socketRef.current = null;
     setIsConnected(false);
+    setConnectionStatus('disconnected');
     lastMessageTimeRef.current = 0;
     setReconnectCount(0);
+    socketAttempts.current = 0;
   }, []);
   
   const send = useCallback((message: object | string) => {
@@ -296,10 +339,12 @@ export function useWebSocket({
 
   return {
     isConnected,
+    connectionStatus,
     ticks,
     latestTick,
     error,
     reconnectCount,
+    socketAttempts: socketAttempts.current,
     connect,
     disconnect,
     send

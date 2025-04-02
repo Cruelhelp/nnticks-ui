@@ -11,13 +11,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
-import { Menu, Bell, TerminalSquare, Settings, LogOut, HelpCircle, BookOpen, UserCircle } from 'lucide-react';
+import { Menu, Bell, TerminalSquare, Settings, LogOut, HelpCircle, BookOpen, UserCircle, Wifi, WifiOff } from 'lucide-react';
 import SettingsDialog from '@/components/SettingsDialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
+import { useWebSocket } from '@/hooks/useWebSocket';
+import { useSettings } from '@/hooks/useSettings';
 
 interface TopBarProps {
   toggleSidebar: () => void;
@@ -30,21 +32,33 @@ const TopBar: React.FC<TopBarProps> = ({ toggleSidebar, toggleTerminal, onReset,
   const [settingsOpen, setSettingsOpen] = useState(false);
   const { user, userDetails, signOut } = useAuth();
   const navigate = useNavigate();
+  const { settings } = useSettings();
+  const { isConnected } = useWebSocket({
+    wsUrl: settings.wsUrl,
+    subscription: JSON.parse(settings.subscription),
+  });
 
   const handleSignOut = async () => {
     try {
       await signOut();
+      // Clear local storage
+      localStorage.removeItem('userSettings');
+      localStorage.removeItem('guestMode');
+      localStorage.removeItem('guestUsername');
+      
+      toast.success('Successfully logged out');
       navigate('/login');
     } catch (error) {
       console.error('Error signing out:', error);
+      toast.error('Failed to sign out');
     }
   };
   
   // Sample notifications
   const notifications = [
     {
-      title: 'Connection established',
-      description: 'WebSocket connection active',
+      title: isConnected ? 'Connection established' : 'Connection offline',
+      description: isConnected ? 'WebSocket connection active' : 'WebSocket connection inactive',
       timestamp: new Date().getTime() - 5 * 60 * 1000, // 5 minutes ago
       read: false
     },
@@ -79,49 +93,11 @@ const TopBar: React.FC<TopBarProps> = ({ toggleSidebar, toggleTerminal, onReset,
   };
 
   // User dropdown component
-  const UserDropdown = () => {
-    return (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="relative h-9 w-9 rounded-full">
-            <Avatar className="h-9 w-9">
-              <AvatarImage src={userDetails?.avatar_url || undefined} alt={username} />
-              <AvatarFallback className="bg-primary/10 text-primary">
-                {username.substring(0, 2).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-56">
-          <DropdownMenuLabel>
-            <div className="flex flex-col space-y-1">
-              <p className="text-sm font-medium leading-none">{username}</p>
-              <p className="text-xs leading-none text-muted-foreground">
-                {user?.email || 'Guest User'}
-              </p>
-            </div>
-          </DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => navigate('/account')}>
-            <UserCircle className="mr-2 h-4 w-4" />
-            <span>Account Settings</span>
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => navigate('/account')}> 
-            <Settings className="mr-2 h-4 w-4" />
-            <span>Preferences</span>
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => navigate('/account')}>
-            <UserCircle className="mr-2 h-4 w-4" />
-            <span>Upgrade to Pro</span>
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={handleSignOut}>
-            <LogOut className="mr-2 h-4 w-4" />
-            <span>Log out</span>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    );
+  const handleNavigateToAccount = () => {
+    navigate('/');
+    setTimeout(() => {
+      document.dispatchEvent(new CustomEvent('navigate-section', { detail: 'account' }));
+    }, 100);
   };
 
   return (
@@ -140,6 +116,18 @@ const TopBar: React.FC<TopBarProps> = ({ toggleSidebar, toggleTerminal, onReset,
         {userDetails?.proStatus && (
           <Badge className="font-semibold">PRO</Badge>
         )}
+        
+        <div className="ml-4 flex items-center">
+          {isConnected ? (
+            <span className="flex items-center text-xs text-green-500">
+              <Wifi className="h-3 w-3 mr-1" /> Online
+            </span>
+          ) : (
+            <span className="flex items-center text-xs text-red-500">
+              <WifiOff className="h-3 w-3 mr-1" /> Offline
+            </span>
+          )}
+        </div>
       </div>
       
       {/* Right side */}
@@ -147,7 +135,7 @@ const TopBar: React.FC<TopBarProps> = ({ toggleSidebar, toggleTerminal, onReset,
         <Button 
           variant="link"
           className="mr-4 flex items-center gap-1.5 hover:opacity-80 transition-opacity"
-          onClick={() => navigate('/account')}
+          onClick={handleNavigateToAccount}
         >
           <UserCircle className="h-4 w-4 text-muted-foreground" />
           <span className="text-sm font-medium">{username}</span>
@@ -206,7 +194,46 @@ const TopBar: React.FC<TopBarProps> = ({ toggleSidebar, toggleTerminal, onReset,
           <Settings className="h-5 w-5" />
         </Button>
         
-        <UserDropdown />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="relative h-9 w-9 rounded-full">
+              <Avatar className="h-9 w-9">
+                <AvatarImage src={userDetails?.avatar_url || undefined} alt={username} />
+                <AvatarFallback className="bg-primary/10 text-primary">
+                  {username.substring(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuLabel>
+              <div className="flex flex-col space-y-1">
+                <p className="text-sm font-medium leading-none">{username}</p>
+                <p className="text-xs leading-none text-muted-foreground">
+                  {user?.email || 'Guest User'}
+                </p>
+              </div>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={handleNavigateToAccount}>
+              <UserCircle className="mr-2 h-4 w-4" />
+              <span>Account Settings</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setSettingsOpen(true)}> 
+              <Settings className="mr-2 h-4 w-4" />
+              <span>Preferences</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleNavigateToAccount}>
+              <UserCircle className="mr-2 h-4 w-4" />
+              <span>Upgrade to Pro</span>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={handleSignOut}>
+              <LogOut className="mr-2 h-4 w-4" />
+              <span>Log out</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
       
       <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
