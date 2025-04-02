@@ -44,7 +44,7 @@ const SideBar = ({ activeSection, onSectionChange }: SideBarProps) => {
 
   return (
     <div 
-      className="h-full bg-sidebar border-r border-border flex flex-col"
+      className="h-full bg-black border-r border-border flex flex-col"
       style={{ width: `${settings.sidebarWidth || 200}px` }}
     >
       <div className="flex flex-col py-2 flex-1">
@@ -71,10 +71,6 @@ const SideBar = ({ activeSection, onSectionChange }: SideBarProps) => {
             </Button>
           );
         })}
-      </div>
-      
-      <div className="mt-auto p-2 border-t border-border text-center text-xs text-muted-foreground">
-        Copyright © 2025 Ruel McNeil
       </div>
     </div>
   );

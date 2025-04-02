@@ -17,6 +17,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { supabase } from '@/lib/supabase';
+import { toast } from 'sonner';
 
 interface TopBarProps {
   toggleSidebar: () => void;
@@ -105,9 +106,13 @@ const TopBar: React.FC<TopBarProps> = ({ toggleSidebar, toggleTerminal, onReset,
             <UserCircle className="mr-2 h-4 w-4" />
             <span>Account Settings</span>
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => window.open("https://docs.nnticks.com", "_blank")}>
+          <DropdownMenuItem onClick={() => navigate('/account')}> 
             <Settings className="mr-2 h-4 w-4" />
             <span>Preferences</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => navigate('/account')}>
+            <UserCircle className="mr-2 h-4 w-4" />
+            <span>Upgrade to Pro</span>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={handleSignOut}>
@@ -139,10 +144,14 @@ const TopBar: React.FC<TopBarProps> = ({ toggleSidebar, toggleTerminal, onReset,
       
       {/* Right side */}
       <div className="flex items-center gap-2">
-        <a href="/account" className="mr-4 flex items-center gap-1.5 hover:opacity-80 transition-opacity">
+        <Button 
+          variant="link"
+          className="mr-4 flex items-center gap-1.5 hover:opacity-80 transition-opacity"
+          onClick={() => navigate('/account')}
+        >
           <UserCircle className="h-4 w-4 text-muted-foreground" />
           <span className="text-sm font-medium">{username}</span>
-        </a>
+        </Button>
         
         <Button variant="ghost" size="icon" onClick={toggleTerminal}>
           <TerminalSquare className="h-5 w-5" />

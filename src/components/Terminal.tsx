@@ -2,15 +2,29 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
-import { X, Minus, Square, ChevronDown, ChevronUp } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { X, Minus, ChevronDown, ChevronUp, Shield, User, User2 } from 'lucide-react';
 import { useSettings } from '@/hooks/useSettings';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabase';
+import { toast } from 'sonner';
 
 interface TerminalProps {
   onClose: () => void;
   onMinimize: () => void;
   onMaximize: () => void;
+}
+
+interface AdminUser {
+  id: string;
+  email: string;
+  username: string;
+  created_at: string;
+  pro_status: boolean;
 }
 
 const Terminal: React.FC<TerminalProps> = ({ onClose, onMinimize, onMaximize }) => {
@@ -23,6 +37,11 @@ const Terminal: React.FC<TerminalProps> = ({ onClose, onMinimize, onMaximize }) 
   const [commandHistory, setCommandHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [adminPassword, setAdminPassword] = useState('');
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [selectedTab, setSelectedTab] = useState('users');
   const { settings } = useSettings();
   const { user, userDetails } = useAuth();
   
@@ -84,6 +103,7 @@ Available commands:
   predict [rise|fall]   - Make a prediction
   train                 - Train neural network
   version               - Show version info
+  admin                 - Access admin panel
   exit                  - Close terminal
 `;
       case 'clear':
@@ -101,6 +121,7 @@ System Status:
   CPU: 23% | Memory: 512MB | Uptime: ${Math.floor(Date.now() / 1000) % 86400}s
   Neural Network: Active | Predictions: ${Math.floor(Math.random() * 100)} | Accuracy: ${65 + Math.floor(Math.random() * 25)}%
   Connection: Binary.com (R_10) | Latency: ${10 + Math.floor(Math.random() * 20)}ms
+  WebSocket: Connected
 `;
       case 'whoami':
         return userDetails?.username
@@ -110,7 +131,7 @@ System Status:
         const symbol = args[1] || 'R_10';
         return `
 Market data for ${symbol.toUpperCase()}:
-  Current price: ${100 + (Math.random() * 10).toFixed(5)}
+  Current price: ${(6000 + Math.random() * 0.99).toFixed(2)}
   24h change: ${(Math.random() * 2 - 1).toFixed(2)}%
   Volatility: ${(Math.random() * 5 + 1).toFixed(2)}
   RSI: ${Math.floor(30 + Math.random() * 40)}
@@ -158,7 +179,12 @@ Market Connector: v1.1.2
 Prediction Engine: v3.0.1
 
 License: Pro${userDetails?.proStatus ? '' : ' (Trial)'}
+
+© 2025 Ruel McNeil. All rights reserved.
 `;
+      case 'admin':
+        setShowAdminPanel(true);
+        return 'Opening admin panel...';
       case 'exit':
         onClose();
         return 'Closing terminal...';
@@ -194,6 +220,68 @@ License: Pro${userDetails?.proStatus ? '' : ' (Trial)'}
   
   // Use custom terminal height from settings
   const terminalHeight = settings?.terminalHeight || 250;
+
+  // Admin panel authentication
+  const handleAdminLogin = () => {
+    if (adminPassword === 'Mastermind@123') {
+      setIsAuthenticated(true);
+      fetchUsers();
+      toast.success("Admin authenticated successfully");
+    } else {
+      toast.error("Invalid admin password");
+    }
+  };
+
+  // Fetch users for admin panel
+  const fetchUsers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('users_extra')
+        .select('*');
+
+      if (error) throw error;
+      
+      if (data) {
+        const formattedUsers = data.map((user: any) => ({
+          id: user.user_id,
+          email: user.email || 'No email',
+          username: user.username,
+          created_at: new Date(user.created_at).toLocaleDateString(),
+          pro_status: user.pro_status
+        }));
+        
+        setUsers(formattedUsers);
+      }
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      toast.error('Failed to fetch users');
+    }
+  };
+
+  // Set user to pro status
+  const setUserPro = async (userId: string) => {
+    try {
+      const { error } = await supabase
+        .from('users_extra')
+        .update({ pro_status: true })
+        .eq('user_id', userId);
+
+      if (error) throw error;
+      
+      // Update the users list
+      setUsers(users.map(user => {
+        if (user.id === userId) {
+          return { ...user, pro_status: true };
+        }
+        return user;
+      }));
+      
+      toast.success('User upgraded to Pro successfully');
+    } catch (error) {
+      console.error('Error upgrading user:', error);
+      toast.error('Failed to upgrade user');
+    }
+  };
   
   return (
     <div className="w-full" style={{ height: isCollapsed ? '40px' : `${terminalHeight}px` }}>
@@ -255,6 +343,137 @@ License: Pro${userDetails?.proStatus ? '' : ' (Trial)'}
           </div>
         )}
       </Card>
+
+      {/* Admin Panel Dialog */}
+      <Dialog open={showAdminPanel} onOpenChange={setShowAdminPanel}>
+        <DialogContent className="sm:max-w-[700px] bg-black border-gray-800">
+          <DialogHeader>
+            <DialogTitle className="flex items-center">
+              <Shield className="mr-2 h-5 w-5 text-primary" /> 
+              Admin Control Panel
+            </DialogTitle>
+            <DialogDescription>
+              Secure administrator interface for system management
+            </DialogDescription>
+          </DialogHeader>
+
+          {!isAuthenticated ? (
+            <div className="space-y-4 py-4">
+              <div>
+                <p className="text-sm mb-2">Please enter admin password to continue</p>
+                <div className="flex gap-2">
+                  <Input 
+                    type="password" 
+                    placeholder="Admin password" 
+                    value={adminPassword} 
+                    onChange={(e) => setAdminPassword(e.target.value)} 
+                    className="bg-gray-900"
+                  />
+                  <Button onClick={handleAdminLogin}>Login</Button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="py-2">
+              <Tabs value={selectedTab} onValueChange={setSelectedTab}>
+                <TabsList className="mb-4 bg-gray-900">
+                  <TabsTrigger value="users">Users</TabsTrigger>
+                  <TabsTrigger value="system">System</TabsTrigger>
+                  <TabsTrigger value="logs">Logs</TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="users" className="max-h-[400px] overflow-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Username</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Created</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {users.map((user) => (
+                        <TableRow key={user.id}>
+                          <TableCell>{user.username}</TableCell>
+                          <TableCell>{user.email}</TableCell>
+                          <TableCell>{user.created_at}</TableCell>
+                          <TableCell>
+                            {user.pro_status ? 
+                              <Badge className="bg-primary">PRO</Badge> : 
+                              <Badge variant="outline">Free</Badge>
+                            }
+                          </TableCell>
+                          <TableCell>
+                            {!user.pro_status && (
+                              <Button size="sm" onClick={() => setUserPro(user.id)}>
+                                Upgrade to Pro
+                              </Button>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TabsContent>
+                
+                <TabsContent value="system">
+                  <div className="space-y-4">
+                    <div>
+                      <h4 className="font-medium mb-2">System Status</h4>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="bg-gray-900 p-3 rounded-md">
+                          <p className="text-xs text-gray-400">CPU Usage</p>
+                          <p className="text-lg">24%</p>
+                        </div>
+                        <div className="bg-gray-900 p-3 rounded-md">
+                          <p className="text-xs text-gray-400">Memory</p>
+                          <p className="text-lg">512MB</p>
+                        </div>
+                        <div className="bg-gray-900 p-3 rounded-md">
+                          <p className="text-xs text-gray-400">WebSocket</p>
+                          <p className="text-lg">Connected</p>
+                        </div>
+                        <div className="bg-gray-900 p-3 rounded-md">
+                          <p className="text-xs text-gray-400">Model Status</p>
+                          <p className="text-lg">Active</p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <h4 className="font-medium mb-2">System Controls</h4>
+                      <div className="flex gap-2">
+                        <Button variant="outline">Restart Service</Button>
+                        <Button variant="outline">Clear Cache</Button>
+                        <Button variant="destructive">Emergency Stop</Button>
+                      </div>
+                    </div>
+                  </div>
+                </TabsContent>
+                
+                <TabsContent value="logs">
+                  <div className="bg-gray-900 p-3 rounded-md font-mono text-xs h-[300px] overflow-auto">
+                    <p>[2025-06-15 08:32:14] INFO: System started</p>
+                    <p>[2025-06-15 08:45:22] INFO: WebSocket connection established</p>
+                    <p>[2025-06-15 08:47:01] INFO: User login detected</p>
+                    <p>[2025-06-15 09:01:33] WARNING: High CPU usage detected</p>
+                    <p>[2025-06-15 09:10:44] INFO: Neural network training started</p>
+                    <p>[2025-06-15 09:15:37] INFO: Training completed with 93% accuracy</p>
+                    <p>[2025-06-15 09:22:16] INFO: Prediction made: RISE with 82% confidence</p>
+                    <p>[2025-06-15 09:35:29] INFO: Prediction result: SUCCESS</p>
+                    <p>[2025-06-15 09:45:12] INFO: Market data updated</p>
+                    <p>[2025-06-15 09:55:48] INFO: User logout detected</p>
+                    <p>[2025-06-15 10:05:21] INFO: System maintenance started</p>
+                    <p>[2025-06-15 10:10:57] INFO: Maintenance completed</p>
+                  </div>
+                </TabsContent>
+              </Tabs>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
