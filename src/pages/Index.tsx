@@ -18,6 +18,10 @@ import { useSettings } from '@/hooks/useSettings';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import { LogOut, Settings, User } from 'lucide-react';
 
 const Index = () => {
   const [showSplash, setShowSplash] = useState(true);
@@ -25,7 +29,7 @@ const Index = () => {
   const [showSidebar, setShowSidebar] = useState(true);
   const [showTerminal, setShowTerminal] = useState(false);
   const { settings } = useSettings();
-  const { user, userDetails, session } = useAuth();
+  const { user, userDetails, session, signOut } = useAuth();
   const navigate = useNavigate();
   const isMobile = useMediaQuery('(max-width: 768px)');
   
@@ -110,6 +114,15 @@ const Index = () => {
     if (settings?.font) {
       document.documentElement.style.fontFamily = settings.font;
     }
+    
+    // Set the background to black
+    document.body.style.backgroundColor = '#000000';
+    document.documentElement.style.backgroundColor = '#000000';
+    
+    // Update card and component colors
+    document.documentElement.style.setProperty('--background', '0 0% 0%');
+    document.documentElement.style.setProperty('--card', '0 0% 3%');
+    document.documentElement.style.setProperty('--muted', '0 0% 9%');
   }, [settings?.accent, settings?.font]);
   
   // Handle resize observation
@@ -160,6 +173,48 @@ const Index = () => {
   // Get username from user details or localStorage (for guest mode)
   const username = userDetails?.username || localStorage.getItem('guestUsername') || 'Guest';
   
+  // User dropdown component
+  const UserDropdown = () => {
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" className="relative h-9 w-9 rounded-full">
+            <Avatar className="h-9 w-9">
+              <AvatarImage src={userDetails?.avatar || undefined} alt={username} />
+              <AvatarFallback className="bg-primary/10 text-primary">
+                {username.substring(0, 2).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuLabel>
+            <div className="flex flex-col space-y-1">
+              <p className="text-sm font-medium leading-none">{username}</p>
+              <p className="text-xs leading-none text-muted-foreground">
+                {userDetails?.email || 'Guest User'}
+              </p>
+            </div>
+          </DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => setActiveSection('account')}>
+            <User className="mr-2 h-4 w-4" />
+            <span>Account Settings</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => window.open("https://docs.nnticks.com", "_blank")}>
+            <Settings className="mr-2 h-4 w-4" />
+            <span>Preferences</span>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={signOut}>
+            <LogOut className="mr-2 h-4 w-4" />
+            <span>Log out</span>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  };
+  
   return (
     <div className="h-screen flex flex-col overflow-hidden">
       <TopBar 
@@ -167,6 +222,7 @@ const Index = () => {
         toggleTerminal={toggleTerminal}
         onReset={resetLayout}
         username={username}
+        userDropdown={<UserDropdown />}
       />
       
       <div className="flex-1 flex overflow-hidden">

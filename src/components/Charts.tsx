@@ -1,3 +1,4 @@
+
 import { 
   LineChart, 
   Line, 
@@ -28,7 +29,7 @@ import { useWebSocket } from '@/hooks/useWebSocket';
 import { useSettings } from '@/hooks/useSettings';
 import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Maximize2, Download, ZoomIn, ZoomOut, RefreshCw } from 'lucide-react';
+import { Maximize2, Download, ZoomIn, ZoomOut, RefreshCw, Copyright } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface ChartProps {
@@ -39,6 +40,24 @@ interface ChartProps {
 const LineChartView: React.FC<ChartProps> = ({ data, height = 350 }) => {
   const { theme } = useTheme();
   
+  // Calculate a dynamic domain for Y axis to make small changes more visible
+  const calculateYAxisDomain = () => {
+    if (data.length === 0) return ['auto', 'auto'];
+    
+    const values = data.map(item => item.value);
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    
+    // If the range is very small, create a more dynamic range
+    if (max - min < 1) {
+      const middle = (max + min) / 2;
+      const padding = Math.max(0.5, (max - min) * 10); // At least 0.5 range or 10x the actual range
+      return [middle - padding, middle + padding];
+    }
+    
+    return [min - (max - min) * 0.1, max + (max - min) * 0.1];
+  };
+
   return (
     <ResponsiveContainer width="100%" height={height}>
       <LineChart data={data}>
@@ -49,9 +68,11 @@ const LineChartView: React.FC<ChartProps> = ({ data, height = 350 }) => {
           stroke={theme === 'dark' ? '#888' : '#333'} 
         />
         <YAxis 
-          domain={['auto', 'auto']} 
+          domain={calculateYAxisDomain()}
           tick={{ fontSize: 12 }}
           stroke={theme === 'dark' ? '#888' : '#333'} 
+          tickCount={8}
+          tickFormatter={(value) => value.toFixed(2)}
         />
         <Tooltip 
           contentStyle={{ 
@@ -59,7 +80,9 @@ const LineChartView: React.FC<ChartProps> = ({ data, height = 350 }) => {
             border: '1px solid #ccc',
             borderRadius: '4px',
             color: theme === 'dark' ? '#eee' : '#333'
-          }} 
+          }}
+          formatter={(value: any) => [value.toFixed(5), 'Price']}
+          labelFormatter={(label) => `Time: ${label}`}
         />
         <Legend />
         <ReferenceLine y={data[0]?.value} stroke="#ff7300" strokeDasharray="3 3" />
@@ -85,6 +108,23 @@ const LineChartView: React.FC<ChartProps> = ({ data, height = 350 }) => {
 const AreaChartView: React.FC<ChartProps> = ({ data, height = 350 }) => {
   const { theme } = useTheme();
   
+  // Calculate a dynamic domain for Y axis
+  const calculateYAxisDomain = () => {
+    if (data.length === 0) return ['auto', 'auto'];
+    
+    const values = data.map(item => item.value);
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    
+    if (max - min < 1) {
+      const middle = (max + min) / 2;
+      const padding = Math.max(0.5, (max - min) * 10);
+      return [middle - padding, middle + padding];
+    }
+    
+    return [min - (max - min) * 0.1, max + (max - min) * 0.1];
+  };
+  
   return (
     <ResponsiveContainer width="100%" height={height}>
       <AreaChart data={data}>
@@ -95,8 +135,11 @@ const AreaChartView: React.FC<ChartProps> = ({ data, height = 350 }) => {
           stroke={theme === 'dark' ? '#888' : '#333'} 
         />
         <YAxis 
+          domain={calculateYAxisDomain()}
           tick={{ fontSize: 12 }}
           stroke={theme === 'dark' ? '#888' : '#333'} 
+          tickCount={8}
+          tickFormatter={(value) => value.toFixed(2)}
         />
         <Tooltip 
           contentStyle={{ 
@@ -104,7 +147,9 @@ const AreaChartView: React.FC<ChartProps> = ({ data, height = 350 }) => {
             border: '1px solid #ccc',
             borderRadius: '4px',
             color: theme === 'dark' ? '#eee' : '#333'
-          }} 
+          }}
+          formatter={(value: any) => [value.toFixed(5), 'Price']}
+          labelFormatter={(label) => `Time: ${label}`}
         />
         <Legend />
         <defs>
@@ -129,6 +174,23 @@ const AreaChartView: React.FC<ChartProps> = ({ data, height = 350 }) => {
 const BarChartView: React.FC<ChartProps> = ({ data, height = 350 }) => {
   const { theme } = useTheme();
   
+  // Calculate a dynamic domain for Y axis
+  const calculateYAxisDomain = () => {
+    if (data.length === 0) return ['auto', 'auto'];
+    
+    const values = data.map(item => item.value);
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    
+    if (max - min < 1) {
+      const middle = (max + min) / 2;
+      const padding = Math.max(0.5, (max - min) * 10);
+      return [middle - padding, middle + padding];
+    }
+    
+    return [min - (max - min) * 0.1, max + (max - min) * 0.1];
+  };
+  
   return (
     <ResponsiveContainer width="100%" height={height}>
       <BarChart data={data}>
@@ -139,8 +201,11 @@ const BarChartView: React.FC<ChartProps> = ({ data, height = 350 }) => {
           stroke={theme === 'dark' ? '#888' : '#333'} 
         />
         <YAxis 
+          domain={calculateYAxisDomain()}
           tick={{ fontSize: 12 }}
           stroke={theme === 'dark' ? '#888' : '#333'} 
+          tickCount={8}
+          tickFormatter={(value) => value.toFixed(2)}
         />
         <Tooltip 
           contentStyle={{ 
@@ -148,7 +213,9 @@ const BarChartView: React.FC<ChartProps> = ({ data, height = 350 }) => {
             border: '1px solid #ccc',
             borderRadius: '4px',
             color: theme === 'dark' ? '#eee' : '#333'
-          }} 
+          }}
+          formatter={(value: any) => [value.toFixed(5), 'Price']}
+          labelFormatter={(label) => `Time: ${label}`}
         />
         <Legend />
         <Bar 
@@ -182,6 +249,23 @@ const CandlestickChart: React.FC<ChartProps> = ({ data, height = 350 }) => {
     );
   }
   
+  // Calculate a dynamic domain for Y axis
+  const calculateYAxisDomain = () => {
+    if (formattedData.length === 0) return ['auto', 'auto'];
+    
+    const allValues = formattedData.flatMap(item => [item.high, item.low, item.open, item.close]);
+    const min = Math.min(...allValues);
+    const max = Math.max(...allValues);
+    
+    if (max - min < 1) {
+      const middle = (max + min) / 2;
+      const padding = Math.max(0.5, (max - min) * 10);
+      return [middle - padding, middle + padding];
+    }
+    
+    return [min - (max - min) * 0.1, max + (max - min) * 0.1];
+  };
+  
   return (
     <ResponsiveContainer width="100%" height={height}>
       <LineChart data={formattedData}>
@@ -192,9 +276,11 @@ const CandlestickChart: React.FC<ChartProps> = ({ data, height = 350 }) => {
           stroke={theme === 'dark' ? '#888' : '#333'}
         />
         <YAxis 
-          domain={['auto', 'auto']}
+          domain={calculateYAxisDomain()}
           tick={{ fontSize: 12 }}
           stroke={theme === 'dark' ? '#888' : '#333'}
+          tickCount={8}
+          tickFormatter={(value) => value.toFixed(2)}
         />
         <Tooltip 
           contentStyle={{ 
@@ -203,7 +289,7 @@ const CandlestickChart: React.FC<ChartProps> = ({ data, height = 350 }) => {
             borderRadius: '4px',
             color: theme === 'dark' ? '#eee' : '#333'
           }}
-          formatter={(value: any, name: string) => [value, name]}
+          formatter={(value: any) => [value.toFixed(5), 'Price']}
           labelFormatter={(label) => `Time: ${label}`}
         />
         <Legend />
@@ -252,6 +338,37 @@ const ScatterPlotView: React.FC<ChartProps> = ({ data, height = 350 }) => {
     size: 20 // Constant size for all points
   }));
 
+  // Calculate dynamic domains for X and Y axes
+  const calculateXAxisDomain = () => {
+    if (processedData.length === 0) return ['auto', 'auto'];
+    
+    const values = processedData.map(item => item.value);
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    
+    if (max - min < 1) {
+      const middle = (max + min) / 2;
+      const padding = Math.max(0.5, (max - min) * 10);
+      return [middle - padding, middle + padding];
+    }
+    
+    return [min - (max - min) * 0.1, max + (max - min) * 0.1];
+  };
+  
+  const calculateYAxisDomain = () => {
+    if (processedData.length <= 1) return [-0.1, 0.1]; // Default range for insufficient data
+    
+    const values = processedData.map(item => item.change);
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    
+    if (max - min < 0.001) {
+      return [-0.01, 0.01]; // Force a minimum range
+    }
+    
+    return [min - Math.abs(min) * 0.5, max + Math.abs(max) * 0.5];
+  };
+
   return (
     <ResponsiveContainer width="100%" height={height}>
       <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
@@ -261,16 +378,22 @@ const ScatterPlotView: React.FC<ChartProps> = ({ data, height = 350 }) => {
           dataKey="value" 
           name="Value" 
           unit=""
+          domain={calculateXAxisDomain()}
           tick={{ fontSize: 12 }}
           stroke={theme === 'dark' ? '#888' : '#333'} 
+          tickCount={8}
+          tickFormatter={(value) => value.toFixed(2)}
         />
         <YAxis 
           type="number" 
           dataKey="change" 
           name="Change" 
           unit=""
+          domain={calculateYAxisDomain()}
           tick={{ fontSize: 12 }}
           stroke={theme === 'dark' ? '#888' : '#333'} 
+          tickCount={8}
+          tickFormatter={(value) => value.toFixed(5)}
         />
         <ZAxis type="number" dataKey="size" range={[20, 200]} name="Size" />
         <Tooltip 
@@ -281,7 +404,7 @@ const ScatterPlotView: React.FC<ChartProps> = ({ data, height = 350 }) => {
             borderRadius: '4px',
             color: theme === 'dark' ? '#eee' : '#333'
           }}
-          formatter={(value: any, name: string) => [value, name]}
+          formatter={(value: any) => [typeof value === 'number' ? value.toFixed(5) : value, 'Price']}
           labelFormatter={() => 'Data Point'}
         />
         <Legend />
@@ -337,18 +460,22 @@ const Charts: React.FC = () => {
     if (tickData.length === 0) {
       const generateRandomData = () => {
         const now = Date.now();
+        // Generate data with small variations to simulate real market data
+        let baseValue = 6000 + Math.random() * 10;
+        
         const newData = Array.from({ length: 30 }, (_, i) => {
-          const value = 100 + Math.random() * 10;
+          // Create small, realistic variations
+          baseValue += (Math.random() - 0.5) * 0.1;
           return {
             timestamp: new Date(now - (29-i) * 60000).toLocaleTimeString(),
-            value: value,
-            price: value,
+            value: parseFloat(baseValue.toFixed(5)),
+            price: parseFloat(baseValue.toFixed(5)),
             market: selectedMarket,
             // Adding mock candlestick data
-            open: value - Math.random() * 0.5,
-            close: value,
-            high: value + Math.random() * 0.3,
-            low: value - Math.random() * 0.7
+            open: parseFloat((baseValue - Math.random() * 0.05).toFixed(5)),
+            close: parseFloat(baseValue.toFixed(5)),
+            high: parseFloat((baseValue + Math.random() * 0.08).toFixed(5)),
+            low: parseFloat((baseValue - Math.random() * 0.1).toFixed(5))
           };
         });
         setTickData(newData);
@@ -467,7 +594,7 @@ const Charts: React.FC = () => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <CardTitle>Chart Controls</CardTitle>
-                  <Badge variant={ws.isConnected ? "default" : "destructive"}>
+                  <Badge variant={ws.isConnected ? "success" : "destructive"}>
                     {ws.isConnected ? "Connected" : "Disconnected"}
                   </Badge>
                 </div>
@@ -489,7 +616,7 @@ const Charts: React.FC = () => {
                   </Select>
                   
                   <Button variant="outline" size="sm" onClick={() => ws.connect()}>
-                    <RefreshCw className="h-4 w-4 mr-1" /> Reconnect
+                    <RefreshCw className="h-4 w-4 mr-1" /> {ws.isConnected ? "Reconnect" : "Connect"}
                   </Button>
                   
                   <Button variant="outline" size="sm" onClick={() => handleExportData('csv')}>
@@ -552,6 +679,13 @@ const Charts: React.FC = () => {
                 </div>
               )}
             </CardContent>
+            <CardFooter className="text-xs text-muted-foreground flex items-center justify-between pt-2 border-t">
+              <div className="flex items-center gap-1">
+                <Copyright className="h-3 w-3" /> 
+                <span>NNticks Enterprise Analytics 2025</span>
+              </div>
+              <div>All data exports include company logo and copyright information</div>
+            </CardFooter>
           </Card>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -584,6 +718,9 @@ const Charts: React.FC = () => {
                   <p className="text-sm text-muted-foreground mt-2">Waiting for data...</p>
                 )}
               </CardContent>
+              <CardFooter className="text-xs text-muted-foreground pt-2 border-t">
+                <Copyright className="h-3 w-3 mr-1" /> NNticks Analytics
+              </CardFooter>
             </Card>
 
             <Card>
@@ -607,10 +744,13 @@ const Charts: React.FC = () => {
                 {tickData.length > 0 && (
                   <p className="text-sm mt-2">
                     <span className="text-muted-foreground">Current Volume:</span>{' '}
-                    <span className="font-medium">{tickData[tickData.length - 1].value.toFixed(2)}</span>
+                    <span className="font-medium">{tickData[tickData.length - 1].value.toFixed(5)}</span>
                   </p>
                 )}
               </CardContent>
+              <CardFooter className="text-xs text-muted-foreground pt-2 border-t">
+                <Copyright className="h-3 w-3 mr-1" /> NNticks Enterprise
+              </CardFooter>
             </Card>
 
             <Card>
@@ -634,10 +774,13 @@ const Charts: React.FC = () => {
                 {tickData.length > 0 && (
                   <p className="text-sm mt-2">
                     <span className="text-muted-foreground">Volatility Score:</span>{' '}
-                    <span className="font-medium">{tickData[tickData.length - 1].value.toFixed(2)}</span>
+                    <span className="font-medium">{tickData[tickData.length - 1].value.toFixed(5)}</span>
                   </p>
                 )}
               </CardContent>
+              <CardFooter className="text-xs text-muted-foreground pt-2 border-t">
+                <Copyright className="h-3 w-3 mr-1" /> NNticks Volatility Analysis
+              </CardFooter>
             </Card>
           </div>
         </>

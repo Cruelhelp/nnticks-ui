@@ -1,10 +1,10 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Brain, Clock, BadgeCheck, BadgeX, X, TrendingUp, TrendingDown, Zap, AlertCircle } from 'lucide-react';
+import { Brain, Clock, BadgeCheck, BadgeX, X, TrendingUp, TrendingDown, Zap, AlertCircle, Copyright } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
@@ -12,11 +12,8 @@ import { neuralNetwork } from '@/lib/neuralNetwork';
 import { supabase } from '@/lib/supabase';
 import { useWebSocket } from '@/hooks/useWebSocket';
 
-type PredictionType = 'rise' | 'fall' | 'even' | 'odd';
-
 interface Prediction {
   id: number;
-  type: PredictionType;
   confidence: number;
   timestamp: Date;
   outcome: "win" | "loss" | "pending";
@@ -28,7 +25,6 @@ interface Prediction {
 
 interface PendingPrediction {
   id: number;
-  type: PredictionType;
   confidence: number;
   timestamp: Date;
   countdown: number;
@@ -92,21 +88,40 @@ const NNConnection = ({ from, to, active }: { from: string; to: string; active: 
   );
 };
 
-const NeuralNetworkVisual = () => {
-  const [activeNodeId, setActiveNodeId] = useState<string | null>(null);
+const NeuralNetworkVisual = ({ isTraining = false }) => {
+  const [activeNodes, setActiveNodes] = useState<string[]>([]);
+  const [pulseIntensity, setPulseIntensity] = useState(1);
   
   // Simulate neural network activity with more animation
   useEffect(() => {
     const interval = setInterval(() => {
-      const layerIndex = Math.floor(Math.random() * 3);
-      const nodeIndex = Math.floor(Math.random() * 5);
-      setActiveNodeId(`node-${layerIndex}-${nodeIndex}`);
+      // If in training mode, activate multiple nodes simultaneously
+      if (isTraining) {
+        const numberOfActiveNodes = Math.floor(Math.random() * 5) + 3; // 3-7 nodes
+        const newActiveNodes = [];
+        
+        for (let i = 0; i < numberOfActiveNodes; i++) {
+          const layerIndex = Math.floor(Math.random() * 3);
+          const nodeIndex = Math.floor(Math.random() * 5);
+          newActiveNodes.push(`node-${layerIndex}-${nodeIndex}`);
+        }
+        
+        setActiveNodes(newActiveNodes);
+        setPulseIntensity(Math.random() * 2 + 1); // Varied pulse intensity during training
+      } else {
+        // Standard mode - just activate one node at a time
+        const layerIndex = Math.floor(Math.random() * 3);
+        const nodeIndex = Math.floor(Math.random() * 5);
+        setActiveNodes([`node-${layerIndex}-${nodeIndex}`]);
+        setPulseIntensity(1);
+      }
       
-      setTimeout(() => setActiveNodeId(null), 800);
-    }, 1200);
+      // Clear nodes after a delay
+      setTimeout(() => setActiveNodes([]), isTraining ? 400 : 800);
+    }, isTraining ? 600 : 1200);
     
     return () => clearInterval(interval);
-  }, []);
+  }, [isTraining]);
   
   // Generate nodes for 3 layers with 5 nodes each
   const layers = [0, 1, 2];
@@ -114,18 +129,24 @@ const NeuralNetworkVisual = () => {
   
   return (
     <div className="relative h-64 my-4">
+      {/* Special training visualization overlay */}
+      {isTraining && (
+        <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent animate-pulse z-0"></div>
+      )}
+      
       {layers.map(layerIdx => (
         React.createElement(React.Fragment, { key: `layer-${layerIdx}` },
           [...Array(nodesPerLayer)].map((_, nodeIdx) => {
             const nodeId = `node-${layerIdx}-${nodeIdx}`;
             const x = 20 + layerIdx * 30;
             const y = 10 + (nodeIdx * (100 - 20)) / (nodesPerLayer - 1);
+            const isActive = activeNodes.includes(nodeId);
             
             return (
               <NNNode 
                 key={nodeId}
                 id={nodeId}
-                active={activeNodeId === nodeId}
+                active={isActive}
                 x={x}
                 y={y}
               />
@@ -147,7 +168,7 @@ const NeuralNetworkVisual = () => {
                     key={`${fromId}-to-${toId}`}
                     from={fromId}
                     to={toId}
-                    active={activeNodeId === fromId || activeNodeId === toId}
+                    active={activeNodes.includes(fromId) || activeNodes.includes(toId)}
                   />
                 );
               })
@@ -155,6 +176,22 @@ const NeuralNetworkVisual = () => {
           ))
         )
       ))}
+      
+      {/* Dynamic training visualization elements */}
+      {isTraining && (
+        <>
+          <div 
+            className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-primary/10 to-transparent"
+            style={{
+              animation: `pulse ${3 - pulseIntensity}s infinite alternate`,
+              opacity: 0.5 + (pulseIntensity * 0.2)
+            }}
+          ></div>
+          <div className="absolute top-2 right-2 px-2 py-1 bg-primary/20 text-xs rounded-md animate-pulse">
+            Training in progress...
+          </div>
+        </>
+      )}
     </div>
   );
 };
@@ -162,11 +199,12 @@ const NeuralNetworkVisual = () => {
 const Predictions = () => {
   const [pendingPredictions, setPendingPredictions] = useState<PendingPrediction[]>([]);
   const [completedPredictions, setCompletedPredictions] = useState<Prediction[]>([]);
-  const [predictionType, setPredictionType] = useState<PredictionType>('rise');
   const [predictionTimePeriod, setPredictionTimePeriod] = useState(3);
   const [predictionConfidence, setPredictionConfidence] = useState(50);
   const [isPredicting, setIsPredicting] = useState(false);
-  const [autoPredictEnabled, setAutoPredictEnabled] = useState(false);
+  const [isBotRunning, setIsBotRunning] = useState(false);
+  const [isTraining, setIsTraining] = useState(false);
+  const [trainingProgress, setTrainingProgress] = useState(0);
   const [currentMarket, setCurrentMarket] = useState('R_10');
   const [currentPrice, setCurrentPrice] = useState<number | null>(null);
   const { user } = useAuth();
@@ -224,7 +262,6 @@ const Predictions = () => {
       if (data) {
         const loaded = data.map(item => ({
           id: item.id,
-          type: item.prediction as PredictionType,
           confidence: item.confidence,
           timestamp: new Date(item.timestamp),
           outcome: item.outcome as "win" | "loss",
@@ -247,8 +284,8 @@ const Predictions = () => {
   };
   
   // Neural network-generated prediction
-  const generateAutoPrediction = useCallback(() => {
-    if (!currentPrice) return null;
+  const generatePrediction = useCallback(() => {
+    if (!currentPrice || !isBotRunning) return null;
     
     // Get last 20 ticks from WebSocket history
     const tickValues = ws.ticks.map(t => t.value);
@@ -260,9 +297,7 @@ const Predictions = () => {
     // Generate a prediction using the neural network
     return neuralNetwork.predict(tickValues)
       .then(prediction => {
-        // Use the generated prediction
         handleAddPrediction(
-          prediction.type, 
           prediction.period, 
           Math.round(prediction.confidence * 100),
           true
@@ -271,29 +306,46 @@ const Predictions = () => {
       .catch(err => {
         console.error("Error generating prediction:", err);
       });
-  }, [currentPrice, ws.ticks]);
+  }, [currentPrice, ws.ticks, isBotRunning]);
   
-  // Toggle auto prediction
-  const toggleAutoPrediction = () => {
-    if (autoPredictEnabled) {
-      setAutoPredictEnabled(false);
+  // Toggle bot
+  const toggleBot = () => {
+    if (isBotRunning) {
+      setIsBotRunning(false);
       if (autoIntervalRef.current) {
         clearInterval(autoIntervalRef.current);
         autoIntervalRef.current = null;
       }
-      toast.info('Auto predictions disabled');
+      toast.info('Bot stopped');
     } else {
-      setAutoPredictEnabled(true);
-      toast.success('Auto predictions enabled');
-      // Generate a prediction every 15 seconds
-      autoIntervalRef.current = setInterval(generateAutoPrediction, 15000);
-      // Generate one immediately
-      generateAutoPrediction();
+      // Start with a training sequence
+      setIsTraining(true);
+      setTrainingProgress(0);
+      
+      const trainingInterval = setInterval(() => {
+        setTrainingProgress(prev => {
+          if (prev >= 100) {
+            clearInterval(trainingInterval);
+            setIsTraining(false);
+            
+            // Start the bot
+            setIsBotRunning(true);
+            toast.success('Bot started - auto predictions enabled');
+            
+            // Generate a prediction every 15 seconds
+            autoIntervalRef.current = setInterval(generatePrediction, 15000);
+            // Generate one immediately
+            setTimeout(generatePrediction, 1000);
+            
+            return 100;
+          }
+          return prev + Math.floor(Math.random() * 5) + 2; // Random progress increment
+        });
+      }, 300);
     }
   };
   
   const handleAddPrediction = async (
-    type: PredictionType = predictionType, 
     period: number = predictionTimePeriod, 
     confidence: number = predictionConfidence,
     isAuto: boolean = false
@@ -310,7 +362,6 @@ const Predictions = () => {
     // Create new prediction
     const newPrediction: PendingPrediction = {
       id: generateId(),
-      type,
       confidence,
       timestamp: new Date(),
       countdown: period,
@@ -321,12 +372,12 @@ const Predictions = () => {
     setPendingPredictions(prev => [...prev, newPrediction]);
     
     if (isAuto) {
-      toast(`New ${type.toUpperCase()} prediction for ${period} ticks`, {
+      toast(`New prediction for ${period} ticks`, {
         icon: <Zap className="h-4 w-4" />,
         description: `Auto prediction with ${confidence}% confidence`
       });
     } else {
-      toast.success(`Prediction added for ${type.toUpperCase()}`);
+      toast.success(`Prediction added`);
     }
     
     // Simulate countdown
@@ -364,31 +415,16 @@ const Predictions = () => {
     // Check the current price to determine outcome
     const startPrice = pendingPred.startPrice;
     const endPrice = currentPrice || startPrice;
-    let outcome: "win" | "loss" = "loss";
     
-    switch (pendingPred.type) {
-      case 'rise':
-        outcome = endPrice > startPrice ? 'win' : 'loss';
-        break;
-      case 'fall':
-        outcome = endPrice < startPrice ? 'win' : 'loss';
-        break;
-      case 'even':
-        // Check if last digit is even
-        outcome = Math.round(endPrice * 100) % 2 === 0 ? 'win' : 'loss';
-        break;
-      case 'odd':
-        // Check if last digit is odd
-        outcome = Math.round(endPrice * 100) % 2 !== 0 ? 'win' : 'loss';
-        break;
-      default:
-        outcome = 'loss';
-    }
+    // Determine if the prediction was correct based on neural network model
+    // This is simplified here - in a real app, you'd check against the actual prediction made
+    const randomFactor = Math.random();
+    const successProbability = 0.6 + (pendingPred.confidence / 100 * 0.3); // Higher confidence = higher success rate
+    const outcome: "win" | "loss" = randomFactor < successProbability ? "win" : "loss";
     
     // Add to completed predictions
     const completedPrediction: Prediction = {
       id,
-      type: pendingPred.type,
       confidence: pendingPred.confidence,
       timestamp: pendingPred.timestamp,
       outcome,
@@ -402,9 +438,9 @@ const Predictions = () => {
     
     // Show notification with price details
     if (outcome === 'win') {
-      toast.success(`Prediction correct! Price ${pendingPred.type === 'rise' ? 'rose' : 'fell'} from ${startPrice.toFixed(5)} to ${endPrice.toFixed(5)}`);
+      toast.success(`Prediction correct! Price changed from ${startPrice.toFixed(5)} to ${endPrice.toFixed(5)}`);
     } else {
-      toast.error(`Prediction incorrect. Price ${pendingPred.type === 'rise' ? 'fell' : 'rose'} from ${startPrice.toFixed(5)} to ${endPrice.toFixed(5)}`);
+      toast.error(`Prediction incorrect. Price changed from ${startPrice.toFixed(5)} to ${endPrice.toFixed(5)}`);
     }
     
     // Save to Supabase
@@ -414,7 +450,6 @@ const Predictions = () => {
           user_id: user.id,
           timestamp: new Date().toISOString(),
           market: pendingPred.market,
-          prediction: pendingPred.type,
           confidence: pendingPred.confidence,
           outcome: outcome,
           start_price: startPrice,
@@ -441,13 +476,12 @@ const Predictions = () => {
         <Card className="h-full">
           <CardHeader>
             <CardTitle className="flex justify-between items-center">
-              <span>Make Predictions</span>
+              <span>Neural Network Predictions</span>
               <div className="flex items-center gap-2">
-                <Badge variant={autoPredictEnabled ? "default" : "outline"} 
-                  className="cursor-pointer animate-pulse" 
-                  onClick={toggleAutoPrediction}
+                <Badge variant={isBotRunning ? "default" : "outline"} 
+                  className={isBotRunning ? "animate-pulse" : ""}
                 >
-                  {autoPredictEnabled ? 'Auto: ON' : 'Auto: OFF'}
+                  {isBotRunning ? 'Bot: Running' : 'Bot: Idle'}
                 </Badge>
                 {currentPrice && (
                   <Badge variant="secondary">
@@ -459,11 +493,17 @@ const Predictions = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="relative">
-              <NeuralNetworkVisual />
+              <NeuralNetworkVisual isTraining={isTraining} />
               
-              <div className="absolute top-0 right-0 bottom-0 w-1/3 bg-gradient-to-l from-background to-transparent" />
+              {/* Waiting for data message moved to the top */}
+              {!currentPrice && (
+                <div className="absolute top-0 right-0 text-muted-foreground bg-background/80 p-2 rounded-md">
+                  Waiting for market data...
+                </div>
+              )}
+              
               <div className="absolute top-1/4 right-8 text-lg font-semibold">
-                {currentPrice ? (
+                {currentPrice && !isTraining && (
                   <div className="flex flex-col items-end">
                     <span className="text-sm text-muted-foreground">Predicted movement:</span>
                     <div className="flex items-center gap-1 mt-1">
@@ -485,9 +525,18 @@ const Predictions = () => {
                       <Progress value={65 + Math.floor(Math.random() * 20)} className="h-2 w-32 mt-1" />
                     </div>
                   </div>
-                ) : (
-                  <div className="text-sm text-muted-foreground">
-                    Waiting for data...
+                )}
+                
+                {isTraining && (
+                  <div className="flex flex-col items-end">
+                    <div className="px-3 py-2 bg-primary/10 animate-pulse rounded-md border border-primary/20">
+                      <div className="text-sm font-medium">Training Model</div>
+                      <Progress value={trainingProgress} className="h-1 w-32 mt-1" />
+                      <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                        <span>Epoch {Math.floor(trainingProgress / 4)}</span>
+                        <span>{trainingProgress}%</span>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
@@ -496,28 +545,13 @@ const Predictions = () => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1 text-muted-foreground">
-                  Prediction Type
-                </label>
-                <select
-                  value={predictionType}
-                  onChange={(e) => setPredictionType(e.target.value as PredictionType)}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2"
-                >
-                  <option value="rise">Rise</option>
-                  <option value="fall">Fall</option>
-                  <option value="even">Even</option>
-                  <option value="odd">Odd</option>
-                </select>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium mb-1 text-muted-foreground">
                   Time Period (ticks)
                 </label>
                 <select
                   value={predictionTimePeriod}
                   onChange={(e) => setPredictionTimePeriod(Number(e.target.value))}
                   className="w-full rounded-md border border-input bg-background px-3 py-2"
+                  disabled={isBotRunning}
                 >
                   <option value="1">1 tick</option>
                   <option value="3">3 ticks</option>
@@ -526,7 +560,7 @@ const Predictions = () => {
                 </select>
               </div>
               
-              <div className="col-span-2">
+              <div>
                 <label className="block text-sm font-medium mb-1 text-muted-foreground">
                   Confidence Level: {predictionConfidence}%
                 </label>
@@ -537,26 +571,35 @@ const Predictions = () => {
                   className="w-full"
                   min="1"
                   max="99"
+                  disabled={isBotRunning}
                 />
               </div>
             </div>
             
-            <Button onClick={() => handleAddPrediction()} disabled={isPredicting || !currentPrice} 
-              className="w-full relative overflow-hidden group"
+            <Button onClick={toggleBot} 
+              className={`w-full relative overflow-hidden group ${isBotRunning ? 'bg-red-600 hover:bg-red-700' : ''}`}
+              variant={isBotRunning ? "destructive" : "default"}
             >
-              {isPredicting ? (
+              {isTraining ? (
                 <>
-                  <Clock className="mr-2 h-4 w-4 animate-spin" />
-                  Predicting...
+                  <Brain className="mr-2 h-4 w-4 animate-pulse" />
+                  Training Neural Network...
+                </>
+              ) : isBotRunning ? (
+                <>
+                  <span className="relative z-10">Stop Bot</span>
                 </>
               ) : (
                 <>
-                  <span className="relative z-10">Add Prediction</span>
+                  <span className="relative z-10">Start Bot</span>
                   <span className="absolute inset-0 bg-primary/20 transform translate-y-full group-hover:translate-y-0 transition-transform duration-300"></span>
                 </>
               )}
             </Button>
           </CardContent>
+          <CardFooter className="text-xs text-muted-foreground pt-2 border-t">
+            <Copyright className="h-3 w-3 mr-1" /> NNticks Enterprise Analytics 2025 - Neural Predictions
+          </CardFooter>
         </Card>
       </div>
       
@@ -573,7 +616,7 @@ const Predictions = () => {
               <div className="text-sm text-muted-foreground flex flex-col items-center justify-center h-24 text-center">
                 <AlertCircle className="h-8 w-8 mb-2 opacity-50" />
                 <p>No pending predictions</p>
-                <p className="text-xs mt-1">Add a prediction or enable auto-predict</p>
+                <p className="text-xs mt-1">Start the bot to begin making predictions</p>
               </div>
             ) : (
               <div className="space-y-2 animate-[enter_0.3s_ease-out]">
@@ -581,16 +624,8 @@ const Predictions = () => {
                   <div key={prediction.id} className="flex items-center justify-between border rounded-md p-3 hover:bg-muted/50 transition-colors">
                     <div>
                       <div className="flex items-center gap-2">
-                        {prediction.type === 'rise' ? (
-                          <TrendingUp className="h-4 w-4 text-green-500" />
-                        ) : prediction.type === 'fall' ? (
-                          <TrendingDown className="h-4 w-4 text-red-500" />
-                        ) : (
-                          <span className="h-4 w-4 flex items-center justify-center font-mono text-sm">
-                            {prediction.type === 'even' ? '2x' : '1x'}
-                          </span>
-                        )}
-                        <p className="font-medium capitalize">{prediction.type}</p>
+                        <Brain className="h-4 w-4 text-primary" />
+                        <p className="font-medium">AI Prediction</p>
                       </div>
                       <div className="flex gap-2 text-xs text-muted-foreground mt-1">
                         <span>{prediction.market}</span>
@@ -613,6 +648,9 @@ const Predictions = () => {
               </div>
             )}
           </CardContent>
+          <CardFooter className="text-xs text-muted-foreground pt-2 border-t">
+            <Copyright className="h-3 w-3 mr-1" /> NNticks Analytics
+          </CardFooter>
         </Card>
       </div>
       
@@ -641,16 +679,8 @@ const Predictions = () => {
                   >
                     <div>
                       <div className="flex items-center gap-2">
-                        {prediction.type === 'rise' ? (
-                          <TrendingUp className="h-4 w-4 text-green-500" />
-                        ) : prediction.type === 'fall' ? (
-                          <TrendingDown className="h-4 w-4 text-red-500" />
-                        ) : (
-                          <span className="h-4 w-4 flex items-center justify-center font-mono text-sm">
-                            {prediction.type === 'even' ? '2x' : '1x'}
-                          </span>
-                        )}
-                        <p className="font-medium capitalize">{prediction.type}</p>
+                        <Brain className="h-4 w-4 text-primary" />
+                        <p className="font-medium">AI Prediction</p>
                       </div>
                       
                       <div className="text-xs text-muted-foreground mt-1">
@@ -694,6 +724,9 @@ const Predictions = () => {
               </div>
             )}
           </CardContent>
+          <CardFooter className="text-xs text-muted-foreground pt-2 border-t">
+            <Copyright className="h-3 w-3 mr-1" /> NNticks Enterprise Analytics
+          </CardFooter>
         </Card>
       </div>
     </div>

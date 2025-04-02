@@ -1,13 +1,13 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
-import { Brain, Trophy, Check, Lock, Zap, BarChart, Star, Activity } from 'lucide-react';
+import { Brain, Trophy, Check, Lock, Zap, BarChart, Star, Activity, Copyright } from 'lucide-react';
 
 interface Mission {
   id: number;
@@ -18,6 +18,7 @@ interface Mission {
   locked: boolean;
   requiredLevel?: number;
   proBadge?: boolean;
+  epochs?: number;
 }
 
 const Training = () => {
@@ -27,92 +28,102 @@ const Training = () => {
   const [missions, setMissions] = useState<Mission[]>([
     {
       id: 1,
-      title: "First Steps",
-      description: "Connect to a broker and analyze 100 ticks",
+      title: "Initial Training",
+      description: "Train the neural network for 1,000 epochs",
       points: 10,
       completed: false,
-      locked: false
+      locked: false,
+      epochs: 1000
     },
     {
       id: 2,
-      title: "Pattern Recognition",
-      description: "Identify 3 basic market patterns in a tick stream",
+      title: "Feature Learning",
+      description: "Train the model to identify market patterns (5,000 epochs)",
       points: 15,
       completed: false,
-      locked: false
+      locked: false,
+      epochs: 5000
     },
     {
       id: 3,
-      title: "Prediction Novice",
-      description: "Make 10 predictions with at least 50% accuracy",
+      title: "Deep Learning",
+      description: "Complete 10,000 training epochs with 65% accuracy",
       points: 20,
       completed: false,
-      locked: false
+      locked: false,
+      epochs: 10000
     },
     {
       id: 4,
-      title: "Dataset Builder",
-      description: "Upload a historical dataset with at least 1,000 ticks",
+      title: "Hyperparameter Tuning",
+      description: "Optimize learning rate and batch size over 20,000 epochs",
       points: 25,
       completed: false,
-      locked: false
+      locked: false,
+      epochs: 20000
     },
     {
       id: 5,
-      title: "RSI Master",
-      description: "Successfully use RSI to predict 5 market movements",
+      title: "Advanced Pattern Recognition",
+      description: "Train custom feature extractors for 30,000 epochs",
       points: 30,
       completed: false,
-      locked: false
+      locked: false,
+      epochs: 30000
     },
     // Pro missions
     {
       id: 6,
-      title: "Advanced Indicators",
-      description: "Use Bollinger Bands to achieve 65% prediction accuracy over 20 trades",
+      title: "Transfer Learning",
+      description: "Apply pre-trained models and fine-tune for 50,000 epochs",
       points: 40,
       completed: false,
       locked: !isPro,
-      proBadge: true
+      proBadge: true,
+      epochs: 50000
     },
     {
       id: 7,
-      title: "Neural Expert",
-      description: "Customize NN parameters to achieve 70% prediction accuracy",
+      title: "Gradient Mastery",
+      description: "Implement advanced gradient techniques for 75,000 epochs",
       points: 50,
       completed: false,
       locked: !isPro,
-      proBadge: true
+      proBadge: true,
+      epochs: 75000
     },
     {
       id: 8,
-      title: "Trading Marathon",
-      description: "Complete 50 consecutive predictions with no breaks",
+      title: "Model Ensembling",
+      description: "Train multiple models simultaneously for 100,000 epochs",
       points: 60,
       completed: false,
       locked: !isPro,
       requiredLevel: 2,
-      proBadge: true
+      proBadge: true,
+      epochs: 100000
     },
     {
       id: 9,
-      title: "Market Guru",
-      description: "Achieve 80% accuracy over 100 trades",
+      title: "Reinforcement Learning",
+      description: "Train agent with 200,000 epochs for 80% prediction accuracy",
       points: 75,
       completed: false,
       locked: !isPro,
       requiredLevel: 3,
-      proBadge: true
+      proBadge: true,
+      epochs: 200000
     },
     {
       id: 10,
-      title: "NNticks Master",
-      description: "Create a custom model with 85% accuracy and share it",
+      title: "NNticks Grandmaster",
+      description: "Complete 500,000 training epochs with 85% market prediction accuracy",
       points: 100,
       completed: false,
       locked: !isPro,
       requiredLevel: 4,
-      proBadge: true
+      proBadge: true,
+      epochs: 500000
     }
   ]);
   
@@ -123,6 +134,7 @@ const Training = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [activeNodes, setActiveNodes] = useState<string[]>([]);
   const [animationIntensity, setAnimationIntensity] = useState(1);
+  const [trainingEpochs, setTrainingEpochs] = useState(0);
   
   // Define level thresholds
   const levelThresholds = [
@@ -153,6 +165,10 @@ const Training = () => {
         // Calculate total points
         const points = data.reduce((sum, item) => sum + item.points, 0);
         setTotalPoints(points);
+        
+        // Calculate total epochs
+        const epochs = data.reduce((sum, item) => sum + (item.epochs || 0), 0);
+        setTrainingEpochs(epochs);
         
         // Update missions completed status
         const completedMissions = new Set(data.map(item => item.mission));
@@ -230,11 +246,12 @@ const Training = () => {
     const prevIntensity = animationIntensity;
     setAnimationIntensity(Math.min(prevIntensity + 2, 5));
     
-    // Simulate mission progress with more dynamic animation
+    // Simulate epoch progress
+    const totalEpochs = mission.epochs || 10000;
     const interval = setInterval(() => {
       setMissionProgress(prev => {
         // Make progress more unpredictable
-        const increment = Math.floor(Math.random() * 8) + 1;
+        const increment = Math.floor(Math.random() * 4) + 1;
         
         if (prev + increment >= 100) {
           clearInterval(interval);
@@ -246,7 +263,7 @@ const Training = () => {
         }
         return prev + increment;
       });
-    }, 400);
+    }, 200);
   };
   
   const completeMission = async (mission: Mission) => {
@@ -261,6 +278,10 @@ const Training = () => {
       // Calculate new total points
       const newTotalPoints = totalPoints + mission.points;
       setTotalPoints(newTotalPoints);
+      
+      // Add epochs to total
+      const newEpochs = trainingEpochs + (mission.epochs || 0);
+      setTrainingEpochs(newEpochs);
       
       // Determine level based on new points
       const currentLevelData = levelThresholds.find(
@@ -291,6 +312,7 @@ const Training = () => {
             mission: mission.title,
             date: new Date().toISOString(),
             points: mission.points,
+            epochs: mission.epochs || 0,
             accuracy: 70 + Math.floor(Math.random() * 15) // Simulated accuracy between 70-85%
           });
           
@@ -305,13 +327,14 @@ const Training = () => {
             user_id: user.id,
             username: userDetails?.username || 'Anonymous',
             accuracy: 75 + Math.floor(Math.random() * 10),
-            level: newLevelValue
+            level: newLevelValue,
+            epochs: newEpochs
           });
           
         if (error) throw error;
       }
       
-      toast.success(`Mission completed! Earned ${mission.points} points.`, {
+      toast.success(`Mission completed! Trained for ${mission.epochs?.toLocaleString()} epochs.`, {
         icon: <Trophy className="h-5 w-5 text-yellow-500" />,
       });
     } catch (error) {
@@ -345,10 +368,10 @@ const Training = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Trophy className="h-5 w-5 text-yellow-500" /> 
-              Training Missions
+              Neural Network Training Missions
             </CardTitle>
             <CardDescription>
-              Complete missions to improve your neural network and earn points
+              Complete training missions to improve your model accuracy and prediction abilities
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -397,11 +420,13 @@ const Training = () => {
                   <div className="mt-6 space-y-2">
                     <div className="flex items-center gap-2">
                       <Activity className="h-4 w-4 text-primary" />
-                      <span className="text-sm">Neural network optimization in progress...</span>
+                      <span className="text-sm">Training neural network...</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Brain className="h-4 w-4 text-primary" />
-                      <span className="text-sm">Training weights and biases</span>
+                      <span className="text-sm">
+                        Completed {Math.floor(missionProgress / 100 * (activeMission.epochs || 10000)).toLocaleString()} epochs
+                      </span>
                     </div>
                     <div className="flex items-center gap-2">
                       <BarChart className="h-4 w-4 text-primary" />
@@ -451,21 +476,26 @@ const Training = () => {
                           <Trophy className="h-4 w-4 text-yellow-500 mr-1" />
                           <span className="text-sm font-medium">{mission.points} points</span>
                         </div>
+                        <div className="text-xs text-muted-foreground">
+                          {mission.epochs?.toLocaleString()} epochs
+                        </div>
+                      </div>
+                      <div className="mt-3">
                         <Button 
                           size="sm" 
                           onClick={() => startMission(mission)}
                           disabled={mission.locked || isProcessing}
-                          className={`${!mission.locked && !mission.completed ? 'relative overflow-hidden group' : ''}`}
+                          className={`w-full ${!mission.locked && !mission.completed ? 'relative overflow-hidden group' : ''}`}
                         >
                           {mission.locked ? (
                             <>
                               <Lock className="h-4 w-4 mr-1" /> Locked
                             </>
                           ) : mission.completed ? (
-                            'Replay'
+                            'Retrain'
                           ) : (
                             <>
-                              <span className="relative z-10">Start</span>
+                              <span className="relative z-10">Start Training</span>
                               <span className="absolute inset-0 bg-primary/20 transform translate-y-full group-hover:translate-y-0 transition-transform duration-300"></span>
                             </>
                           )}
@@ -477,6 +507,9 @@ const Training = () => {
               </div>
             )}
           </CardContent>
+          <CardFooter className="text-xs text-muted-foreground border-t pt-2">
+            <Copyright className="h-3 w-3 mr-1" /> NNticks Enterprise Analytics 2025
+          </CardFooter>
         </Card>
       </div>
       
@@ -484,7 +517,7 @@ const Training = () => {
         <CardHeader>
           <CardTitle>Neural Network Training</CardTitle>
           <CardDescription>
-            Your bot's current training status
+            Your model's current training status
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -606,8 +639,8 @@ const Training = () => {
               {/* Training stats */}
               <div className="mt-4 pt-4 border-t grid grid-cols-3 gap-2 text-center text-xs">
                 <div>
-                  <div className="text-muted-foreground mb-1">Iterations</div>
-                  <div className="font-mono">{(10000 + level * 5000).toLocaleString()}</div>
+                  <div className="text-muted-foreground mb-1">Total Epochs</div>
+                  <div className="font-mono">{trainingEpochs.toLocaleString()}</div>
                 </div>
                 <div>
                   <div className="text-muted-foreground mb-1">Accuracy</div>
@@ -642,6 +675,9 @@ const Training = () => {
             )}
           </div>
         </CardContent>
+        <CardFooter className="text-xs text-muted-foreground border-t pt-2">
+          <Copyright className="h-3 w-3 mr-1" /> NNticks Enterprise Analytics 2025
+        </CardFooter>
       </Card>
     </div>
   );
