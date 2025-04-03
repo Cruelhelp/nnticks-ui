@@ -1,5 +1,4 @@
-
-import { EventEmitter } from 'events';
+import { BrowserEventEmitter } from '@/lib/BrowserEventEmitter';
 import { TickData, brokerWebSockets } from '@/types/chartTypes';
 
 interface BrokerWebSocket {
@@ -7,7 +6,7 @@ interface BrokerWebSocket {
   subscription: { ticks: string };
 }
 
-export class WebSocketService extends EventEmitter {
+export class WebSocketService extends BrowserEventEmitter {
   private socket: WebSocket | null = null;
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
@@ -234,4 +233,3 @@ export class WebSocketService extends EventEmitter {
 
 export const webSocketService = new WebSocketService();
 export { brokerWebSockets };
-
