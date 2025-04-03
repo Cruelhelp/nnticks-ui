@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import { AuthProvider } from "./contexts/AuthContext";
+import { SettingsProvider } from "./hooks/useSettings";
 import { ThemeProvider } from "./components/ui/theme-provider";
 import { useEffect, memo } from "react";
 import AdminPanel from "./components/AdminPanel";
@@ -71,22 +72,24 @@ const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <ThemeProvider defaultTheme="dark" attribute="class">
-          <TooltipProvider>
-            <BrowserRouter>
-              <div className="h-full min-h-screen flex flex-col bg-background text-foreground overflow-hidden font-mono">
-                <Toaster />
-                <Sonner />
-                <Routes>
-                  <Route path="/" element={<Index />} />
-                  <Route path="/login" element={<Login />} />
-                  <Route path="/admin" element={<MemoizedAdminPanel />} />
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </div>
-            </BrowserRouter>
-          </TooltipProvider>
-        </ThemeProvider>
+        <SettingsProvider>
+          <ThemeProvider defaultTheme="dark" attribute="class">
+            <TooltipProvider>
+              <BrowserRouter>
+                <div className="h-full min-h-screen flex flex-col bg-background text-foreground overflow-hidden font-mono">
+                  <Toaster />
+                  <Sonner />
+                  <Routes>
+                    <Route path="/" element={<Index />} />
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/admin" element={<MemoizedAdminPanel />} />
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </div>
+              </BrowserRouter>
+            </TooltipProvider>
+          </ThemeProvider>
+        </SettingsProvider>
       </AuthProvider>
     </QueryClientProvider>
   );

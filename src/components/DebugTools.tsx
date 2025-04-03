@@ -30,7 +30,7 @@ const DebugTools: React.FC = () => {
     
     // Update subscription
     try {
-      if (settings.subscription) {
+      if (settings?.subscription) {
         const parsedSubscription = JSON.parse(settings.subscription);
         webSocketService.updateConfig({ subscription: parsedSubscription });
       }
@@ -50,7 +50,9 @@ const DebugTools: React.FC = () => {
   };
   
   const handleSubscriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    updateSettings({ ...settings, subscription: e.target.value });
+    if (settings) {
+      updateSettings({ ...settings, subscription: e.target.value });
+    }
   };
   
   const handleResetSettings = () => {
@@ -62,7 +64,9 @@ const DebugTools: React.FC = () => {
     });
     
     setWsUrl(webSocketService.config.url);
-    updateSettings({ ...settings, subscription: JSON.stringify({ ticks: 'R_10' }, null, 2) });
+    if (settings) {
+      updateSettings({ ...settings, subscription: JSON.stringify({ ticks: 'R_10' }, null, 2) });
+    }
     
     toast({
       title: "Settings Reset",

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TopBar from '@/components/TopBar';
@@ -31,7 +30,6 @@ const Index = () => {
   const navigate = useNavigate();
   const isMobile = useMediaQuery('(max-width: 768px)');
   
-  // Show splash screen
   useEffect(() => {
     const timer = setTimeout(() => {
       setShowSplash(false);
@@ -40,24 +38,19 @@ const Index = () => {
     return () => clearTimeout(timer);
   }, []);
   
-  // Check authentication
   useEffect(() => {
-    // If not logged in and not in guest mode, redirect to login
     const isGuest = localStorage.getItem('guestMode') === 'true';
     if (!user && !userDetails && !session && !isGuest) {
       navigate('/login');
     }
   }, [user, userDetails, session, navigate]);
   
-  // Track user session on component mount
   useEffect(() => {
     if (user) {
-      // Update last login time
       updateUserLoginTime();
     }
   }, [user]);
   
-  // Listen for navigation events from TopBar
   useEffect(() => {
     const handleNavigateEvent = (event: CustomEvent) => {
       setActiveSection(event.detail);
@@ -70,7 +63,6 @@ const Index = () => {
     };
   }, []);
   
-  // Adjust sidebar and terminal visibility on mobile
   useEffect(() => {
     if (isMobile) {
       setShowSidebar(false);
@@ -112,7 +104,6 @@ const Index = () => {
     setShowTerminal(false);
   };
   
-  // Apply accent color class based on settings
   useEffect(() => {
     const body = document.body;
     body.classList.remove('theme-blue', 'theme-purple', 'theme-red');
@@ -121,25 +112,20 @@ const Index = () => {
       body.classList.add(`theme-${settings?.accent}`);
     }
     
-    // Apply font
     if (settings?.font) {
       document.documentElement.style.fontFamily = settings.font;
     }
     
-    // Set the background to pure black
     document.body.style.backgroundColor = '#000000';
     document.documentElement.style.backgroundColor = '#000000';
     
-    // Update card and component colors - make them darker for a richer UI
     document.documentElement.style.setProperty('--background', '0 0% 0%');
     document.documentElement.style.setProperty('--card', '0 0% 3%');
     document.documentElement.style.setProperty('--muted', '0 0% 9%');
   }, [settings?.accent, settings?.font]);
   
-  // Handle resize observation
   useEffect(() => {
     const handleResize = () => {
-      // Update layout based on window size if needed
       if (window.innerWidth < 768 && showSidebar) {
         setShowSidebar(false);
       }
@@ -183,7 +169,6 @@ const Index = () => {
     }
   };
   
-  // Get username from user details or localStorage (for guest mode)
   const username = userDetails?.username || localStorage.getItem('guestUsername') || 'Guest';
   
   return (
