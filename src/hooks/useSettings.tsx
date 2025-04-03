@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
@@ -41,7 +40,6 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const loadSettings = async () => {
-      // First, try to load from local storage
       const storedSettings = localStorage.getItem('userSettings');
       
       if (storedSettings) {
@@ -53,7 +51,6 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
         }
       }
       
-      // If authenticated, try to load from Supabase
       if (user) {
         try {
           const { data, error } = await supabase
@@ -82,7 +79,6 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
             
             setSettings({ ...DEFAULT_SETTINGS, ...userSettings });
             
-            // Save to localStorage for faster future loads
             localStorage.setItem('userSettings', JSON.stringify(userSettings));
           }
         } catch (error) {
@@ -97,13 +93,10 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
   const updateSettings = async (newSettings: Partial<UserSettings>) => {
     const updatedSettings = { ...settings, ...newSettings };
     
-    // Update local state
     setSettings(updatedSettings);
     
-    // Save to localStorage
     localStorage.setItem('userSettings', JSON.stringify(updatedSettings));
     
-    // If authenticated, save to Supabase
     if (user) {
       try {
         const { error } = await supabase
@@ -132,12 +125,10 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
       }
     }
     
-    // Apply theme if it changed
     if (newSettings.theme) {
       document.documentElement.classList.toggle('dark', newSettings.theme === 'dark');
     }
     
-    // Apply font if it changed
     if (newSettings.font) {
       document.documentElement.style.fontFamily = newSettings.font;
     }

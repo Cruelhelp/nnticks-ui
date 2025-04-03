@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,18 +7,19 @@ import { Label } from '@/components/ui/label';
 import { useToast } from "@/components/ui/use-toast"
 import { webSocketService } from '@/services/WebSocketService';
 import { useSettings } from '@/hooks/useSettings';
+import { Textarea } from '@/components/ui/textarea';
 
 const DebugTools: React.FC = () => {
-  const [wsUrl, setWsUrl] = useState(webSocketService.config.url);
+  const [wsUrl, setWsUrl] = useState('');
   const [customWsUrl, setCustomWsUrl] = useState('');
   const { toast } = useToast();
   const { settings, updateSettings } = useSettings();
   
   useEffect(() => {
+    // Use the public getter for config
     setWsUrl(webSocketService.config.url);
   }, []);
   
-  // Use webSocketService instance directly instead of the static method
   const handleApplySettings = () => {
     // Update WebSocket URL
     if (customWsUrl) {
@@ -28,8 +30,8 @@ const DebugTools: React.FC = () => {
     
     // Update subscription
     try {
-      if (settings.customSubscription) {
-        const parsedSubscription = JSON.parse(settings.customSubscription);
+      if (settings.subscription) {
+        const parsedSubscription = JSON.parse(settings.subscription);
         webSocketService.updateConfig({ subscription: parsedSubscription });
       }
     } catch (error) {
@@ -48,12 +50,11 @@ const DebugTools: React.FC = () => {
   };
   
   const handleSubscriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    updateSettings({ ...settings, customSubscription: e.target.value });
+    updateSettings({ ...settings, subscription: e.target.value });
   };
   
-  // Use webSocketService instance directly
   const handleResetSettings = () => {
-    // Reset to defaults
+    // Reset to defaults using the WebSocketService directly
     webSocketService.updateConfig({
       url: "wss://ws.binaryws.com/websockets/v3?app_id=1089",
       apiKey: "nPAKsP8mJBuLkvW",
@@ -61,7 +62,7 @@ const DebugTools: React.FC = () => {
     });
     
     setWsUrl(webSocketService.config.url);
-    updateSettings({ ...settings, customSubscription: JSON.stringify({ ticks: 'R_10' }, null, 2) });
+    updateSettings({ ...settings, subscription: JSON.stringify({ ticks: 'R_10' }, null, 2) });
     
     toast({
       title: "Settings Reset",
@@ -97,12 +98,13 @@ const DebugTools: React.FC = () => {
         </div>
         <div className="grid gap-2">
           <Label htmlFor="subscription">Custom Subscription</Label>
-          <Input
+          <Textarea
             id="subscription"
             className="font-mono text-sm"
             placeholder='{ "ticks": "R_100" }'
-            value={settings?.customSubscription || ''}
+            value={settings?.subscription || ''}
             onChange={handleSubscriptionChange}
+            rows={4}
           />
         </div>
       </CardContent>

@@ -1,4 +1,3 @@
-
 import { toast } from 'sonner';
 
 export interface TickData {
@@ -21,6 +20,7 @@ const DEFAULT_CONFIG: WSConfig = {
 };
 
 export class WebSocketService {
+  private _config: WSConfig;
   private socket: WebSocket | null = null;
   private reconnectTimeout: NodeJS.Timeout | null = null;
   private listeners: Map<string, Set<Function>> = new Map();
@@ -28,16 +28,20 @@ export class WebSocketService {
   private maxReconnectAttempts: number = 5;
   private reconnectAttempts: number = 0;
   private lastMessageTime: number = 0;
-  private config: WSConfig;
   private ticks: TickData[] = [];
   private connectionStatus: 'disconnected' | 'connecting' | 'connected' | 'error' = 'disconnected';
   
   constructor(config: Partial<WSConfig> = {}) {
-    this.config = { ...DEFAULT_CONFIG, ...config };
+    this._config = { ...DEFAULT_CONFIG, ...config };
+  }
+
+  // Add getter for config
+  public get config(): WSConfig {
+    return { ...this._config };
   }
 
   public updateConfig(config: Partial<WSConfig>): void {
-    this.config = { ...this.config, ...config };
+    this._config = { ...this._config, ...config };
     
     // Reconnect if already connected to apply new config
     if (this.isConnected()) {
@@ -55,8 +59,8 @@ export class WebSocketService {
     this.emitEvent('statusChange', this.connectionStatus);
     
     try {
-      console.log(`Connecting to WebSocket: ${this.config.url}`);
-      this.socket = new WebSocket(this.config.url);
+      console.log(`Connecting to WebSocket: ${this._config.url}`);
+      this.socket = new WebSocket(this._config.url);
       
       this.socket.onopen = this.handleOpen.bind(this);
       this.socket.onmessage = this.handleMessage.bind(this);
@@ -101,7 +105,7 @@ export class WebSocketService {
   }
 
   public setSubscription(subscription: object): void {
-    this.config.subscription = subscription;
+    this._config.subscription = subscription;
     
     if (this.isConnected()) {
       this.send(subscription);
@@ -160,8 +164,8 @@ export class WebSocketService {
     this.lastMessageTime = Date.now();
     
     // Send subscription
-    if (this.config.subscription && Object.keys(this.config.subscription).length > 0) {
-      this.send(this.config.subscription);
+    if (this._config.subscription && Object.keys(this._config.subscription).length > 0) {
+      this.send(this._config.subscription);
     }
   }
   
@@ -259,10 +263,8 @@ export class WebSocketService {
 // Create a singleton instance with default config
 export const webSocketService = new WebSocketService();
 
-// Define the static method on the WebSocketService class
-WebSocketService.updateConfig = function(config: Partial<WSConfig>) {
-  webSocketService.updateConfig(config);
-};
+// Remove the static method and use the instance directly
+// The singleton pattern is still maintained
 
 // Initialize connection on service creation
 webSocketService.connect();
