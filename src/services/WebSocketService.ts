@@ -1,3 +1,4 @@
+
 import { BrowserEventEmitter } from '@/lib/BrowserEventEmitter';
 import { TickData, brokerWebSockets } from '@/types/chartTypes';
 
@@ -68,23 +69,46 @@ export class WebSocketService extends BrowserEventEmitter {
       return;
     }
 
-    this.socket = new WebSocket(this._config.url);
-    this.socket.onopen = this.handleOpen;
-    this.socket.onmessage = this.handleMessage;
-    this.socket.onclose = this.handleClose;
-    this.socket.onerror = this.handleError;
-    this.updateStatus('connecting');
+    // Explicitly close any existing connection before creating a new one
+    if (this.socket) {
+      try {
+        this.socket.close();
+        this.socket = null;
+      } catch (err) {
+        console.error('Error closing existing socket:', err);
+      }
+    }
+
+    try {
+      this.socket = new WebSocket(this._config.url);
+      this.socket.onopen = this.handleOpen;
+      this.socket.onmessage = this.handleMessage;
+      this.socket.onclose = this.handleClose;
+      this.socket.onerror = this.handleError;
+      this.updateStatus('connecting');
+      console.log('WebSocket connecting to:', this._config.url);
+    } catch (error) {
+      console.error('Error creating WebSocket:', error);
+      this.updateStatus('error');
+      this.emit('error', error);
+    }
   }
 
   reconnect(): void {
     if (this.reconnectAttempts >= (this._config.maxReconnectAttempts || 5)) {
       console.warn('Max reconnect attempts reached.');
       this.updateStatus('disconnected');
+      this.reconnectAttempts = 0; // Reset for future reconnect attempts
       return;
     }
 
     if (this.socket) {
-      this.socket.close();
+      try {
+        this.socket.close();
+        this.socket = null;
+      } catch (err) {
+        console.error('Error closing socket during reconnect:', err);
+      }
     }
 
     this.reconnectAttempts++;
@@ -95,11 +119,15 @@ export class WebSocketService extends BrowserEventEmitter {
 
   disconnect(): void {
     if (this.socket) {
-      this.socket.close();
-      this.socket = null;
-      this.isConnectedVar = false;
-      this.updateStatus('disconnected');
-      console.log('WebSocket disconnected.');
+      try {
+        this.socket.close();
+        this.socket = null;
+        this.isConnectedVar = false;
+        this.updateStatus('disconnected');
+        console.log('WebSocket disconnected.');
+      } catch (error) {
+        console.error('Error during disconnect:', error);
+      }
     }
   }
 
@@ -111,13 +139,15 @@ export class WebSocketService extends BrowserEventEmitter {
     } else {
       console.warn('WebSocket is not connected. Message not sent.');
       this.emit('error', new Error('WebSocket is not connected. Message not sent.'));
+      // Try to reconnect if not connected
+      this.reconnect();
     }
   }
 
   handleOpen(): void {
     this.isConnectedVar = true;
     this.reconnectAttempts = 0;
-    console.log('WebSocket connected.');
+    console.log('WebSocket connected successfully.');
     this.updateStatus('connected');
     
     // Subscribe immediately after opening
@@ -169,16 +199,26 @@ export class WebSocketService extends BrowserEventEmitter {
     this.updateStatus('error');
     console.error('WebSocket error:', error);
     this.emit('error', error);
+    
+    // Attempt to reconnect on error
+    this.reconnect();
   }
   
   setSubscription(subscription: { ticks: string }): void {
+    if (!subscription || typeof subscription.ticks !== 'string') {
+      console.error('Invalid subscription format:', subscription);
+      return;
+    }
+
     if (this.socket && this.socket.readyState === WebSocket.OPEN) {
       this._config.subscription = subscription;
-      this.send(subscription);
+      this.send({ ticks: subscription.ticks });
       console.log('WebSocket subscription sent:', subscription);
     } else {
-      console.warn('WebSocket is not connected. Subscription not set.');
-      this.emit('error', new Error('WebSocket is not connected. Subscription not set.'));
+      console.warn('WebSocket is not connected. Setting subscription for next connection.');
+      this._config.subscription = subscription;
+      // Try to reconnect
+      this.reconnect();
     }
   }
   
@@ -189,15 +229,25 @@ export class WebSocketService extends BrowserEventEmitter {
     reconnectInterval?: number;
     maxReconnectAttempts?: number;
   }): void {
+    // Validate subscription if provided
+    if (options.subscription && !options.subscription.ticks) {
+      console.error('Invalid subscription format:', options.subscription);
+      return;
+    }
+
+    // Update config
     this._config = { 
       ...this._config, 
       ...options,
       subscription: options.subscription ? options.subscription : this._config.subscription
     };
     
+    console.log('WebSocket config updated:', this._config);
+    
     // If WebSocket is connected, disconnect and reconnect with new config
-    if (this.isConnected()) {
-      this.reconnect();
+    if (this.socket) {
+      this.disconnect();
+      setTimeout(() => this.connect(), 500); // Give some time before reconnecting
     }
   }
 

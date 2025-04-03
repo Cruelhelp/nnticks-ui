@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
@@ -34,18 +33,14 @@ const TopBar: React.FC<TopBarProps> = ({ toggleSidebar, toggleTerminal, onReset,
 
   const handleSignOut = async () => {
     try {
-      const saveToast = toast.loading('Signing out...');
       await signOut();
       localStorage.removeItem('userSettings');
       localStorage.removeItem('guestMode');
       localStorage.removeItem('guestUsername');
       
-      toast.dismiss(saveToast);
-      toast.success('Successfully logged out');
       navigate('/login');
     } catch (error) {
       console.error('Error signing out:', error);
-      toast.error('Failed to sign out');
     }
   };
 
@@ -95,8 +90,6 @@ const TopBar: React.FC<TopBarProps> = ({ toggleSidebar, toggleTerminal, onReset,
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
       
-      const saveToast = toast.loading('Uploading avatar...');
-      
       try {
         const fileExt = file.name.split('.').pop();
         const fileName = `${user?.id}.${fileExt}`;
@@ -115,14 +108,9 @@ const TopBar: React.FC<TopBarProps> = ({ toggleSidebar, toggleTerminal, onReset,
           avatar_url: publicUrl
         }).eq('user_id', user?.id);
         
-        toast.dismiss(saveToast);
-        toast.success('Avatar updated successfully');
-        
         window.location.reload();
       } catch (error) {
         console.error('Error uploading avatar:', error);
-        toast.dismiss(saveToast);
-        toast.error('Failed to upload avatar');
       }
     };
     input.click();

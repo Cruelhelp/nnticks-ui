@@ -12,20 +12,30 @@ import { Textarea } from '@/components/ui/textarea';
 const DebugTools: React.FC = () => {
   const [wsUrl, setWsUrl] = useState('');
   const [customWsUrl, setCustomWsUrl] = useState('');
+  const [apiKey, setApiKey] = useState('nPAKsP8mJBuLkvW'); // Default API key
   const { toast } = useToast();
   const { settings, updateSettings } = useSettings();
   
   useEffect(() => {
     // Use the public getter for config
-    setWsUrl(webSocketService.getConfig().url);
+    const config = webSocketService.getConfig();
+    setWsUrl(config.url);
+    setApiKey(config.apiKey);
   }, []);
   
   const handleApplySettings = () => {
+    const updatedSettings: any = {};
+    
     // Update WebSocket URL
     if (customWsUrl) {
-      webSocketService.updateConfig({ url: customWsUrl });
+      updatedSettings.url = customWsUrl;
       setWsUrl(customWsUrl);
       setCustomWsUrl('');
+    }
+    
+    // Update API key
+    if (apiKey) {
+      updatedSettings.apiKey = apiKey;
     }
     
     // Update subscription
@@ -33,7 +43,7 @@ const DebugTools: React.FC = () => {
       if (settings.subscription) {
         const parsedSubscription = JSON.parse(settings.subscription);
         if (parsedSubscription.ticks) {
-          webSocketService.updateConfig({ subscription: { ticks: parsedSubscription.ticks } });
+          updatedSettings.subscription = { ticks: parsedSubscription.ticks };
         } else {
           toast({
             title: "Error",
@@ -51,9 +61,12 @@ const DebugTools: React.FC = () => {
       return;
     }
     
+    // Apply all updates at once
+    webSocketService.updateConfig(updatedSettings);
+    
     toast({
       title: "Success",
-      description: "Settings applied successfully.",
+      description: "Settings applied successfully. Reconnecting...",
     });
   };
   
@@ -70,6 +83,7 @@ const DebugTools: React.FC = () => {
     });
     
     setWsUrl(webSocketService.getConfig().url);
+    setApiKey("nPAKsP8mJBuLkvW");
     updateSettings({ ...settings, subscription: JSON.stringify({ ticks: 'R_10' }, null, 2) });
     
     toast({
@@ -102,6 +116,15 @@ const DebugTools: React.FC = () => {
             placeholder="wss://example.com/ws"
             value={customWsUrl}
             onChange={(e) => setCustomWsUrl(e.target.value)}
+          />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="api-key">API Key</Label>
+          <Input
+            id="api-key"
+            placeholder="Your API Key"
+            value={apiKey}
+            onChange={(e) => setApiKey(e.target.value)}
           />
         </div>
         <div className="grid gap-2">

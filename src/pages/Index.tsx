@@ -54,8 +54,14 @@ const Index = () => {
     if (user) {
       // Update last login time
       updateUserLoginTime();
+      
+      // If we have API key saved, apply it to WebSocket
+      if (userDetails?.api_key) {
+        const wsService = require('@/services/WebSocketService').webSocketService;
+        wsService.updateConfig({ apiKey: userDetails.api_key });
+      }
     }
-  }, [user]);
+  }, [user, userDetails]);
   
   // Listen for navigation events from TopBar
   useEffect(() => {
