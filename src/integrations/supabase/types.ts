@@ -9,7 +9,96 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      ticks: {
+        Row: {
+          created_at: string
+          id: string
+          market: string
+          timestamp: string
+          value: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          market: string
+          timestamp: string
+          value: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          market?: string
+          timestamp?: string
+          value?: number
+        }
+        Relationships: []
+      }
+      trade_history: {
+        Row: {
+          confidence: number
+          created_at: string
+          id: string
+          market: string
+          outcome: string
+          prediction: string
+          timestamp: string
+          user_id: string | null
+        }
+        Insert: {
+          confidence: number
+          created_at?: string
+          id?: string
+          market: string
+          outcome: string
+          prediction: string
+          timestamp: string
+          user_id?: string | null
+        }
+        Update: {
+          confidence?: number
+          created_at?: string
+          id?: string
+          market?: string
+          outcome?: string
+          prediction?: string
+          timestamp?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      training_history: {
+        Row: {
+          accuracy: number
+          created_at: string
+          date: string
+          id: string
+          mission: string
+          model_data: Json | null
+          points: number
+          user_id: string | null
+        }
+        Insert: {
+          accuracy: number
+          created_at?: string
+          date: string
+          id?: string
+          mission: string
+          model_data?: Json | null
+          points: number
+          user_id?: string | null
+        }
+        Update: {
+          accuracy?: number
+          created_at?: string
+          date?: string
+          id?: string
+          mission?: string
+          model_data?: Json | null
+          points?: number
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

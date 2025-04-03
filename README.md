@@ -1,5 +1,5 @@
 
-<img src="https://i.imgur.com/XYZ123.png" alt="NNticks Logo" width="200"/>
+<img src="/public/logo.svg" alt="NNticks Logo" width="200"/>
 
 # NNticks Trading Platform
 
@@ -52,16 +52,16 @@ NNticks is an advanced neural network-based trading platform designed for financ
 ## Screenshots
 
 ### Dashboard
-![Dashboard](https://example.com/screenshots/dashboard.png)
+![Dashboard](/public/screenshots/dashboard.png)
 
 ### Neural Network Visualization
-![Neural Network](https://example.com/screenshots/neural-network.png)
+![Neural Network](/public/screenshots/neural-network.png)
 
 ### Prediction Module
-![Predictions](https://example.com/screenshots/predictions.png)
+![Predictions](/public/screenshots/predictions.png)
 
 ### Training Interface
-![Training](https://example.com/screenshots/training.png)
+![Training](/public/screenshots/training.png)
 
 ## Technical Details
 
@@ -91,4 +91,3 @@ For developers looking to contribute:
 ## License
 
 © 2025 NNticks Enterprise Analytics. All rights reserved.
-

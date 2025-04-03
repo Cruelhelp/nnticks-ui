@@ -1,11 +1,12 @@
+
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { brokerWebSockets } from '@/types/chartTypes';
 
 interface WebSocketOptions {
-  wsUrl: string;
-  subscription: object;
+  wsUrl?: string;
+  subscription?: object;
   autoReconnect?: boolean;
   reconnectInterval?: number;
   maxReconnectAttempts?: number;
@@ -21,6 +22,12 @@ export interface TickData {
   market: string;
 }
 
+// Default connection values
+const DEFAULT_WS_URL = "wss://ws.binaryws.com/websockets/v3?app_id=1089";
+const DEFAULT_API_KEY = "nPAKsP8mJBuLkvW";
+const MAX_RECONNECT_ATTEMPTS = 5;
+const RECONNECT_INTERVAL = 5000;
+
 // Sample subscription formats for different brokers
 export const subscriptionFormats = {
   deriv: { ticks: 'R_10' },
@@ -31,16 +38,16 @@ export const subscriptionFormats = {
 };
 
 export function useWebSocket({
-  wsUrl,
-  subscription,
+  wsUrl = DEFAULT_WS_URL,
+  subscription = { ticks: 'R_10' },
   autoReconnect = true,
-  reconnectInterval = 5000,
-  maxReconnectAttempts = 5,
+  reconnectInterval = RECONNECT_INTERVAL,
+  maxReconnectAttempts = MAX_RECONNECT_ATTEMPTS,
   onMessage,
   onError,
   onOpen,
   onClose
-}: WebSocketOptions) {
+}: WebSocketOptions = {}) {
   const [isConnected, setIsConnected] = useState(false);
   const [ticks, setTicks] = useState<TickData[]>([]);
   const [latestTick, setLatestTick] = useState<TickData | null>(null);
@@ -58,6 +65,7 @@ export function useWebSocket({
   const failSafeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const socketAttempts = useRef(0);
   const connectingRef = useRef(false);
+  const toastShownRef = useRef(false);
   
   useEffect(() => {
     autoReconnectRef.current = autoReconnect;
@@ -124,9 +132,15 @@ export function useWebSocket({
     
     if (socketAttempts.current > maxAttemptsRef.current) {
       console.error(`Maximum connection attempts reached (${maxAttemptsRef.current}). Connection stopped.`);
-      toast.error(`Connection attempts limit reached (${maxAttemptsRef.current}). Please try again manually.`, {
-        id: 'max-connection-attempts'
-      });
+      
+      // Show the error toast only once
+      if (!toastShownRef.current) {
+        toast.error(`Connection attempts limit reached (${maxAttemptsRef.current}). Please try again manually.`, {
+          id: 'max-connection-attempts'
+        });
+        toastShownRef.current = true;
+      }
+      
       setConnectionStatus('error');
       setError(new Error(`Maximum connection attempts reached (${maxAttemptsRef.current}). Please try again manually.`));
       connectingRef.current = false;
@@ -139,6 +153,7 @@ export function useWebSocket({
     
     failSafeTimeoutRef.current = setTimeout(() => {
       socketAttempts.current = 0;
+      toastShownRef.current = false;
     }, 30000);
     
     try {
@@ -168,8 +183,10 @@ export function useWebSocket({
         
         socketAttempts.current = 0;
         
-        if (socketAttempts.current === 1) {
+        // Only show connection toast on first successful connection
+        if (!toastShownRef.current) {
           toast.success('Connection established', { id: 'connection-established' });
+          toastShownRef.current = true;
         }
       };
       
@@ -214,7 +231,8 @@ export function useWebSocket({
           }
           
           if (tickData) {
-            tickData.value = parseFloat(tickData.value.toFixed(5));
+            // Ensure 5 decimal places precision for price data
+            tickData.value = Number(tickData.value.toFixed(5));
             
             setLatestTick(tickData);
             setTicks(prev => [...prev.slice(-99), tickData!]);
@@ -246,6 +264,8 @@ export function useWebSocket({
         
         if (onClose) onClose();
         
+        // Don't show disconnect toast
+        
         if (autoReconnectRef.current && reconnectCount < maxAttemptsRef.current) {
           console.log(`Attempting to reconnect in ${reconnectInterval}ms (${reconnectCount + 1}/${maxAttemptsRef.current})`);
           
@@ -260,9 +280,6 @@ export function useWebSocket({
         } else if (reconnectCount >= maxAttemptsRef.current) {
           setError(new Error(`Failed to reconnect after ${maxAttemptsRef.current} attempts`));
           setConnectionStatus('error');
-          toast.error(`Connection lost. Failed to reconnect after ${maxAttemptsRef.current} attempts.`, {
-            id: 'reconnect-failure'
-          });
         }
       };
       
@@ -332,7 +349,7 @@ export function useWebSocket({
     connectingRef.current = false;
     
     toast.dismiss(saveToast);
-    toast.success('Disconnected successfully');
+    // Don't show disconnect toast
   }, []);
   
   const send = useCallback((message: object | string) => {

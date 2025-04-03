@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
@@ -33,10 +32,8 @@ const TopBar: React.FC<TopBarProps> = ({ toggleSidebar, toggleTerminal, onReset,
   const { user, userDetails, signOut } = useAuth();
   const navigate = useNavigate();
   const { settings } = useSettings();
-  const { isConnected, ticks } = useWebSocket({
-    wsUrl: settings.wsUrl,
-    subscription: JSON.parse(settings.subscription),
-  });
+  
+  const { isConnected, ticks } = useWebSocket();
 
   const hasRecentTicks = ticks.length > 0 && 
     (new Date().getTime() - new Date(ticks[ticks.length - 1].timestamp).getTime() < 10000);
@@ -47,7 +44,6 @@ const TopBar: React.FC<TopBarProps> = ({ toggleSidebar, toggleTerminal, onReset,
     try {
       const saveToast = toast.loading('Signing out...');
       await signOut();
-      // Clear local storage
       localStorage.removeItem('userSettings');
       localStorage.removeItem('guestMode');
       localStorage.removeItem('guestUsername');
@@ -61,7 +57,6 @@ const TopBar: React.FC<TopBarProps> = ({ toggleSidebar, toggleTerminal, onReset,
     }
   };
 
-  // Sample notifications
   const notifications = [
     {
       title: hasRecentTicks ? 'Live data incoming' : (isConnected ? 'Connection established' : 'Connection offline'),
@@ -99,7 +94,6 @@ const TopBar: React.FC<TopBarProps> = ({ toggleSidebar, toggleTerminal, onReset,
     return `${Math.floor(seconds)} second${seconds === 1 ? '' : 's'} ago`;
   };
 
-  // User dropdown component
   const handleNavigateToAccount = () => {
     navigate('/');
     setTimeout(() => {
@@ -107,7 +101,6 @@ const TopBar: React.FC<TopBarProps> = ({ toggleSidebar, toggleTerminal, onReset,
     }, 100);
   };
 
-  // Handle avatar click for upload
   const handleAvatarClick = async () => {
     const input = document.createElement('input');
     input.type = 'file';
@@ -119,7 +112,6 @@ const TopBar: React.FC<TopBarProps> = ({ toggleSidebar, toggleTerminal, onReset,
       const saveToast = toast.loading('Uploading avatar...');
       
       try {
-        // Upload to Supabase storage
         const fileExt = file.name.split('.').pop();
         const fileName = `${user?.id}.${fileExt}`;
         
@@ -129,12 +121,10 @@ const TopBar: React.FC<TopBarProps> = ({ toggleSidebar, toggleTerminal, onReset,
         
         if (uploadError) throw uploadError;
         
-        // Get public URL
         const { data: { publicUrl } } = supabase.storage
           .from('avatars')
           .getPublicUrl(fileName);
         
-        // Update user profile
         await supabase.from('users_extra').update({
           avatar_url: publicUrl
         }).eq('user_id', user?.id);
@@ -142,7 +132,6 @@ const TopBar: React.FC<TopBarProps> = ({ toggleSidebar, toggleTerminal, onReset,
         toast.dismiss(saveToast);
         toast.success('Avatar updated successfully');
         
-        // Refresh page to show new avatar
         window.location.reload();
       } catch (error) {
         console.error('Error uploading avatar:', error);
@@ -155,7 +144,6 @@ const TopBar: React.FC<TopBarProps> = ({ toggleSidebar, toggleTerminal, onReset,
 
   return (
     <header className="h-14 border-b flex items-center justify-between px-4 bg-background">
-      {/* Left side */}
       <div className="flex items-center gap-2">
         <Button variant="ghost" size="icon" onClick={toggleSidebar} className="md:flex">
           <Menu className="h-5 w-5" />
@@ -167,11 +155,10 @@ const TopBar: React.FC<TopBarProps> = ({ toggleSidebar, toggleTerminal, onReset,
           <Badge>PRO</Badge>
         )}
         
-        {/* Single connection status indicator */}
         <div className="ml-4 flex items-center">
           {hasRecentTicks ? (
             <span className="flex items-center text-xs text-green-500">
-              <Wifi className="h-3 w-3 mr-1" /> ONLINE
+              <Wifi className="h-3 w-3 mr-1 animate-pulse" /> ONLINE
             </span>
           ) : isConnected ? (
             <span className="flex items-center text-xs text-yellow-500">
@@ -185,7 +172,6 @@ const TopBar: React.FC<TopBarProps> = ({ toggleSidebar, toggleTerminal, onReset,
         </div>
       </div>
       
-      {/* Right side */}
       <div className="flex items-center gap-2">
         <Button 
           variant="link"

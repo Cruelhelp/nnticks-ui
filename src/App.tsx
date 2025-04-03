@@ -9,7 +9,7 @@ import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ThemeProvider } from "./components/ui/theme-provider";
-import { useEffect } from "react";
+import { useEffect, memo } from "react";
 import AdminPanel from "./components/AdminPanel";
 
 // Create client with better defaults for mobile performance
@@ -23,6 +23,9 @@ const queryClient = new QueryClient({
   },
 });
 
+// Optimize rendering with memo
+const MemoizedAdminPanel = memo(AdminPanel);
+
 const App = () => {
   // Apply Roboto Mono font to entire app
   useEffect(() => {
@@ -34,8 +37,34 @@ const App = () => {
     linkEl.href = 'https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;700&display=swap';
     document.head.appendChild(linkEl);
     
+    // Add high-performance CSS for smooth animations
+    const styleEl = document.createElement('style');
+    styleEl.textContent = `
+      * {
+        backface-visibility: hidden;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+      
+      .animate-gpu {
+        transform: translateZ(0);
+        will-change: transform;
+      }
+      
+      @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+      
+      .fade-in {
+        animation: fadeIn 0.3s ease-out forwards;
+      }
+    `;
+    document.head.appendChild(styleEl);
+    
     return () => {
       document.head.removeChild(linkEl);
+      document.head.removeChild(styleEl);
     };
   }, []);
   
@@ -51,7 +80,7 @@ const App = () => {
                 <Routes>
                   <Route path="/" element={<Index />} />
                   <Route path="/login" element={<Login />} />
-                  <Route path="/admin" element={<AdminPanel />} />
+                  <Route path="/admin" element={<MemoizedAdminPanel />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </div>

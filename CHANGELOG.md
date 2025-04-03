@@ -1,6 +1,31 @@
 
 # CHANGELOG
 
+## Version 1.2.0 (2025-04-05)
+
+### Added
+- Default WebSocket connection with API key
+- Improved display precision to 5 decimal places for micro price movements
+- Database storage for ticks data, trading history, and training sessions
+- PDF export functionality with company logo
+- Centralized connection status indicator
+- Admin panel with user management features
+
+### Fixed
+- Eliminated toast spam for connection status changes
+- Limited WebSocket reconnection attempts to 5
+- Fixed connection retry system to prevent excessive reconnection attempts
+- Improved performance optimizations for 60fps rendering
+- Fixed precision in charts to show micro price movements
+- Fixed screenshots in documentation
+
+### Changed
+- Updated font to Roboto Mono for a more modern, professional look
+- Improved WebSocket connection management
+- Consolidated connection status indicators
+- Enhanced data storage in Supabase
+- Streamlined UI for better performance
+
 ## Version 1.1.0 (2025-04-04)
 
 ### Added
