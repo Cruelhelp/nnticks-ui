@@ -5,6 +5,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useWebSocketClient } from './useWebSocketClient';
 import { webSocketService, TickData } from '@/services/WebSocketService';
+import { toast } from 'sonner';
 
 interface WebSocketOptions {
   wsUrl?: string;
@@ -54,6 +55,14 @@ export function useWebSocket({
     onStatusChange: (status) => {
       if (status === 'connected' && onOpen) onOpen();
       if (status === 'disconnected' && onClose) onClose();
+      
+      // Show offline status message
+      if (status === 'disconnected' || status === 'error') {
+        toast.error(
+          "WebSocket connection lost. Please go to the Charts page to reconnect.",
+          { duration: 5000, id: "websocket-offline" }
+        );
+      }
     }
   });
 
