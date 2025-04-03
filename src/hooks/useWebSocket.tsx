@@ -2,8 +2,9 @@
 // This file is now a compatibility layer for existing components
 // It will eventually be phased out in favor of useWebSocketClient
 
+import { useState, useEffect, useRef } from 'react';
 import { useWebSocketClient } from './useWebSocketClient';
-import { WebSocketService, TickData } from '@/services/WebSocketService';
+import { webSocketService, TickData } from '@/services/WebSocketService';
 
 interface WebSocketOptions {
   wsUrl?: string;
@@ -65,7 +66,7 @@ export function useWebSocket({
       // Use setTimeout to ensure disconnect completes
       setTimeout(() => {
         // Update WebSocket service config
-        WebSocketService.updateConfig({ url: wsUrl, subscription });
+        webSocketService.updateConfig({ url: wsUrl, subscription });
         connect();
       }, 100);
     }
@@ -94,3 +95,4 @@ export function useWebSocket({
 }
 
 export { type TickData, brokerWebSockets } from '@/types/chartTypes';
+

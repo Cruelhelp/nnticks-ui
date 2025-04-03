@@ -259,8 +259,8 @@ export class WebSocketService {
 // Create a singleton instance with default config
 export const webSocketService = new WebSocketService();
 
-// Static method to update the singleton config
-WebSocketService.updateConfig = (config: Partial<WSConfig>) => {
+// Define the static method on the WebSocketService class
+WebSocketService.updateConfig = function(config: Partial<WSConfig>) {
   webSocketService.updateConfig(config);
 };
 
