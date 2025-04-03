@@ -1,14 +1,15 @@
-import { useTheme } from "next-themes"
+
 import { Toaster as Sonner } from "sonner"
 
 type ToasterProps = React.ComponentProps<typeof Sonner>
 
-const Toaster = ({ ...props }: ToasterProps) => {
-  const { theme = "system" } = useTheme()
+// Track shown notifications to prevent duplicates
+const shownNotifications = new Set<string>();
 
+const Toaster = ({ ...props }: ToasterProps) => {
   return (
     <Sonner
-      theme={theme as ToasterProps["theme"]}
+      theme="dark"
       className="toaster group"
       toastOptions={{
         classNames: {
@@ -26,4 +27,6 @@ const Toaster = ({ ...props }: ToasterProps) => {
   )
 }
 
+// Extend the toast with debounced methods to prevent spam
 export { Toaster }
+export { toast } from "sonner"

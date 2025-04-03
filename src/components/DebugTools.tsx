@@ -1,5 +1,6 @@
+
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,8 +9,10 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useSettings } from '@/hooks/useSettings';
-import { useWebSocket, subscriptionFormats } from '@/hooks/useWebSocket';
+import { useWebSocketClient } from '@/hooks/useWebSocketClient';
+import { WebSocketService } from '@/services/WebSocketService'; 
 import { toast } from 'sonner';
+import { subscriptionFormats } from '@/hooks/useWebSocket';
 import { 
   Wifi, 
   WifiOff, 
@@ -19,11 +22,12 @@ import {
   Shield,
   Database
 } from 'lucide-react';
+import ConnectionStatus from './ConnectionStatus';
 
 const DebugTools = () => {
   const { settings, updateSettings } = useSettings();
-  const [localWsUrl, setLocalWsUrl] = useState(settings.wsUrl);
-  const [localSubscription, setLocalSubscription] = useState(settings.subscription);
+  const [localWsUrl, setLocalWsUrl] = useState(settings.wsUrl || "wss://ws.binaryws.com/websockets/v3?app_id=1089");
+  const [localSubscription, setLocalSubscription] = useState(settings.subscription || JSON.stringify({ ticks: 'R_10' }));
   const [autoReconnect, setAutoReconnect] = useState(true);
   const [maxAttempts, setMaxAttempts] = useState(5);
   const [logs, setLogs] = useState<string[]>([]);
@@ -34,36 +38,33 @@ const DebugTools = () => {
   
   const { 
     isConnected,
+    connectionStatus,
     ticks,
-    latestTick, 
-    error, 
-    reconnectCount,
-    socketAttempts,
+    latestTick,
     hasRecentData,
     connect,
-    disconnect,
-    send
-  } = useWebSocket({
-    wsUrl: settings.wsUrl,
-    subscription: JSON.parse(settings.subscription),
-    autoReconnect: autoReconnect,
-    maxReconnectAttempts: maxAttempts,
-    onOpen: () => {
-      addLog('info', 'Connection established');
-      setConnectionCount(prev => prev + 1);
-    },
+    disconnect
+  } = useWebSocketClient({
     onMessage: (data) => {
       if (!data.tick && !data.ping) {
         addLog('message', `Data received: ${JSON.stringify(data).substring(0, 100)}...`);
       }
       setTickCount(prev => prev + 1);
     },
+    onTick: () => {
+      // Handle tick updates
+    },
+    onStatusChange: (status) => {
+      if (status === 'connected') {
+        addLog('info', 'Connection established');
+        setConnectionCount(prev => prev + 1);
+      } else if (status === 'disconnected') {
+        addLog('info', 'Connection closed');
+      }
+    },
     onError: (error) => {
       addLog('error', `Connection error: ${error}`);
       setErrorCount(prev => prev + 1);
-    },
-    onClose: () => {
-      addLog('info', 'Connection closed');
     }
   });
 
@@ -84,6 +85,12 @@ const DebugTools = () => {
         subscription: localSubscription
       });
       
+      // Update WebSocket service
+      WebSocketService.updateConfig({
+        url: localWsUrl,
+        subscription: JSON.parse(localSubscription)
+      });
+      
       addLog('info', 'Settings applied successfully');
       toast.success('Connection settings updated');
     } catch (error) {
@@ -100,6 +107,12 @@ const DebugTools = () => {
     setConnectionCount(0);
     setErrorCount(0);
     setTickCount(0);
+    
+    // Update WebSocket service
+    WebSocketService.updateConfig({
+      url: localWsUrl,
+      subscription: JSON.parse(localSubscription)
+    });
     
     setTimeout(() => {
       connect();
@@ -133,63 +146,16 @@ const DebugTools = () => {
     }
   }, [connectionCount, disconnect]);
 
-  const connectionStatusSection = (
-    <Card className="bg-muted/50">
-      <CardContent className="p-4">
-        <div className="text-xs text-muted-foreground">Connection Status</div>
-        <div className="text-lg font-semibold flex items-center mt-1">
-          {hasRecentData ? (
-            <>
-              <Wifi className="h-4 w-4 mr-1 text-green-500" />
-              <span className="text-green-500">ONLINE</span>
-            </>
-          ) : isConnected ? (
-            <>
-              <Wifi className="h-4 w-4 mr-1 text-yellow-500" />
-              <span className="text-yellow-500">CONNECTED</span>
-            </>
-          ) : (
-            <>
-              <WifiOff className="h-4 w-4 mr-1 text-red-500" />
-              <span className="text-red-500">OFFLINE</span>
-            </>
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  );
-
-  const connectionButtons = (
-    <div className="flex justify-end space-x-2">
-      <Button variant="outline" onClick={resetStats}>Reset Stats</Button>
-      <Button variant="outline" onClick={applySettings}>Apply Settings</Button>
-      {isConnected ? (
-        <Button variant="destructive" onClick={handleDisconnect}>Disconnect</Button>
-      ) : (
-        <Button onClick={handleConnect}>Connect</Button>
-      )}
-    </div>
-  );
-
   return (
     <div className="h-full flex flex-col space-y-4">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Debug Tools</h2>
         <div className="flex items-center gap-2">
+          <ConnectionStatus />
           {isConnected ? (
-            <>
-              <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/20">
-                <Wifi className="h-3 w-3 mr-1" /> Connected
-              </Badge>
-              <Button variant="destructive" size="sm" onClick={handleDisconnect}>Disconnect</Button>
-            </>
+            <Button variant="destructive" size="sm" onClick={handleDisconnect}>Disconnect</Button>
           ) : (
-            <>
-              <Badge variant="outline" className="bg-red-500/10 text-red-500 border-red-500/20">
-                <WifiOff className="h-3 w-3 mr-1" /> Disconnected
-              </Badge>
-              <Button variant="default" size="sm" onClick={handleConnect}>Connect</Button>
-            </>
+            <Button variant="default" size="sm" onClick={handleConnect}>Connect</Button>
           )}
         </div>
       </div>
@@ -275,19 +241,47 @@ const DebugTools = () => {
               </div>
               
               <div className="flex justify-end space-x-2">
-                {connectionButtons}
+                <Button variant="outline" onClick={resetStats}>Reset Stats</Button>
+                <Button variant="outline" onClick={applySettings}>Apply Settings</Button>
+                {isConnected ? (
+                  <Button variant="destructive" onClick={handleDisconnect}>Disconnect</Button>
+                ) : (
+                  <Button onClick={handleConnect}>Connect</Button>
+                )}
               </div>
               
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-                {connectionStatusSection}
+                <Card className="bg-muted/50">
+                  <CardContent className="p-4">
+                    <div className="text-xs text-muted-foreground">Connection Status</div>
+                    <div className="text-lg font-semibold flex items-center mt-1">
+                      {hasRecentData ? (
+                        <>
+                          <Wifi className="h-4 w-4 mr-1 text-green-500" />
+                          <span className="text-green-500">ONLINE</span>
+                        </>
+                      ) : isConnected ? (
+                        <>
+                          <Wifi className="h-4 w-4 mr-1 text-yellow-500" />
+                          <span className="text-yellow-500">CONNECTED</span>
+                        </>
+                      ) : (
+                        <>
+                          <WifiOff className="h-4 w-4 mr-1 text-red-500" />
+                          <span className="text-red-500">OFFLINE</span>
+                        </>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
               
-              {error && (
+              {connectionStatus === 'error' && (
                 <div className="bg-red-500/10 border border-red-500/20 text-red-500 p-4 rounded-md flex items-start gap-2">
                   <AlertTriangle className="h-5 w-5 mt-0.5" />
                   <div>
                     <p className="font-medium">Connection Error</p>
-                    <p className="text-sm opacity-90">{error.message}</p>
+                    <p className="text-sm opacity-90">Error establishing WebSocket connection</p>
                   </div>
                 </div>
               )}

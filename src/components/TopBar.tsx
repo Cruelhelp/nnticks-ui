@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
@@ -10,15 +11,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
-import { Menu, Bell, TerminalSquare, Settings, LogOut, UserCircle, Wifi, WifiOff, Shield } from 'lucide-react';
+import { Menu, Bell, TerminalSquare, Settings, LogOut, UserCircle, Shield } from 'lucide-react';
 import SettingsDialog from '@/components/SettingsDialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
-import { useWebSocket } from '@/hooks/useWebSocket';
-import { useSettings } from '@/hooks/useSettings';
+import ConnectionStatus from '@/components/ConnectionStatus';
 
 interface TopBarProps {
   toggleSidebar: () => void;
@@ -31,14 +31,6 @@ const TopBar: React.FC<TopBarProps> = ({ toggleSidebar, toggleTerminal, onReset,
   const [settingsOpen, setSettingsOpen] = useState(false);
   const { user, userDetails, signOut } = useAuth();
   const navigate = useNavigate();
-  const { settings } = useSettings();
-  
-  const { isConnected, ticks } = useWebSocket();
-
-  const hasRecentTicks = ticks.length > 0 && 
-    (new Date().getTime() - new Date(ticks[ticks.length - 1].timestamp).getTime() < 10000);
-  
-  const connectionStatus = hasRecentTicks ? "online" : isConnected ? "connected" : "offline";
 
   const handleSignOut = async () => {
     try {
@@ -58,12 +50,6 @@ const TopBar: React.FC<TopBarProps> = ({ toggleSidebar, toggleTerminal, onReset,
   };
 
   const notifications = [
-    {
-      title: hasRecentTicks ? 'Live data incoming' : (isConnected ? 'Connection established' : 'Connection offline'),
-      description: hasRecentTicks ? 'Live tick data streaming' : (isConnected ? 'WebSocket connected but no data' : 'WebSocket disconnected'),
-      timestamp: new Date().getTime() - 5 * 60 * 1000, // 5 minutes ago
-      read: false
-    },
     {
       title: 'Training complete',
       description: 'Model trained with 89% accuracy',
@@ -156,19 +142,7 @@ const TopBar: React.FC<TopBarProps> = ({ toggleSidebar, toggleTerminal, onReset,
         )}
         
         <div className="ml-4 flex items-center">
-          {hasRecentTicks ? (
-            <span className="flex items-center text-xs text-green-500">
-              <Wifi className="h-3 w-3 mr-1 animate-pulse" /> ONLINE
-            </span>
-          ) : isConnected ? (
-            <span className="flex items-center text-xs text-yellow-500">
-              <Wifi className="h-3 w-3 mr-1" /> CONNECTED
-            </span>
-          ) : (
-            <span className="flex items-center text-xs text-red-500">
-              <WifiOff className="h-3 w-3 mr-1" /> OFFLINE
-            </span>
-          )}
+          <ConnectionStatus />
         </div>
       </div>
       

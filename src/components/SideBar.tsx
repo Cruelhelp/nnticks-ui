@@ -3,9 +3,8 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Home, LineChart, FileText, Dumbbell, History, Trophy, Shield, BrainCircuit, Bug, UserCog } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useSettings } from "@/hooks/useSettings";
 import { Badge } from "./ui/badge";
-import { useWebSocket } from "@/hooks/useWebSocket";
+import ConnectionStatus from "./ConnectionStatus";
 
 interface SideBarProps {
   activeSection: string;
@@ -22,18 +21,9 @@ interface SidebarItem {
 
 const SideBar = ({ activeSection, onSectionChange }: SideBarProps) => {
   const { userDetails } = useAuth();
-  const { settings } = useSettings();
-  const { isConnected, ticks } = useWebSocket({
-    wsUrl: settings.wsUrl,
-    subscription: JSON.parse(settings.subscription),
-  });
   
   const isPro = userDetails?.proStatus || false;
   const isAdmin = userDetails?.isAdmin || false;
-  const hasRecentTicks = ticks.length > 0 && 
-    (new Date().getTime() - new Date(ticks[ticks.length - 1].timestamp).getTime() < 10000);
-
-  const connectionStatus = hasRecentTicks ? "online" : isConnected ? "connected" : "offline";
 
   const sidebarItems: SidebarItem[] = [
     { id: 'home', icon: Home, label: 'Home' },
@@ -55,15 +45,10 @@ const SideBar = ({ activeSection, onSectionChange }: SideBarProps) => {
   return (
     <div 
       className="h-full bg-black border-r border-border flex flex-col"
-      style={{ width: `${settings.sidebarWidth || 200}px`, fontFamily: 'VT323, monospace' }}
+      style={{ width: '200px', fontFamily: 'VT323, monospace' }}
     >
       <div className="px-3 py-2">
-        <Badge 
-          variant={hasRecentTicks ? "success" : isConnected ? "outline" : "destructive"}
-          className="w-full justify-center text-xs font-vt323"
-        >
-          {connectionStatus.toUpperCase()}
-        </Badge>
+        <ConnectionStatus compact={true} className="w-full justify-center text-xs font-vt323" />
       </div>
 
       <div className="flex flex-col py-2 flex-1">

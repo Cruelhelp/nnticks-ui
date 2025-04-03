@@ -19,16 +19,15 @@ import { useSettings } from '@/hooks/useSettings';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
-import { toast } from 'sonner';
+import { Toaster } from '@/components/ui/sonner';
 
 const Index = () => {
   const [showSplash, setShowSplash] = useState(true);
   const [activeSection, setActiveSection] = useState('home');
   const [showSidebar, setShowSidebar] = useState(true);
   const [showTerminal, setShowTerminal] = useState(false);
-  const [showAdminPanel, setShowAdminPanel] = useState(false);
   const { settings } = useSettings();
-  const { user, userDetails, session, signOut } = useAuth();
+  const { user, userDetails, session } = useAuth();
   const navigate = useNavigate();
   const isMobile = useMediaQuery('(max-width: 768px)');
   
@@ -188,39 +187,42 @@ const Index = () => {
   const username = userDetails?.username || localStorage.getItem('guestUsername') || 'Guest';
   
   return (
-    <div className="h-screen flex flex-col overflow-hidden">
-      <TopBar 
-        toggleSidebar={toggleSidebar} 
-        toggleTerminal={toggleTerminal}
-        onReset={resetLayout}
-        username={username}
-      />
-      
-      <div className="flex-1 flex overflow-hidden">
-        {showSidebar && (
-          <div className={`${isMobile ? 'absolute z-20 h-full' : ''}`}>
-            <SideBar 
-              activeSection={activeSection} 
-              onSectionChange={handleSectionChange} 
-            />
-          </div>
-        )}
+    <>
+      <div className="h-screen flex flex-col overflow-hidden">
+        <TopBar 
+          toggleSidebar={toggleSidebar} 
+          toggleTerminal={toggleTerminal}
+          onReset={resetLayout}
+          username={username}
+        />
         
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <main className="flex-1 p-4 overflow-auto">
-            {renderActiveSection()}
-          </main>
-          
-          {showTerminal && (
-            <Terminal 
-              onClose={() => setShowTerminal(false)}
-              onMinimize={() => setShowTerminal(false)}
-              onMaximize={() => {}}
-            />
+        <div className="flex-1 flex overflow-hidden">
+          {showSidebar && (
+            <div className={`${isMobile ? 'absolute z-20 h-full' : ''}`}>
+              <SideBar 
+                activeSection={activeSection} 
+                onSectionChange={handleSectionChange} 
+              />
+            </div>
           )}
+          
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <main className="flex-1 p-4 overflow-auto">
+              {renderActiveSection()}
+            </main>
+            
+            {showTerminal && (
+              <Terminal 
+                onClose={() => setShowTerminal(false)}
+                onMinimize={() => setShowTerminal(false)}
+                onMaximize={() => {}}
+              />
+            )}
+          </div>
         </div>
       </div>
-    </div>
+      <Toaster />
+    </>
   );
 };
 
