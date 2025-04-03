@@ -4,12 +4,11 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useWebSocketClient } from './useWebSocketClient';
-import { webSocketService } from '@/services/WebSocketService';
-import { TickData } from '@/types/chartTypes';
+import { webSocketService, TickData } from '@/services/WebSocketService';
 
 interface WebSocketOptions {
   wsUrl?: string;
-  subscription?: { ticks: string };
+  subscription?: object;
   autoReconnect?: boolean;
   reconnectInterval?: number;
   maxReconnectAttempts?: number;
@@ -22,9 +21,9 @@ interface WebSocketOptions {
 // Common subscription formats for different brokers
 export const subscriptionFormats = {
   deriv: { ticks: 'R_10' },
-  iqOption: { ticks: 'EURUSD' },
-  binance: { ticks: 'btcusdt' },
-  metatrader: { ticks: 'EURUSD' },
+  iqOption: { symbol: 'EURUSD' },
+  binance: { method: 'SUBSCRIBE', params: ['btcusdt@ticker'] },
+  metatrader: { symbol: 'EURUSD' },
   binary: { ticks: 'V_75' }
 };
 
@@ -67,7 +66,7 @@ export function useWebSocket({
       // Use setTimeout to ensure disconnect completes
       setTimeout(() => {
         // Update WebSocket service config
-        webSocketService.updateConfig({ url: wsUrl, subscription, apiKey: 'nPAKsP8mJBuLkvW' });
+        webSocketService.updateConfig({ url: wsUrl, subscription });
         connect();
       }, 100);
     }
@@ -75,7 +74,7 @@ export function useWebSocket({
     return () => {
       disconnect();
     };
-  }, [wsUrl, disconnect, connect, subscription]);
+  }, [wsUrl, disconnect, connect]);
 
   // Maintain legacy API
   const legacyApi = {
@@ -95,4 +94,4 @@ export function useWebSocket({
   return legacyApi;
 }
 
-export { brokerWebSockets } from '@/types/chartTypes';
+export { type TickData, brokerWebSockets } from '@/types/chartTypes';

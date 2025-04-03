@@ -2,7 +2,6 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
-import { webSocketService } from '@/services/WebSocketService';
 
 export type UserDetailsType = {
   username: string;
@@ -71,14 +70,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {
-        console.log("Auth state changed:", event, session?.user?.id);
         setSession(session);
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          // Remove guest mode settings when user logs in
-          localStorage.removeItem('guestMode');
-          localStorage.removeItem('guestUsername');
           await fetchUserDetails(session.user.id);
         } else {
           setUserDetails(null);
@@ -123,6 +118,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
 
         if (data.is_banned) {
+          toast.error('Your account has been banned. Please contact support.');
           await supabase.auth.signOut();
         }
       } else {
@@ -221,13 +217,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
       
-      // Clear all local state
-      localStorage.removeItem('guestMode');
-      localStorage.removeItem('guestUsername');
-      
-      // No toast needed
+      toast.info('Signed out successfully');
     } catch (error: any) {
-      console.error('Error signing out:', error);
+      toast.error(error.message || 'Error signing out');
       throw error;
     }
   };
@@ -257,8 +249,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isBanned: false,
         proStatus: false
       });
+      
+      toast.success(`Signed in as ${guestUsername}`);
     } catch (error: any) {
-      console.error('Error signing in as guest:', error);
+      toast.error(error.message || 'Error signing in as guest');
       throw error;
     }
   };
@@ -282,21 +276,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (error) throw error;
       
-      // Update local state immediately
       setUserDetails(prev => {
         if (!prev) return details as UserDetailsType;
         return { ...prev, ...details };
       });
       
-      // Apply API key to WebSocket service if provided
-      if (details.api_key) {
-        webSocketService.updateConfig({ apiKey: details.api_key });
-        console.log('API key updated in WebSocket service');
-      }
-      
-      // No toast needed
+      toast.success('Profile updated successfully');
     } catch (error: any) {
-      console.error('Failed to update profile:', error);
+      toast.error(error.message || 'Failed to update profile');
       throw error;
     }
   };

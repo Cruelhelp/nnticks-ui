@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/components/ui/use-toast"
 import { webSocketService } from '@/services/WebSocketService';
 import { useSettings } from '@/hooks/useSettings';
 import { Textarea } from '@/components/ui/textarea';
@@ -12,45 +12,27 @@ import { Textarea } from '@/components/ui/textarea';
 const DebugTools: React.FC = () => {
   const [wsUrl, setWsUrl] = useState('');
   const [customWsUrl, setCustomWsUrl] = useState('');
-  const [apiKey, setApiKey] = useState('nPAKsP8mJBuLkvW'); // Default API key
   const { toast } = useToast();
   const { settings, updateSettings } = useSettings();
   
   useEffect(() => {
     // Use the public getter for config
-    const config = webSocketService.getConfig();
-    setWsUrl(config.url);
-    setApiKey(config.apiKey);
+    setWsUrl(webSocketService.config.url);
   }, []);
   
   const handleApplySettings = () => {
-    const updatedSettings: any = {};
-    
     // Update WebSocket URL
     if (customWsUrl) {
-      updatedSettings.url = customWsUrl;
+      webSocketService.updateConfig({ url: customWsUrl });
       setWsUrl(customWsUrl);
       setCustomWsUrl('');
-    }
-    
-    // Update API key
-    if (apiKey) {
-      updatedSettings.apiKey = apiKey;
     }
     
     // Update subscription
     try {
       if (settings.subscription) {
         const parsedSubscription = JSON.parse(settings.subscription);
-        if (parsedSubscription.ticks) {
-          updatedSettings.subscription = { ticks: parsedSubscription.ticks };
-        } else {
-          toast({
-            title: "Error",
-            description: "Subscription must include a 'ticks' property.",
-          });
-          return;
-        }
+        webSocketService.updateConfig({ subscription: parsedSubscription });
       }
     } catch (error) {
       console.error("Error parsing subscription:", error);
@@ -61,12 +43,9 @@ const DebugTools: React.FC = () => {
       return;
     }
     
-    // Apply all updates at once
-    webSocketService.updateConfig(updatedSettings);
-    
     toast({
       title: "Success",
-      description: "Settings applied successfully. Reconnecting...",
+      description: "Settings applied successfully.",
     });
   };
   
@@ -82,8 +61,7 @@ const DebugTools: React.FC = () => {
       subscription: { ticks: 'R_10' }
     });
     
-    setWsUrl(webSocketService.getConfig().url);
-    setApiKey("nPAKsP8mJBuLkvW");
+    setWsUrl(webSocketService.config.url);
     updateSettings({ ...settings, subscription: JSON.stringify({ ticks: 'R_10' }, null, 2) });
     
     toast({
@@ -116,15 +94,6 @@ const DebugTools: React.FC = () => {
             placeholder="wss://example.com/ws"
             value={customWsUrl}
             onChange={(e) => setCustomWsUrl(e.target.value)}
-          />
-        </div>
-        <div className="grid gap-2">
-          <Label htmlFor="api-key">API Key</Label>
-          <Input
-            id="api-key"
-            placeholder="Your API Key"
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
           />
         </div>
         <div className="grid gap-2">

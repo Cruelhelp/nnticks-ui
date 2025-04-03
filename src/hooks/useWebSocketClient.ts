@@ -1,11 +1,10 @@
 
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { webSocketService } from '@/services/WebSocketService';
-import { TickData } from '@/types/chartTypes';
+import { webSocketService, TickData } from '@/services/WebSocketService';
 
 interface WebSocketHookOptions {
   autoConnect?: boolean;
-  subscription?: { ticks: string };
+  subscription?: object;
   onMessage?: (data: any) => void;
   onTick?: (tick: TickData) => void;
   onStatusChange?: (status: string) => void;
@@ -23,8 +22,8 @@ export function useWebSocketClient(options: WebSocketHookOptions = {}) {
   } = options;
   
   const [isConnected, setIsConnected] = useState(webSocketService.isConnected());
-  const [ticks, setTicks] = useState<TickData[]>(() => webSocketService.getTicks());
-  const [latestTick, setLatestTick] = useState<TickData | null>(() => webSocketService.getLatestTick());
+  const [ticks, setTicks] = useState<TickData[]>(webSocketService.getTicks());
+  const [latestTick, setLatestTick] = useState<TickData | null>(webSocketService.getLatestTick());
   const [connectionStatus, setConnectionStatus] = useState(webSocketService.getStatus());
   const [hasRecentData, setHasRecentData] = useState(webSocketService.hasRecentData());
   
@@ -104,7 +103,7 @@ export function useWebSocketClient(options: WebSocketHookOptions = {}) {
     connect: () => webSocketService.connect(),
     disconnect: () => webSocketService.disconnect(),
     send: (message: object | string) => webSocketService.send(message),
-    setSubscription: (sub: { ticks: string }) => webSocketService.setSubscription(sub),
+    setSubscription: (sub: object) => webSocketService.setSubscription(sub),
   }), []);
   
   return {
