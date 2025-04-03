@@ -12,6 +12,7 @@ import { SettingsProvider } from "./hooks/useSettings";
 import { ThemeProvider } from "./components/ui/theme-provider";
 import { useEffect, memo } from "react";
 import AdminPanel from "./components/AdminPanel";
+import "./index.css";
 
 // Create client with better defaults for mobile performance
 const queryClient = new QueryClient({

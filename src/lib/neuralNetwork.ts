@@ -29,6 +29,17 @@ export interface PredictionResult {
   period: PredictionTimePeriod;
   confidence: number;
   timestamp: Date;
+  startPrice?: number;
+}
+
+// Network model structure for saving/loading
+export interface NetworkModel {
+  config: NNConfiguration;
+  weights: number[][][];
+  biases: number[][];
+  accuracy: number;
+  timestamp: string;
+  version: string;
 }
 
 // Simple ReLU function implementation
@@ -123,14 +134,60 @@ export class NeuralNetwork {
   private lastPrediction: PredictionResult | null = null;
   private trainingProgress: number = 0;
   private modelAccuracy: number = 0;
+  private weights: number[][][] = []; // Layer weights
+  private biases: number[][] = []; // Layer biases
+  private modelVersion: string = "1.0.0";
+  private trainingData: { inputs: number[], outputs: number[], result: string }[] = [];
 
   constructor(config: NNConfiguration = DEFAULT_NN_CONFIG) {
     this.config = { ...config };
+    this.initializeNetwork();
+  }
+
+  // Initialize network with random weights and biases
+  private initializeNetwork(): void {
+    // Initialize weights and biases based on layer configuration
+    const { layers } = this.config;
+    
+    this.weights = [];
+    this.biases = [];
+    
+    // Create weights between layers
+    for (let i = 0; i < layers.length - 1; i++) {
+      const layerWeights: number[][] = [];
+      
+      for (let j = 0; j < layers[i]; j++) {
+        const neuronWeights: number[] = [];
+        
+        for (let k = 0; k < layers[i + 1]; k++) {
+          // Initialize with small random values
+          neuronWeights.push((Math.random() * 2 - 1) * 0.1);
+        }
+        
+        layerWeights.push(neuronWeights);
+      }
+      
+      this.weights.push(layerWeights);
+      
+      // Initialize biases for next layer
+      const layerBiases: number[] = [];
+      for (let j = 0; j < layers[i + 1]; j++) {
+        layerBiases.push((Math.random() * 2 - 1) * 0.1);
+      }
+      
+      this.biases.push(layerBiases);
+    }
   }
 
   // Update configuration
   updateConfig(newConfig: Partial<NNConfiguration>): void {
+    const oldLayers = [...this.config.layers];
     this.config = { ...this.config, ...newConfig };
+    
+    // If layer structure changed, reinitialize network
+    if (JSON.stringify(oldLayers) !== JSON.stringify(this.config.layers)) {
+      this.initializeNetwork();
+    }
   }
 
   // Get current configuration
@@ -147,8 +204,28 @@ export class NeuralNetwork {
     };
   }
 
+  // Get model information
+  getModelInfo(): { 
+    config: NNConfiguration; 
+    accuracy: number; 
+    version: string; 
+    lastUpdated: Date;
+  } {
+    return {
+      config: { ...this.config },
+      accuracy: this.modelAccuracy,
+      version: this.modelVersion,
+      lastUpdated: new Date()
+    };
+  }
+
   // Simplified prediction function (in real app, this would use TensorFlow/PyTorch in a worker)
-  async predict(tickData: number[], type: PredictionType = 'rise', period: PredictionTimePeriod = 3): Promise<PredictionResult> {
+  async predict(
+    tickData: number[], 
+    type: PredictionType = 'rise', 
+    period: PredictionTimePeriod = 3, 
+    currentPrice: number = 0
+  ): Promise<PredictionResult> {
     // This is a simplified implementation
     // In a real application, this would use TensorFlow.js or call a backend API
     
@@ -215,7 +292,8 @@ export class NeuralNetwork {
       type: predictedType,
       period: period,
       confidence: confidence,
-      timestamp: new Date()
+      timestamp: new Date(),
+      startPrice: currentPrice || lastPrice
     };
     
     // Store last prediction
@@ -224,7 +302,7 @@ export class NeuralNetwork {
     return prediction;
   }
 
-  // Simulate training process (in real app would use TensorFlow/PyTorch)
+  // Simulate training process with real data storage
   async train(historicalData: number[], options?: { maxEpochs?: number }): Promise<number> {
     // Simulation of training process
     if (historicalData.length < 100) {
@@ -233,6 +311,7 @@ export class NeuralNetwork {
     
     this.isTraining = true;
     this.trainingProgress = 0;
+    this.trainingData = [];
     
     // Simulate epochs
     const maxEpochs = options?.maxEpochs || this.config.epochs;
@@ -243,6 +322,19 @@ export class NeuralNetwork {
       
       // Update progress
       this.trainingProgress = (epoch + 1) / maxEpochs;
+      
+      // Create synthetic training example
+      const sampleIndex = Math.floor(Math.random() * (historicalData.length - 20));
+      const inputData = historicalData.slice(sampleIndex, sampleIndex + 10);
+      const outputData = historicalData.slice(sampleIndex + 10, sampleIndex + 20);
+      const result = outputData[outputData.length - 1] > inputData[inputData.length - 1] ? "rise" : "fall";
+      
+      // Store training data
+      this.trainingData.push({
+        inputs: inputData,
+        outputs: outputData,
+        result
+      });
       
       // Simulate accuracy improvements
       const baseAccuracy = 0.6; // Starting accuracy
@@ -256,17 +348,86 @@ export class NeuralNetwork {
       
       // Clamp to realistic values
       this.modelAccuracy = Math.min(0.95, Math.max(0.6, this.modelAccuracy));
+      
+      // Update model version
+      this.modelVersion = `1.0.${epoch + 1}`;
     }
     
     this.isTraining = false;
     return this.modelAccuracy;
   }
 
+  // Export model to JSON
+  exportModel(): NetworkModel {
+    return {
+      config: { ...this.config },
+      weights: this.weights,
+      biases: this.biases,
+      accuracy: this.modelAccuracy,
+      timestamp: new Date().toISOString(),
+      version: this.modelVersion
+    };
+  }
+
+  // Import model from JSON
+  importModel(model: NetworkModel): boolean {
+    try {
+      this.config = { ...model.config };
+      this.weights = model.weights;
+      this.biases = model.biases;
+      this.modelAccuracy = model.accuracy;
+      this.modelVersion = model.version;
+      return true;
+    } catch (error) {
+      console.error("Error importing model:", error);
+      return false;
+    }
+  }
+
+  // Save model to file
+  saveModelToFile(): void {
+    const model = this.exportModel();
+    const blob = new Blob([JSON.stringify(model, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `nnticks-model-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  // Load model from file
+  loadModelFromFile(file: File): Promise<boolean> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      
+      reader.onload = (event) => {
+        try {
+          const modelData = JSON.parse(event.target?.result as string) as NetworkModel;
+          const success = this.importModel(modelData);
+          resolve(success);
+        } catch (error) {
+          console.error("Error loading model from file:", error);
+          reject(error);
+        }
+      };
+      
+      reader.onerror = (error) => {
+        reject(error);
+      };
+      
+      reader.readAsText(file);
+    });
+  }
+
   // Get model statistics
-  getModelStats(): { accuracy: number; config: NNConfiguration } {
+  getModelStats(): { accuracy: number; config: NNConfiguration; trainingData: any[] } {
     return {
       accuracy: this.modelAccuracy,
-      config: this.config
+      config: this.config,
+      trainingData: this.trainingData
     };
   }
 }

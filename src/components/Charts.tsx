@@ -12,11 +12,7 @@ import {
   Legend, 
   ResponsiveContainer,
   ReferenceLine,
-  Brush,
-  ScatterChart,
-  Scatter,
-  ZAxis,
-  ReferenceArea
+  Brush
 } from 'recharts';
 import { Badge } from '@/components/ui/badge';
 import React, { useState, useEffect } from 'react';
@@ -72,7 +68,7 @@ const LineChartView: React.FC<ChartProps> = ({ data, height = 350 }) => {
           tick={{ fontSize: 12 }}
           stroke={theme === 'dark' ? '#888' : '#333'} 
           tickCount={8}
-          tickFormatter={(value) => value.toFixed(2)}
+          tickFormatter={(value) => value.toFixed(5)}
         />
         <Tooltip 
           contentStyle={{ 
@@ -93,6 +89,7 @@ const LineChartView: React.FC<ChartProps> = ({ data, height = 350 }) => {
           activeDot={{ r: 8 }} 
           isAnimationActive={true}
           animationDuration={500}
+          dot={false}
         />
         <Brush 
           dataKey="timestamp" 
@@ -137,7 +134,7 @@ const AreaChartView: React.FC<ChartProps> = ({ data, height = 350 }) => {
           tick={{ fontSize: 12 }}
           stroke={theme === 'dark' ? '#888' : '#333'} 
           tickCount={8}
-          tickFormatter={(value) => value.toFixed(2)}
+          tickFormatter={(value) => value.toFixed(5)}
         />
         <Tooltip 
           contentStyle={{ 
@@ -201,7 +198,7 @@ const BarChartView: React.FC<ChartProps> = ({ data, height = 350 }) => {
           tick={{ fontSize: 12 }}
           stroke={theme === 'dark' ? '#888' : '#333'} 
           tickCount={8}
-          tickFormatter={(value) => value.toFixed(2)}
+          tickFormatter={(value) => value.toFixed(5)}
         />
         <Tooltip 
           contentStyle={{ 
@@ -225,192 +222,6 @@ const BarChartView: React.FC<ChartProps> = ({ data, height = 350 }) => {
   );
 };
 
-const CandlestickChart: React.FC<ChartProps> = ({ data, height = 350 }) => {
-  const { theme } = useTheme();
-  
-  // Filter data for candlestick chart
-  const formattedData = data.filter(item => 
-    item.open !== undefined && 
-    item.close !== undefined && 
-    item.high !== undefined && 
-    item.low !== undefined
-  );
-
-  // If no candlestick data is available, show a message
-  if (formattedData.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <p className="text-muted-foreground">No candlestick data available</p>
-      </div>
-    );
-  }
-  
-  // Calculate a dynamic domain for Y axis with enhanced visualization
-  const calculateYAxisDomain = () => {
-    if (formattedData.length === 0) return ['auto', 'auto'];
-    
-    const allValues = formattedData.flatMap(item => [item.high, item.low, item.open, item.close]);
-    const min = Math.min(...allValues);
-    const max = Math.max(...allValues);
-    
-    const middle = (max + min) / 2;
-    const range = max - min;
-    const padding = Math.max(0.02, range * 5);
-    
-    return [middle - padding, middle + padding];
-  };
-  
-  return (
-    <ResponsiveContainer width="100%" height={height}>
-      <LineChart data={formattedData}>
-        <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? '#333' : '#eee'} />
-        <XAxis 
-          dataKey="timestamp"
-          tick={{ fontSize: 12 }}
-          stroke={theme === 'dark' ? '#888' : '#333'}
-        />
-        <YAxis 
-          domain={calculateYAxisDomain()}
-          tick={{ fontSize: 12 }}
-          stroke={theme === 'dark' ? '#888' : '#333'}
-          tickCount={8}
-          tickFormatter={(value) => value.toFixed(2)}
-        />
-        <Tooltip 
-          contentStyle={{ 
-            backgroundColor: theme === 'dark' ? '#222' : '#fff',
-            border: '1px solid #ccc',
-            borderRadius: '4px',
-            color: theme === 'dark' ? '#eee' : '#333'
-          }}
-          formatter={(value: any) => [value.toFixed(5), 'Price']}
-          labelFormatter={(label) => `Time: ${label}`}
-        />
-        <Legend />
-        
-        {/* High-Low lines */}
-        {formattedData.map((entry, index) => (
-          <Line
-            key={`line-${index}`}
-            dataKey="value"
-            data={[
-              { timestamp: entry.timestamp, value: entry.high },
-              { timestamp: entry.timestamp, value: entry.low }
-            ]}
-            stroke={entry.open > entry.close ? '#ff4d4f' : '#52c41a'}
-            strokeWidth={1}
-            dot={false}
-            activeDot={false}
-            isAnimationActive={false}
-          />
-        ))}
-        
-        {/* Open-Close rectangles */}
-        {formattedData.map((entry, index) => (
-          <ReferenceArea
-            key={`area-${index}`}
-            x1={index - 0.25}
-            x2={index + 0.25}
-            y1={Math.min(entry.open, entry.close)}
-            y2={Math.max(entry.open, entry.close)}
-            fill={entry.open > entry.close ? '#ff4d4f' : '#52c41a'}
-            fillOpacity={0.7}
-          />
-        ))}
-      </LineChart>
-    </ResponsiveContainer>
-  );
-};
-
-const ScatterPlotView: React.FC<ChartProps> = ({ data, height = 350 }) => {
-  const { theme } = useTheme();
-  
-  // Process the data to include value changes for plotting with enhanced visualization
-  const processedData = data.map((item, index, arr) => ({
-    ...item,
-    change: index > 0 ? item.value - arr[index - 1].value : 0,
-    size: 20 // Constant size for all points
-  }));
-
-  // Calculate dynamic domains for X and Y axes with enhanced visualization
-  const calculateXAxisDomain = () => {
-    if (processedData.length === 0) return ['auto', 'auto'];
-    
-    const values = processedData.map(item => item.value);
-    const min = Math.min(...values);
-    const max = Math.max(...values);
-    
-    const middle = (max + min) / 2;
-    const range = max - min;
-    const padding = Math.max(0.02, range * 5);
-    
-    return [middle - padding, middle + padding];
-  };
-  
-  const calculateYAxisDomain = () => {
-    if (processedData.length <= 1) return [-0.01, 0.01]; // Default range for insufficient data
-    
-    const values = processedData.map(item => item.change);
-    const min = Math.min(...values);
-    const max = Math.max(...values);
-    
-    // Use a dynamic padding based on the data magnitude for better visualization
-    const padding = Math.max(0.001, Math.abs(max - min) * 2);
-    
-    return [min - padding, max + padding];
-  };
-
-  return (
-    <ResponsiveContainer width="100%" height={height}>
-      <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? '#333' : '#eee'} />
-        <XAxis 
-          type="number" 
-          dataKey="value" 
-          name="Value" 
-          unit=""
-          domain={calculateXAxisDomain()}
-          tick={{ fontSize: 12 }}
-          stroke={theme === 'dark' ? '#888' : '#333'} 
-          tickCount={8}
-          tickFormatter={(value) => value.toFixed(2)}
-        />
-        <YAxis 
-          type="number" 
-          dataKey="change" 
-          name="Change" 
-          unit=""
-          domain={calculateYAxisDomain()}
-          tick={{ fontSize: 12 }}
-          stroke={theme === 'dark' ? '#888' : '#333'} 
-          tickCount={8}
-          tickFormatter={(value) => value.toFixed(5)}
-        />
-        <ZAxis type="number" dataKey="size" range={[20, 200]} name="Size" />
-        <Tooltip 
-          cursor={{ strokeDasharray: '3 3' }}
-          contentStyle={{ 
-            backgroundColor: theme === 'dark' ? '#222' : '#fff',
-            border: '1px solid #ccc',
-            borderRadius: '4px',
-            color: theme === 'dark' ? '#eee' : '#333'
-          }}
-          formatter={(value: any) => [typeof value === 'number' ? value.toFixed(5) : value, 'Price']}
-          labelFormatter={() => 'Data Point'}
-        />
-        <Legend />
-        <Scatter 
-          name="Data Points" 
-          data={processedData} 
-          fill="#8884d8"
-          isAnimationActive={true}
-          animationDuration={500}
-        />
-      </ScatterChart>
-    </ResponsiveContainer>
-  );
-};
-
 const Charts: React.FC = () => {
   const [tickData, setTickData] = useState<Array<any>>([]);
   const [chartHeight, setChartHeight] = useState(400);
@@ -422,19 +233,14 @@ const Charts: React.FC = () => {
 
   // Connect to WebSocket for real-time data
   const ws = useWebSocket({
-    wsUrl: settings.wsUrl || 'wss://ws.binaryws.com/websockets/v3?app_id=1089',
-    subscription: settings.subscription ? JSON.parse(settings.subscription) : { ticks: selectedMarket },
+    wsUrl: settings?.wsUrl || 'wss://ws.binaryws.com/websockets/v3?app_id=1089',
+    subscription: settings?.subscription ? JSON.parse(settings.subscription) : { ticks: selectedMarket },
     onMessage: (data) => {
       if (data.tick) {
         const tickItem = {
           timestamp: new Date(data.tick.epoch * 1000).toLocaleTimeString(),
           value: data.tick.quote,
           market: data.tick.symbol,
-          // Adding mock candlestick data
-          open: data.tick.quote - Math.random() * 0.05,
-          close: data.tick.quote,
-          high: data.tick.quote + Math.random() * 0.05,
-          low: data.tick.quote - Math.random() * 0.1
         };
         
         setTickData(prev => {
@@ -461,12 +267,7 @@ const Charts: React.FC = () => {
             timestamp: new Date(now - (29-i) * 60000).toLocaleTimeString(),
             value: parseFloat(baseValue.toFixed(5)),
             price: parseFloat(baseValue.toFixed(5)),
-            market: selectedMarket,
-            // Adding mock candlestick data with more variation
-            open: parseFloat((baseValue - Math.random() * 0.25).toFixed(5)),
-            close: parseFloat(baseValue.toFixed(5)),
-            high: parseFloat((baseValue + Math.random() * 0.3).toFixed(5)),
-            low: parseFloat((baseValue - Math.random() * 0.4).toFixed(5))
+            market: selectedMarket
           };
         });
         setTickData(newData);
@@ -540,10 +341,6 @@ const Charts: React.FC = () => {
         return <AreaChartView data={tickData} height={chartHeight} />;
       case 'bar':
         return <BarChartView data={tickData} height={chartHeight} />;
-      case 'candlestick':
-        return <CandlestickChart data={tickData} height={chartHeight} />;
-      case 'scatter':
-        return <ScatterPlotView data={tickData} height={chartHeight} />;
       default:
         return <LineChartView data={tickData} height={chartHeight} />;
     }
@@ -630,8 +427,6 @@ const Charts: React.FC = () => {
                   <TabsTrigger value="line">Line Chart</TabsTrigger>
                   <TabsTrigger value="area">Area Chart</TabsTrigger>
                   <TabsTrigger value="bar">Bar Chart</TabsTrigger>
-                  <TabsTrigger value="candlestick">Candlestick</TabsTrigger>
-                  <TabsTrigger value="scatter">Scatter Plot</TabsTrigger>
                 </TabsList>
                 
                 <div className="flex justify-between items-center mt-4 mb-2">

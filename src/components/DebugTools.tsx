@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { useToast } from "@/components/ui/use-toast"
+import { useToast } from "@/components/ui/use-toast";
 import { webSocketService } from '@/services/WebSocketService';
 import { useSettings } from '@/hooks/useSettings';
 import { Textarea } from '@/components/ui/textarea';
@@ -12,12 +12,14 @@ import { Textarea } from '@/components/ui/textarea';
 const DebugTools: React.FC = () => {
   const [wsUrl, setWsUrl] = useState('');
   const [customWsUrl, setCustomWsUrl] = useState('');
+  const [apiKey, setApiKey] = useState('');
   const { toast } = useToast();
   const { settings, updateSettings } = useSettings();
   
   useEffect(() => {
     // Use the public getter for config
     setWsUrl(webSocketService.config.url);
+    setApiKey(webSocketService.config.apiKey || '');
   }, []);
   
   const handleApplySettings = () => {
@@ -26,6 +28,11 @@ const DebugTools: React.FC = () => {
       webSocketService.updateConfig({ url: customWsUrl });
       setWsUrl(customWsUrl);
       setCustomWsUrl('');
+    }
+    
+    // Update API Key
+    if (apiKey) {
+      webSocketService.updateConfig({ apiKey });
     }
     
     // Update subscription
@@ -64,6 +71,8 @@ const DebugTools: React.FC = () => {
     });
     
     setWsUrl(webSocketService.config.url);
+    setApiKey("nPAKsP8mJBuLkvW");
+    
     if (settings) {
       updateSettings({ ...settings, subscription: JSON.stringify({ ticks: 'R_10' }, null, 2) });
     }
@@ -98,6 +107,15 @@ const DebugTools: React.FC = () => {
             placeholder="wss://example.com/ws"
             value={customWsUrl}
             onChange={(e) => setCustomWsUrl(e.target.value)}
+          />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="api-key">API Key</Label>
+          <Input
+            id="api-key"
+            placeholder="Enter API key"
+            value={apiKey}
+            onChange={(e) => setApiKey(e.target.value)}
           />
         </div>
         <div className="grid gap-2">

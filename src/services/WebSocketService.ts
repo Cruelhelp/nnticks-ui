@@ -1,3 +1,4 @@
+
 import { toast } from 'sonner';
 
 export interface TickData {
@@ -19,11 +20,39 @@ const DEFAULT_CONFIG: WSConfig = {
   subscription: { ticks: 'R_10' }
 };
 
+// Browser-compatible EventEmitter implementation
+class BrowserEventEmitter {
+  private events: Record<string, Function[]> = {};
+
+  on(event: string, listener: Function): void {
+    if (!this.events[event]) {
+      this.events[event] = [];
+    }
+    this.events[event].push(listener);
+  }
+
+  off(event: string, listener: Function): void {
+    if (!this.events[event]) return;
+    this.events[event] = this.events[event].filter(l => l !== listener);
+  }
+
+  emit(event: string, ...args: any[]): void {
+    if (!this.events[event]) return;
+    this.events[event].forEach(listener => {
+      try {
+        listener(...args);
+      } catch (err) {
+        console.error(`Error in event listener for ${event}:`, err);
+      }
+    });
+  }
+}
+
 export class WebSocketService {
   private _config: WSConfig;
   private socket: WebSocket | null = null;
   private reconnectTimeout: NodeJS.Timeout | null = null;
-  private listeners: Map<string, Set<Function>> = new Map();
+  private eventEmitter: BrowserEventEmitter = new BrowserEventEmitter();
   private autoReconnect: boolean = true;
   private maxReconnectAttempts: number = 5;
   private reconnectAttempts: number = 0;
@@ -113,21 +142,11 @@ export class WebSocketService {
   }
 
   public on(event: string, callback: Function): void {
-    if (!this.listeners.has(event)) {
-      this.listeners.set(event, new Set());
-    }
-    
-    this.listeners.get(event)?.add(callback);
+    this.eventEmitter.on(event, callback);
   }
 
   public off(event: string, callback: Function): void {
-    if (!this.listeners.has(event)) return;
-    
-    this.listeners.get(event)?.delete(callback);
-    
-    if (this.listeners.get(event)?.size === 0) {
-      this.listeners.delete(event);
-    }
+    this.eventEmitter.off(event, callback);
   }
 
   public isConnected(): boolean {
@@ -248,23 +267,12 @@ export class WebSocketService {
   }
   
   private emitEvent(event: string, data: any): void {
-    if (!this.listeners.has(event)) return;
-    
-    for (const callback of this.listeners.get(event) || []) {
-      try {
-        callback(data);
-      } catch (err) {
-        console.error(`Error in WebSocket event listener for ${event}:`, err);
-      }
-    }
+    this.eventEmitter.emit(event, data);
   }
 }
 
 // Create a singleton instance with default config
 export const webSocketService = new WebSocketService();
-
-// Remove the static method and use the instance directly
-// The singleton pattern is still maintained
 
 // Initialize connection on service creation
 webSocketService.connect();

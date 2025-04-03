@@ -12,6 +12,9 @@ import { neuralNetwork } from '@/lib/neuralNetwork';
 import { supabase } from '@/lib/supabase';
 import { useWebSocket } from '@/hooks/useWebSocket';
 
+// Prediction phase types
+type PredictionPhase = 'warning' | 'counting' | 'completed';
+
 interface Prediction {
   id: number;
   confidence: number;
@@ -21,15 +24,21 @@ interface Prediction {
   startPrice?: number;
   endPrice?: number;
   timePeriod: number;
+  predictionType: 'rise' | 'fall' | 'even' | 'odd';
 }
 
 interface PendingPrediction {
   id: number;
   confidence: number;
   timestamp: Date;
-  countdown: number;
+  warningCountdown: number; // 10-second warning countdown
+  tickCountdown: number;    // Tick-based countdown
+  phase: PredictionPhase;   // Current phase of the prediction
   market: string;
   startPrice: number;
+  tickPeriod: number;       // Number of ticks to wait
+  ticksElapsed: number;     // Number of ticks elapsed during counting phase
+  predictionType: 'rise' | 'fall' | 'even' | 'odd';
 }
 
 // Visual representation of a neural network node
@@ -207,8 +216,10 @@ const Predictions = () => {
   const [trainingProgress, setTrainingProgress] = useState(0);
   const [currentMarket, setCurrentMarket] = useState('R_10');
   const [currentPrice, setCurrentPrice] = useState<number | null>(null);
+  const [predictionType, setPredictionType] = useState<'rise' | 'fall'>('rise');
   const { user } = useAuth();
   const autoIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
+  const tickCounterRef = React.useRef<Map<number, number>>(new Map());
   
   // Connect to broker WebSocket for tick data
   const ws = useWebSocket({
@@ -218,6 +229,9 @@ const Predictions = () => {
       if (data.tick) {
         setCurrentPrice(data.tick.quote);
         setCurrentMarket(data.tick.symbol);
+        
+        // Process tick for pending predictions
+        handleNewTick(data.tick.quote);
       }
     },
     onError: (error) => {
@@ -264,11 +278,12 @@ const Predictions = () => {
           id: item.id,
           confidence: item.confidence,
           timestamp: new Date(item.timestamp),
-          outcome: item.outcome as "win" | "loss",
+          outcome: item.outcome as "win" | "loss" | "pending",
           market: item.market,
           startPrice: item.start_price,
           endPrice: item.end_price,
-          timePeriod: item.time_period || 3
+          timePeriod: item.time_period || 3,
+          predictionType: item.prediction || 'rise'
         }));
         setCompletedPredictions(loaded);
       }
@@ -283,6 +298,48 @@ const Predictions = () => {
     return Date.now() + Math.floor(Math.random() * 1000);
   };
   
+  // Handle a new tick from the WebSocket
+  const handleNewTick = (price: number) => {
+    // Process pending predictions
+    setPendingPredictions(prevPredictions => {
+      const updatedPredictions = prevPredictions.map(prediction => {
+        // Skip predictions that are not in the counting phase
+        if (prediction.phase !== 'counting') {
+          return prediction;
+        }
+        
+        // Increment tick counter for this prediction
+        const currentTicks = tickCounterRef.current.get(prediction.id) || 0;
+        const newTicksCount = currentTicks + 1;
+        tickCounterRef.current.set(prediction.id, newTicksCount);
+        
+        // Check if we've reached the target number of ticks
+        if (newTicksCount >= prediction.tickPeriod) {
+          // Mark as completed and schedule evaluation
+          setTimeout(() => {
+            handleCompletePrediction(prediction.id, price);
+            // Remove this prediction's tick counter
+            tickCounterRef.current.delete(prediction.id);
+          }, 100);
+          
+          return {
+            ...prediction,
+            phase: 'completed',
+            ticksElapsed: prediction.tickPeriod
+          };
+        }
+        
+        // Update tick count
+        return {
+          ...prediction,
+          ticksElapsed: newTicksCount
+        };
+      });
+      
+      return updatedPredictions;
+    });
+  };
+  
   // Neural network-generated prediction
   const generatePrediction = useCallback(() => {
     if (!currentPrice || !isBotRunning) return null;
@@ -295,9 +352,10 @@ const Predictions = () => {
     }
     
     // Generate a prediction using the neural network
-    return neuralNetwork.predict(tickValues)
+    return neuralNetwork.predict(tickValues, 'rise', predictionTimePeriod as any, currentPrice)
       .then(prediction => {
         handleAddPrediction(
+          prediction.type, 
           prediction.period, 
           Math.round(prediction.confidence * 100),
           true
@@ -306,7 +364,7 @@ const Predictions = () => {
       .catch(err => {
         console.error("Error generating prediction:", err);
       });
-  }, [currentPrice, ws.ticks, isBotRunning]);
+  }, [currentPrice, ws.ticks, isBotRunning, predictionTimePeriod]);
   
   // Toggle bot
   const toggleBot = () => {
@@ -346,6 +404,7 @@ const Predictions = () => {
   };
   
   const handleAddPrediction = async (
+    type: 'rise' | 'fall' | 'even' | 'odd' = 'rise',
     period: number = predictionTimePeriod, 
     confidence: number = predictionConfidence,
     isAuto: boolean = false
@@ -359,43 +418,67 @@ const Predictions = () => {
     
     setIsPredicting(true);
     
-    // Create new prediction
+    // Create new prediction with initial warning phase
     const newPrediction: PendingPrediction = {
       id: generateId(),
       confidence,
       timestamp: new Date(),
-      countdown: period,
+      warningCountdown: 10, // 10-second warning countdown
+      tickCountdown: 0,
+      phase: 'warning', // Start in warning phase
       market: currentMarket,
-      startPrice: currentPrice
+      startPrice: currentPrice,
+      tickPeriod: period,
+      ticksElapsed: 0,
+      predictionType: type
     };
     
     setPendingPredictions(prev => [...prev, newPrediction]);
     
     if (isAuto) {
-      toast(`New prediction for ${period} ticks`, {
+      toast(`New prediction: Market will ${type} after 10s + ${period} ticks`, {
         icon: <Zap className="h-4 w-4" />,
-        description: `Auto prediction with ${confidence}% confidence`
+        description: `${confidence}% confidence - Place your trade now!`
       });
     } else {
-      toast.success(`Prediction added`);
+      toast.success(`Prediction added: Market will ${type} after 10s + ${period} ticks`);
     }
     
-    // Simulate countdown
-    const countdownInterval = setInterval(() => {
+    // Start the warning countdown (10 seconds)
+    const warningCountdownInterval = setInterval(() => {
       setPendingPredictions(prev => {
         const updatedPredictions = prev.map(p => {
           if (p.id === newPrediction.id) {
-            return { ...p, countdown: p.countdown - 1 };
+            const newCountdown = p.warningCountdown - 1;
+            
+            // If warning countdown reaches 0, transition to counting phase
+            if (newCountdown <= 0) {
+              clearInterval(warningCountdownInterval);
+              
+              // Initialize tick counter for this prediction
+              tickCounterRef.current.set(p.id, 0);
+              
+              // Record the starting price at this moment
+              const startPriceAtCounting = currentPrice;
+              
+              // Notify about transition to tick counting
+              toast(`Starting tick count for ${period} ticks`, {
+                description: `Initial price: ${startPriceAtCounting?.toFixed(5)}`
+              });
+              
+              return {
+                ...p,
+                warningCountdown: 0,
+                phase: 'counting',
+                startPrice: startPriceAtCounting,  // Update start price at counting phase
+                ticksElapsed: 0
+              };
+            }
+            
+            return { ...p, warningCountdown: newCountdown };
           }
           return p;
         });
-        
-        // Remove prediction when countdown reaches 0
-        if (updatedPredictions.find(p => p.id === newPrediction.id)?.countdown === 0) {
-          clearInterval(countdownInterval);
-          handleCompletePrediction(newPrediction.id);
-          return updatedPredictions.filter(p => p.id !== newPrediction.id);
-        }
         
         return updatedPredictions;
       });
@@ -404,23 +487,34 @@ const Predictions = () => {
     setIsPredicting(false);
   };
   
-  const handleCompletePrediction = async (id: number) => {
-    setPendingPredictions(prev => prev.filter(p => p.id !== id));
-    
-    // Find the pending prediction before it's removed from state
+  const handleCompletePrediction = async (id: number, finalPrice: number) => {
+    // Find the prediction
     const pendingPred = pendingPredictions.find(p => p.id === id);
     
     if (!pendingPred) return;
     
-    // Check the current price to determine outcome
+    // Check the result based on prediction type
     const startPrice = pendingPred.startPrice;
-    const endPrice = currentPrice || startPrice;
+    const endPrice = finalPrice;
+    let outcome: "win" | "loss" = "loss";
     
-    // Determine if the prediction was correct based on neural network model
-    // This is simplified here - in a real app, you'd check against the actual prediction made
-    const randomFactor = Math.random();
-    const successProbability = 0.6 + (pendingPred.confidence / 100 * 0.3); // Higher confidence = higher success rate
-    const outcome: "win" | "loss" = randomFactor < successProbability ? "win" : "loss";
+    switch (pendingPred.predictionType) {
+      case 'rise':
+        outcome = endPrice > startPrice ? "win" : "loss";
+        break;
+      case 'fall':
+        outcome = endPrice < startPrice ? "win" : "loss";
+        break;
+      case 'even':
+        outcome = Math.round(endPrice * 100) % 2 === 0 ? "win" : "loss";
+        break;
+      case 'odd':
+        outcome = Math.round(endPrice * 100) % 2 !== 0 ? "win" : "loss";
+        break;
+    }
+    
+    // Remove from pending predictions
+    setPendingPredictions(prev => prev.filter(p => p.id !== id));
     
     // Add to completed predictions
     const completedPrediction: Prediction = {
@@ -431,16 +525,17 @@ const Predictions = () => {
       market: pendingPred.market,
       startPrice: pendingPred.startPrice,
       endPrice,
-      timePeriod: pendingPred.countdown
+      timePeriod: pendingPred.tickPeriod,
+      predictionType: pendingPred.predictionType
     };
     
     setCompletedPredictions(prevCompleted => [completedPrediction, ...prevCompleted]);
     
     // Show notification with price details
     if (outcome === 'win') {
-      toast.success(`Prediction correct! Price changed from ${startPrice.toFixed(5)} to ${endPrice.toFixed(5)}`);
+      toast.success(`Prediction correct! Market ${pendingPred.predictionType === 'rise' ? 'rose' : 'fell'} from ${startPrice.toFixed(5)} to ${endPrice.toFixed(5)}`);
     } else {
-      toast.error(`Prediction incorrect. Price changed from ${startPrice.toFixed(5)} to ${endPrice.toFixed(5)}`);
+      toast.error(`Prediction incorrect. Market ${pendingPred.predictionType === 'rise' ? 'fell' : 'rose'} from ${startPrice.toFixed(5)} to ${endPrice.toFixed(5)}`);
     }
     
     // Save to Supabase
@@ -450,11 +545,12 @@ const Predictions = () => {
           user_id: user.id,
           timestamp: new Date().toISOString(),
           market: pendingPred.market,
+          prediction: pendingPred.predictionType,
           confidence: pendingPred.confidence,
           outcome: outcome,
           start_price: startPrice,
           end_price: endPrice,
-          time_period: pendingPred.countdown
+          time_period: pendingPred.tickPeriod
         });
         
         if (error) {
@@ -507,7 +603,7 @@ const Predictions = () => {
                   <div className="flex flex-col items-end">
                     <span className="text-sm text-muted-foreground">Predicted movement:</span>
                     <div className="flex items-center gap-1 mt-1">
-                      {Math.random() > 0.5 ? (
+                      {predictionType === 'rise' ? (
                         <>
                           <TrendingUp className="h-5 w-5 text-green-500" />
                           <span className="text-green-500">Rising</span>
@@ -522,7 +618,7 @@ const Predictions = () => {
                     
                     <div className="mt-3">
                       <span className="text-sm text-muted-foreground">Confidence:</span>
-                      <Progress value={65 + Math.floor(Math.random() * 20)} className="h-2 w-32 mt-1" />
+                      <Progress value={predictionConfidence} className="h-2 w-32 mt-1" />
                     </div>
                   </div>
                 )}
@@ -573,6 +669,42 @@ const Predictions = () => {
                   max="99"
                   disabled={isBotRunning}
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1 text-muted-foreground">
+                  Prediction Type
+                </label>
+                <div className="flex gap-2">
+                  <Button 
+                    variant={predictionType === 'rise' ? "default" : "outline"} 
+                    size="sm"
+                    onClick={() => setPredictionType('rise')}
+                    className="flex-1"
+                    disabled={isBotRunning}
+                  >
+                    <TrendingUp className="h-4 w-4 mr-1" /> Rise
+                  </Button>
+                  <Button 
+                    variant={predictionType === 'fall' ? "default" : "outline"} 
+                    size="sm"
+                    onClick={() => setPredictionType('fall')}
+                    className="flex-1"
+                    disabled={isBotRunning}
+                  >
+                    <TrendingDown className="h-4 w-4 mr-1" /> Fall
+                  </Button>
+                </div>
+              </div>
+
+              <div className="flex items-end">
+                <Button 
+                  onClick={() => handleAddPrediction(predictionType, predictionTimePeriod, predictionConfidence)} 
+                  className="w-full"
+                  disabled={!currentPrice || isBotRunning || isPredicting}
+                >
+                  Make Prediction
+                </Button>
               </div>
             </div>
             
@@ -625,7 +757,7 @@ const Predictions = () => {
                     <div>
                       <div className="flex items-center gap-2">
                         <Brain className="h-4 w-4 text-primary" />
-                        <p className="font-medium">AI Prediction</p>
+                        <p className="font-medium">AI Prediction: {prediction.predictionType.toUpperCase()}</p>
                       </div>
                       <div className="flex gap-2 text-xs text-muted-foreground mt-1">
                         <span>{prediction.market}</span>
@@ -638,10 +770,30 @@ const Predictions = () => {
                     </div>
                     <div className="flex flex-col items-end">
                       <div className="flex items-center gap-2 mb-1">
-                        <Clock className="h-4 w-4 text-primary animate-pulse" />
-                        <span className="text-sm font-mono">{prediction.countdown}s</span>
+                        {prediction.phase === 'warning' ? (
+                          <>
+                            <Clock className="h-4 w-4 text-yellow-500 animate-pulse" />
+                            <span className="text-sm font-mono text-yellow-500">{prediction.warningCountdown}s</span>
+                            <span className="text-xs text-muted-foreground">(warning)</span>
+                          </>
+                        ) : prediction.phase === 'counting' ? (
+                          <>
+                            <Clock className="h-4 w-4 text-primary animate-pulse" />
+                            <span className="text-sm font-mono">{prediction.ticksElapsed}/{prediction.tickPeriod} ticks</span>
+                          </>
+                        ) : (
+                          <>
+                            <Clock className="h-4 w-4 text-green-500" />
+                            <span className="text-sm font-mono text-green-500">Evaluating...</span>
+                          </>
+                        )}
                       </div>
-                      <Progress value={(1 - prediction.countdown / predictionTimePeriod) * 100} className="w-16 h-1" />
+                      
+                      {prediction.phase === 'warning' ? (
+                        <Progress value={(10 - prediction.warningCountdown) * 10} className="w-16 h-1" />
+                      ) : (
+                        <Progress value={(prediction.ticksElapsed / prediction.tickPeriod) * 100} className="w-16 h-1" />
+                      )}
                     </div>
                   </div>
                 ))}
@@ -680,7 +832,9 @@ const Predictions = () => {
                     <div>
                       <div className="flex items-center gap-2">
                         <Brain className="h-4 w-4 text-primary" />
-                        <p className="font-medium">AI Prediction</p>
+                        <p className="font-medium">
+                          {prediction.predictionType.toUpperCase()}
+                        </p>
                       </div>
                       
                       <div className="text-xs text-muted-foreground mt-1">

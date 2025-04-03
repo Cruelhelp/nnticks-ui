@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TopBar from '@/components/TopBar';
@@ -169,7 +170,11 @@ const Index = () => {
     }
   };
   
-  const username = userDetails?.username || localStorage.getItem('guestUsername') || 'Guest';
+  // Get username from user details or localStorage
+  const username = userDetails?.username || 
+                    user?.email?.split('@')[0] || 
+                    localStorage.getItem('guestUsername') || 
+                    'Guest';
   
   return (
     <>
