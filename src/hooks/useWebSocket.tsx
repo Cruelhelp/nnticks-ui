@@ -4,12 +4,13 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useWebSocketClient } from './useWebSocketClient';
-import { webSocketService, TickData } from '@/services/WebSocketService';
+import { webSocketService } from '@/services/WebSocketService';
 import { toast } from 'sonner';
+import { TickData } from '@/types/chartTypes';
 
 interface WebSocketOptions {
   wsUrl?: string;
-  subscription?: object;
+  subscription?: { ticks: string };
   autoReconnect?: boolean;
   reconnectInterval?: number;
   maxReconnectAttempts?: number;
@@ -22,9 +23,9 @@ interface WebSocketOptions {
 // Common subscription formats for different brokers
 export const subscriptionFormats = {
   deriv: { ticks: 'R_10' },
-  iqOption: { symbol: 'EURUSD' },
-  binance: { method: 'SUBSCRIBE', params: ['btcusdt@ticker'] },
-  metatrader: { symbol: 'EURUSD' },
+  iqOption: { ticks: 'EURUSD' },
+  binance: { ticks: 'btcusdt' },
+  metatrader: { ticks: 'EURUSD' },
   binary: { ticks: 'V_75' }
 };
 
@@ -83,7 +84,7 @@ export function useWebSocket({
     return () => {
       disconnect();
     };
-  }, [wsUrl, disconnect, connect]);
+  }, [wsUrl, disconnect, connect, subscription]);
 
   // Maintain legacy API
   const legacyApi = {
@@ -103,4 +104,4 @@ export function useWebSocket({
   return legacyApi;
 }
 
-export { type TickData, brokerWebSockets } from '@/types/chartTypes';
+export { brokerWebSockets } from '@/types/chartTypes';

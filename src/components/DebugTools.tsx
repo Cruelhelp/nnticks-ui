@@ -32,7 +32,15 @@ const DebugTools: React.FC = () => {
     try {
       if (settings.subscription) {
         const parsedSubscription = JSON.parse(settings.subscription);
-        webSocketService.updateConfig({ subscription: parsedSubscription });
+        if (parsedSubscription.ticks) {
+          webSocketService.updateConfig({ subscription: { ticks: parsedSubscription.ticks } });
+        } else {
+          toast({
+            title: "Error",
+            description: "Subscription must include a 'ticks' property.",
+          });
+          return;
+        }
       }
     } catch (error) {
       console.error("Error parsing subscription:", error);

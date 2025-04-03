@@ -1,24 +1,11 @@
-import { EventEmitter } from 'events';
 
-interface TickData {
-  epoch: number;
-  id: string;
-  quote: number;
-  symbol: string;
-}
+import { EventEmitter } from 'events';
+import { TickData, brokerWebSockets } from '@/types/chartTypes';
 
 interface BrokerWebSocket {
   url: string;
-  subscription: object;
+  subscription: { ticks: string };
 }
-
-const brokerWebSockets: { [key: string]: BrokerWebSocket } = {
-  binary: {
-    url: 'wss://ws.binaryws.com/websockets/v3?app_id=1089',
-    subscription: { ticks: 'R_10' }
-  },
-  // Add more broker configurations here
-};
 
 export class WebSocketService extends EventEmitter {
   private socket: WebSocket | null = null;
@@ -27,7 +14,7 @@ export class WebSocketService extends EventEmitter {
   private reconnectInterval = 3000;
   private isConnectedVar = false;
   private connectionStatus: string = 'disconnected';
-  private ticks: TickData[] = [];
+  private ticksData: TickData[] = [];
   private maxTicks = 20;
   private lastActivity: number = Date.now();
   
@@ -148,15 +135,14 @@ export class WebSocketService extends EventEmitter {
       
       if (data.tick) {
         const tick: TickData = {
-          epoch: data.tick.epoch,
-          id: data.tick.id,
-          quote: data.tick.quote,
-          symbol: data.tick.symbol
+          timestamp: new Date(data.tick.epoch * 1000).toLocaleTimeString(),
+          value: data.tick.quote,
+          market: data.tick.symbol || 'unknown'
         };
         
-        this.ticks.push(tick);
-        if (this.ticks.length > this.maxTicks) {
-          this.ticks.shift(); // Remove the oldest tick
+        this.ticksData.push(tick);
+        if (this.ticksData.length > this.maxTicks) {
+          this.ticksData.shift(); // Remove the oldest tick
         }
         
         this.emit('tick', tick);
@@ -186,7 +172,7 @@ export class WebSocketService extends EventEmitter {
     this.emit('error', error);
   }
   
-  setSubscription(subscription: object): void {
+  setSubscription(subscription: { ticks: string }): void {
     if (this.socket && this.socket.readyState === WebSocket.OPEN) {
       this._config.subscription = subscription;
       this.send(subscription);
@@ -200,11 +186,15 @@ export class WebSocketService extends EventEmitter {
   updateConfig(options: {
     url?: string;
     apiKey?: string;
-    subscription?: object;
+    subscription?: { ticks: string };
     reconnectInterval?: number;
     maxReconnectAttempts?: number;
   }): void {
-    this._config = { ...this._config, ...options };
+    this._config = { 
+      ...this._config, 
+      ...options,
+      subscription: options.subscription ? options.subscription : this._config.subscription
+    };
     
     // If WebSocket is connected, disconnect and reconnect with new config
     if (this.isConnected()) {
@@ -213,12 +203,12 @@ export class WebSocketService extends EventEmitter {
   }
 
   getTicks(): TickData[] {
-    return [...this.ticks];
+    return [...this.ticksData];
   }
 
   getLatestTick(): TickData | null {
-    if (this.ticks.length > 0) {
-      return this.ticks[this.ticks.length - 1];
+    if (this.ticksData.length > 0) {
+      return this.ticksData[this.ticksData.length - 1];
     }
     return null;
   }
@@ -243,5 +233,5 @@ export class WebSocketService extends EventEmitter {
 }
 
 export const webSocketService = new WebSocketService();
-export type { TickData } from '@/types/chartTypes';
 export { brokerWebSockets };
+
