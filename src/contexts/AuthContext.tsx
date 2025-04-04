@@ -1,332 +1,230 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Session, User } from '@supabase/supabase-js';
+
+import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
 import { supabase } from '@/lib/supabase';
+import { Session, User } from '@supabase/supabase-js';
+import { UserDetailsType } from '@/types/UserTypes';
 import { toast } from 'sonner';
 
-export type UserDetailsType = {
-  username: string;
-  isAdmin: boolean;
-  isBanned: boolean;
-  proStatus: boolean;
-  full_name?: string;
-  avatar_url?: string;
-  api_key?: string;
-  notifications?: {
-    email: boolean;
-    app: boolean;
-    training: boolean;
-    predictions: boolean;
-  };
-};
-
-type AuthContextType = {
-  session: Session | null;
+interface AuthContextType {
   user: User | null;
+  session: Session | null;
   userDetails: UserDetailsType | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<void>;
-  signInWithProvider: (provider: 'google' | 'github') => Promise<void>;
-  signUp: (email: string, password: string, username: string) => Promise<void>;
+  signIn: (email: string, password: string) => Promise<{ error: any }>;
+  signUp: (email: string, password: string, username: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
-  resetPassword: (email: string) => Promise<void>;
-  signInAsGuest: () => Promise<void>;
+  loginWithGoogle: () => Promise<void>;
+  loginWithGithub: () => Promise<void>;
   updateUserDetails: (details: Partial<UserDetailsType>) => Promise<void>;
-};
+  refreshUserDetails: () => Promise<void>;
+}
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [session, setSession] = useState<Session | null>(null);
+export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [userDetails, setUserDetails] = useState<UserDetailsType | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const setData = async () => {
-      try {
-        const {
-          data: { session },
-          error,
-        } = await supabase.auth.getSession();
-
-        if (error) {
-          console.error(error);
-          setLoading(false);
-          return;
-        }
-
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        if (session?.user) {
-          await fetchUserDetails(session.user.id);
-        }
-      } catch (error) {
-        console.error("Error initializing auth:", error);
-      } finally {
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      
+      if (session?.user) {
+        fetchUserDetails(session.user.id);
+      } else {
         setLoading(false);
       }
-    };
+    });
 
-    try {
-      const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        if (session?.user) {
-          await fetchUserDetails(session.user.id);
-        } else {
-          setUserDetails(null);
-        }
-      });
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      
+      if (session?.user) {
+        fetchUserDetails(session.user.id);
+      } else {
+        setUserDetails(null);
+        setLoading(false);
+      }
+    });
 
-      setData();
-
-      return () => {
-        if (listener?.subscription) {
-          listener.subscription.unsubscribe();
-        }
-      };
-    } catch (error) {
-      console.error("Error setting up auth listener:", error);
-      setLoading(false);
-    }
+    // Cleanup subscription
+    return () => subscription.unsubscribe();
   }, []);
 
   const fetchUserDetails = async (userId: string) => {
     try {
+      setLoading(true);
+      
       const { data, error } = await supabase
         .from('users_extra')
         .select('*')
         .eq('user_id', userId)
         .single();
-
+      
       if (error) {
-        throw error;
-      }
-
-      if (data) {
-        setUserDetails({
-          username: data.username,
-          isAdmin: data.is_admin,
-          isBanned: data.is_banned,
-          proStatus: data.pro_status,
-          full_name: data.full_name,
-          avatar_url: data.avatar_url,
-          api_key: data.api_key,
-          notifications: data.notifications
-        });
-
-        if (data.is_banned) {
-          toast.error('Your account has been banned. Please contact support.');
-          await supabase.auth.signOut();
+        if (error.code !== 'PGRST116') { // PGRST116 is the error code for "no rows found"
+          console.error('Error fetching user details:', error);
         }
-      } else {
-        const username = user?.email?.split('@')[0] || `user_${Math.floor(Math.random() * 10000)}`;
         
-        const { error: insertError } = await supabase
+        setUserDetails(null);
+      } else if (data) {
+        setUserDetails({
+          id: data.id,
+          user_id: data.user_id,
+          username: data.username,
+          email: user?.email,
+          avatarUrl: data.avatar_url,
+          proStatus: data.pro_status,
+          isAdmin: data.is_admin,
+          lastLogin: data.last_login,
+          createdAt: data.created_at,
+          settings: data.settings,
+          availableEpochs: data.available_epochs,
+          totalEpochs: data.total_epochs
+        });
+        
+        // Update last login time
+        const { error: updateError } = await supabase
           .from('users_extra')
-          .insert({
-            user_id: userId,
-            is_admin: false,
-            is_banned: false,
-            pro_status: false,
-            username: username
-          });
-          
-        if (insertError) {
-          console.error('Error creating user details', insertError);
-        } else {
-          setUserDetails({
-            username,
-            isAdmin: false,
-            isBanned: false,
-            proStatus: false
-          });
+          .update({ last_login: new Date().toISOString() })
+          .eq('user_id', userId);
+        
+        if (updateError) {
+          console.error('Error updating last login time:', updateError);
         }
       }
-    } catch (error) {
-      console.error('Error fetching user details:', error);
+    } catch (err) {
+      console.error('Error in fetchUserDetails:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
   const signIn = async (email: string, password: string) => {
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) throw error;
-      
-      toast.success('Signed in successfully!');
-    } catch (error: any) {
-      toast.error(error.message || 'Error signing in');
-      throw error;
-    }
-  };
-
-  const signInWithProvider = async (provider: 'google' | 'github') => {
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider,
-        options: {
-          redirectTo: `${window.location.origin}/`
-        }
-      });
-
-      if (error) throw error;
-    } catch (error: any) {
-      toast.error(error.message || 'Error signing in with provider');
-      throw error;
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      return { error };
+    } catch (error) {
+      console.error('Error signing in:', error);
+      return { error };
     }
   };
 
   const signUp = async (email: string, password: string, username: string) => {
     try {
-      const { error, data } = await supabase.auth.signUp({
+      const { error } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          data: {
+            username
+          }
+        }
       });
-
-      if (error) throw error;
       
-      if (data.user) {
-        const { error: detailsError } = await supabase
-          .from('users_extra')
-          .insert({
-            user_id: data.user.id,
-            username,
-            is_admin: false,
-            is_banned: false,
-            pro_status: false
-          });
-          
-        if (detailsError) throw detailsError;
-      }
-      
-      toast.success('Account created! Please check your email for verification.');
-    } catch (error: any) {
-      toast.error(error.message || 'Error creating account');
-      throw error;
+      return { error };
+    } catch (error) {
+      console.error('Error signing up:', error);
+      return { error };
     }
   };
 
   const signOut = async () => {
     try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-      
-      toast.info('Signed out successfully');
-    } catch (error: any) {
-      toast.error(error.message || 'Error signing out');
-      throw error;
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.error('Error signing out:', error);
     }
   };
 
-  const resetPassword = async (email: string) => {
+  const loginWithGoogle = async () => {
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email);
-      if (error) throw error;
-      
-      toast.success('Password reset email sent!');
-    } catch (error: any) {
-      toast.error(error.message || 'Error sending password reset email');
-      throw error;
-    }
-  };
-
-  const signInAsGuest = async () => {
-    try {
-      const guestUsername = `Guest_${Math.floor(Math.random() * 10000)}`;
-      
-      localStorage.setItem('guestMode', 'true');
-      localStorage.setItem('guestUsername', guestUsername);
-      
-      setUserDetails({
-        username: guestUsername,
-        isAdmin: false,
-        isBanned: false,
-        proStatus: false
+      await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/callback`
+        }
       });
-      
-      toast.success(`Signed in as ${guestUsername}`);
-    } catch (error: any) {
-      toast.error(error.message || 'Error signing in as guest');
-      throw error;
+    } catch (error) {
+      console.error('Error signing in with Google:', error);
+    }
+  };
+
+  const loginWithGithub = async () => {
+    try {
+      await supabase.auth.signInWithOAuth({
+        provider: 'github',
+        options: {
+          redirectTo: `${window.location.origin}/callback`
+        }
+      });
+    } catch (error) {
+      console.error('Error signing in with GitHub:', error);
     }
   };
 
   const updateUserDetails = async (details: Partial<UserDetailsType>) => {
-    if (!user) throw new Error('No user is logged in');
-
+    if (!user) {
+      throw new Error('No user is logged in');
+    }
+    
     try {
-      const mappedDetails: any = {};
+      // Format the data to match the database column names
+      const formattedData: any = {};
       
-      if (details.username !== undefined) mappedDetails.username = details.username;
-      if (details.full_name !== undefined) mappedDetails.full_name = details.full_name;
-      if (details.avatar_url !== undefined) mappedDetails.avatar_url = details.avatar_url;
-      if (details.api_key !== undefined) mappedDetails.api_key = details.api_key;
-      if (details.notifications !== undefined) mappedDetails.notifications = details.notifications;
-
+      if (details.username !== undefined) formattedData.username = details.username;
+      if (details.avatarUrl !== undefined) formattedData.avatar_url = details.avatarUrl;
+      
       const { error } = await supabase
         .from('users_extra')
-        .update(mappedDetails)
+        .update(formattedData)
         .eq('user_id', user.id);
-
+      
       if (error) throw error;
       
-      setUserDetails(prev => {
-        if (!prev) return details as UserDetailsType;
-        return { ...prev, ...details };
-      });
-      
-      toast.success('Profile updated successfully');
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to update profile');
+      // Refresh user details to see the changes
+      await fetchUserDetails(user.id);
+    } catch (error) {
+      console.error('Error updating user details:', error);
       throw error;
     }
   };
 
-  const dummyContext: AuthContextType = {
-    session: null,
-    user: null,
-    userDetails: null,
-    loading: false,
-    signIn: async () => {},
-    signInWithProvider: async () => {},
-    signUp: async () => {},
-    signOut: async () => {},
-    resetPassword: async () => {},
-    signInAsGuest: async () => {},
-    updateUserDetails: async () => {}
+  const refreshUserDetails = async () => {
+    if (user) {
+      await fetchUserDetails(user.id);
+    }
   };
 
   return (
-    <AuthContext.Provider
-      value={{
-        session,
-        user,
-        userDetails,
-        loading,
-        signIn,
-        signInWithProvider,
-        signUp,
-        signOut,
-        resetPassword,
-        signInAsGuest,
-        updateUserDetails,
-      }}
-    >
+    <AuthContext.Provider value={{
+      user,
+      session,
+      userDetails,
+      loading,
+      signIn,
+      signUp,
+      signOut,
+      loginWithGoogle,
+      loginWithGithub,
+      updateUserDetails,
+      refreshUserDetails
+    }}>
       {children}
     </AuthContext.Provider>
   );
-}
+};
 
-export function useAuth() {
+export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-}
+};

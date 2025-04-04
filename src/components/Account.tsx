@@ -1,14 +1,15 @@
-import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
+
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 import { useSettings } from '@/hooks/useSettings';
 import Logo from '@/components/Logo';
 import PayPalCheckout from '@/components/PayPalCheckout';
@@ -17,11 +18,12 @@ import { supabase } from '@/lib/supabase';
 const Account = () => {
   const { user, userDetails, updateUserDetails } = useAuth();
   const { settings, updateSettings } = useSettings();
-  const [activeTab, setActiveTab] = useState('profile');
-  const [avatarUrl, setAvatarUrl] = useState(userDetails?.avatar_url || '');
+  
   const [username, setUsername] = useState(userDetails?.username || '');
-  const [fullName, setFullName] = useState(userDetails?.full_name || '');
-  const [apiKey, setApiKey] = useState(userDetails?.api_key || '');
+  const [activeTab, setActiveTab] = useState('general');
+  const [theme, setTheme] = useState(settings?.theme || 'dark');
+  const [accent, setAccent] = useState(settings?.accent || 'green');
+  const [font, setFont] = useState(settings?.font || 'default');
   const [wsUrl, setWsUrl] = useState(settings?.wsUrl || '');
   const [subscription, setSubscription] = useState(settings?.subscription || '');
   const [saveLoading, setSaveLoading] = useState(false);
@@ -29,527 +31,492 @@ const Account = () => {
 
   // Notifications states
   const [emailNotifications, setEmailNotifications] = useState(
-    userDetails?.notifications?.email ?? true
+    settings?.notifications?.email || false
   );
-  const [appNotifications, setAppNotifications] = useState(
-    userDetails?.notifications?.app ?? true
+  const [predictionAlerts, setPredictionAlerts] = useState(
+    settings?.notifications?.predictions || true
   );
-  const [trainingNotifications, setTrainingNotifications] = useState(
-    userDetails?.notifications?.training ?? true
+  const [trainingAlerts, setTrainingAlerts] = useState(
+    settings?.notifications?.training || true
   );
-  const [predictionsNotifications, setPredictionsNotifications] = useState(
-    userDetails?.notifications?.predictions ?? true
+  const [marketAlerts, setMarketAlerts] = useState(
+    settings?.notifications?.market || false
   );
-
-  // Handle profile update
-  const handleProfileUpdate = async () => {
-    setSaveLoading(true);
+  
+  useEffect(() => {
+    if (userDetails) {
+      setUsername(userDetails.username || '');
+    }
+  }, [userDetails]);
+  
+  useEffect(() => {
+    if (settings) {
+      setTheme(settings.theme || 'dark');
+      setAccent(settings.accent || 'green');
+      setFont(settings.font || 'default');
+      setWsUrl(settings.wsUrl || '');
+      setSubscription(settings.subscription || '');
+      
+      // Set notification settings
+      setEmailNotifications(settings.notifications?.email || false);
+      setPredictionAlerts(settings.notifications?.predictions || true);
+      setTrainingAlerts(settings.notifications?.training || true);
+      setMarketAlerts(settings.notifications?.market || false);
+    }
+  }, [settings]);
+  
+  const handleProfileUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!user) {
+      toast.error('You need to be logged in to update your profile');
+      return;
+    }
+    
+    setIsSubmitting(true);
+    
     try {
-      await updateUserDetails({
-        username,
-        full_name: fullName,
-        avatar_url: avatarUrl,
-        api_key: apiKey,
-        notifications: {
-          email: emailNotifications,
-          app: appNotifications,
-          training: trainingNotifications,
-          predictions: predictionsNotifications
-        }
-      });
-
+      await updateUserDetails({ username });
       toast.success('Profile updated successfully');
     } catch (error) {
       console.error('Error updating profile:', error);
       toast.error('Failed to update profile');
     } finally {
-      setSaveLoading(false);
+      setIsSubmitting(false);
     }
   };
-
-  // Handle settings update
-  const updateSetting = async (key: string, value: any) => {
-    try {
-      // Create an object with the key-value pair
-      const settingUpdate = { [key]: value };
-      
-      // Update the settings
-      await updateSettings(settingUpdate);
-      
-      // Show success toast
-      toast.success(`${key.charAt(0).toUpperCase() + key.slice(1)} updated`);
-    } catch (error) {
-      console.error(`Error updating ${key}:`, error);
-      toast.error(`Failed to update ${key}`);
-    }
-  };
-
-  // Handle WebSocket connection settings update
-  const handleConnectionUpdate = async () => {
+  
+  const handleSettingsUpdate = async () => {
     setSaveLoading(true);
+    
     try {
       await updateSettings({
+        theme,
+        accent,
+        font,
         wsUrl,
-        subscription
+        subscription,
+        notifications: {
+          email: emailNotifications,
+          predictions: predictionAlerts,
+          training: trainingAlerts,
+          market: marketAlerts
+        }
       });
-
-      toast.success('Connection settings updated');
+      
+      toast.success('Settings updated successfully');
     } catch (error) {
-      console.error('Error updating connection settings:', error);
+      console.error('Error updating settings:', error);
       toast.error('Failed to update connection settings');
     } finally {
       setSaveLoading(false);
     }
   };
-
+  
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold">Account Settings</h1>
-          <p className="text-muted-foreground">
-            Manage your account settings and preferences
-          </p>
-        </div>
-        {userDetails?.proStatus ? (
-          <div className="flex items-center gap-2 bg-gradient-to-r from-primary/20 to-primary/0 rounded-md px-3 py-1.5">
-            <Logo size={18} />
-            <span className="font-semibold text-primary">PRO</span>
-          </div>
-        ) : null}
-      </div>
-
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid grid-cols-4 max-w-md">
-          <TabsTrigger value="profile">Profile</TabsTrigger>
+    <div className="container mx-auto p-4 max-w-5xl">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="grid grid-cols-3 w-full max-w-md mb-8">
+          <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="appearance">Appearance</TabsTrigger>
-          <TabsTrigger value="notifications">Notifications</TabsTrigger>
-          <TabsTrigger value="subscription">Subscription</TabsTrigger>
+          <TabsTrigger value="connections">Connections</TabsTrigger>
         </TabsList>
-
-        {/* Profile Tab */}
-        <TabsContent value="profile" className="space-y-6 mt-6">
+        
+        <TabsContent value="general" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Profile Information</CardTitle>
+              <CardTitle>Profile</CardTitle>
+              <CardDescription>
+                Manage your account information and avatar
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="flex flex-col sm:flex-row gap-6">
-                <div className="flex flex-col items-center gap-2">
-                  <Avatar className="w-24 h-24">
-                    <AvatarImage src={avatarUrl} />
-                    <AvatarFallback className="text-lg">
-                      {username?.substring(0, 2).toUpperCase() || 'U'}
+              <div className="flex flex-col md:flex-row gap-6">
+                <div className="flex flex-col items-center space-y-2">
+                  <Avatar className="h-24 w-24">
+                    <AvatarImage src={userDetails?.avatarUrl || ''} />
+                    <AvatarFallback className="text-2xl">
+                      {username ? username.charAt(0).toUpperCase() : 'U'}
                     </AvatarFallback>
                   </Avatar>
                   <Button variant="outline" size="sm">
                     Change Avatar
                   </Button>
                 </div>
-
-                <div className="space-y-4 flex-1">
-                  <div className="grid gap-2">
-                    <Label htmlFor="username">Username</Label>
-                    <Input
-                      id="username"
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      placeholder="username"
-                    />
-                  </div>
-
-                  <div className="grid gap-2">
-                    <Label htmlFor="full-name">Full Name</Label>
-                    <Input
-                      id="full-name"
-                      value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
-                      placeholder="Your name"
-                    />
-                  </div>
-
-                  <div className="grid gap-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={user?.email || ''}
-                      disabled
-                      className="bg-muted"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Email cannot be changed
-                    </p>
-                  </div>
+                
+                <div className="flex-1 space-y-4">
+                  <form onSubmit={handleProfileUpdate} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="username">Username</Label>
+                      <Input
+                        id="username"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                        placeholder="Enter username"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="email">Email</Label>
+                      <Input
+                        id="email"
+                        value={user?.email || ''}
+                        disabled
+                        className="bg-muted"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Email can only be changed in your Supabase account settings
+                      </p>
+                    </div>
+                    <Button type="submit" disabled={isSubmitting}>
+                      {isSubmitting ? 'Saving...' : 'Save Changes'}
+                    </Button>
+                  </form>
                 </div>
               </div>
-
-              <div className="flex justify-end">
-                <Button onClick={handleProfileUpdate} disabled={saveLoading}>
-                  {saveLoading ? 'Saving...' : 'Save Changes'}
-                </Button>
+              
+              <Separator />
+              
+              <div className="space-y-4">
+                <h3 className="font-medium">Subscription</h3>
+                <div className="bg-muted/50 rounded-md p-4">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h4 className="font-medium">
+                        {userDetails?.proStatus ? 'Pro Plan' : 'Free Plan'}
+                      </h4>
+                      <p className="text-sm text-muted-foreground">
+                        {userDetails?.proStatus 
+                          ? 'Unlimited predictions and advanced neural network features' 
+                          : 'Basic prediction features with limited usage'}
+                      </p>
+                    </div>
+                    {!userDetails?.proStatus && (
+                      <Button variant="default">Upgrade to Pro</Button>
+                    )}
+                  </div>
+                </div>
+                
+                {!userDetails?.proStatus && (
+                  <div className="mt-4">
+                    <PayPalCheckout />
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
-
+          
           <Card>
             <CardHeader>
-              <CardTitle>API Settings</CardTitle>
+              <CardTitle>Notifications</CardTitle>
+              <CardDescription>
+                Configure how you want to be notified
+              </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid gap-2">
-                <Label htmlFor="api-key">API Key</Label>
-                <Input
-                  id="api-key"
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  placeholder="Your API Key"
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="email-notifications">Email Notifications</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Receive important updates via email
+                  </p>
+                </div>
+                <Switch
+                  id="email-notifications"
+                  checked={emailNotifications}
+                  onCheckedChange={setEmailNotifications}
                 />
-                <p className="text-xs text-muted-foreground">
-                  Use this API key to access the NNticks API
-                </p>
               </div>
-
-              <div className="flex justify-end">
-                <Button onClick={handleProfileUpdate} disabled={saveLoading}>
-                  {saveLoading ? 'Saving...' : 'Save API Key'}
-                </Button>
+              
+              <Separator />
+              
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="prediction-alerts">Prediction Alerts</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Get notified about prediction results
+                  </p>
+                </div>
+                <Switch
+                  id="prediction-alerts"
+                  checked={predictionAlerts}
+                  onCheckedChange={setPredictionAlerts}
+                />
               </div>
+              
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="training-alerts">Training Alerts</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Get notified when model training is complete
+                  </p>
+                </div>
+                <Switch
+                  id="training-alerts"
+                  checked={trainingAlerts}
+                  onCheckedChange={setTrainingAlerts}
+                />
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="market-alerts">Market Alerts</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Get notified about significant market changes
+                  </p>
+                </div>
+                <Switch
+                  id="market-alerts"
+                  checked={marketAlerts}
+                  onCheckedChange={setMarketAlerts}
+                />
+              </div>
+              
+              <Button onClick={handleSettingsUpdate} disabled={saveLoading}>
+                {saveLoading ? 'Saving...' : 'Save Notification Settings'}
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>
-
-        {/* Appearance Tab */}
-        <TabsContent value="appearance" className="space-y-6 mt-6">
+        
+        <TabsContent value="appearance" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Theme Settings</CardTitle>
+              <CardTitle>Appearance Settings</CardTitle>
+              <CardDescription>
+                Customize the look and feel of the application
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="grid gap-4">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="theme-selector">Theme</Label>
-                  <div className="flex items-center gap-2">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Theme</Label>
+                  <div className="grid grid-cols-2 gap-2">
                     <Button
-                      variant={settings.theme === 'dark' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => updateSetting('theme', 'dark')}
+                      type="button"
+                      variant={theme === 'dark' ? 'default' : 'outline'}
+                      className="justify-start"
+                      onClick={() => setTheme('dark')}
                     >
+                      <span className="w-4 h-4 rounded-full bg-black mr-2"></span>
                       Dark
                     </Button>
                     <Button
-                      variant={settings.theme === 'light' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => updateSetting('theme', 'light')}
+                      type="button"
+                      variant={theme === 'light' ? 'default' : 'outline'}
+                      className="justify-start"
+                      onClick={() => setTheme('light')}
                     >
+                      <span className="w-4 h-4 rounded-full bg-white border mr-2"></span>
                       Light
                     </Button>
-                    <Button
-                      variant={settings.theme === 'system' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => updateSetting('theme', 'system')}
-                    >
-                      System
-                    </Button>
                   </div>
                 </div>
-
-                <Separator />
-
-                <div className="space-y-4">
+                
+                <div className="space-y-2">
                   <Label>Accent Color</Label>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="grid grid-cols-4 gap-2">
                     <Button
-                      className="w-12 h-12 rounded-md bg-green-600"
-                      variant="outline"
-                      onClick={() => updateSetting('accent', 'green')}
-                      style={{
-                        outline: settings.accent === 'green' ? '2px solid white' : 'none',
-                      }}
-                    />
+                      type="button"
+                      variant={accent === 'green' ? 'default' : 'outline'}
+                      className="justify-start"
+                      onClick={() => setAccent('green')}
+                    >
+                      <span className="w-4 h-4 rounded-full bg-green-500 mr-2"></span>
+                      Green
+                    </Button>
                     <Button
-                      className="w-12 h-12 rounded-md bg-blue-600"
-                      variant="outline"
-                      onClick={() => updateSetting('accent', 'blue')}
-                      style={{
-                        outline: settings.accent === 'blue' ? '2px solid white' : 'none',
-                      }}
-                    />
+                      type="button"
+                      variant={accent === 'blue' ? 'default' : 'outline'}
+                      className="justify-start"
+                      onClick={() => setAccent('blue')}
+                    >
+                      <span className="w-4 h-4 rounded-full bg-blue-500 mr-2"></span>
+                      Blue
+                    </Button>
                     <Button
-                      className="w-12 h-12 rounded-md bg-purple-600"
-                      variant="outline"
-                      onClick={() => updateSetting('accent', 'purple')}
-                      style={{
-                        outline: settings.accent === 'purple' ? '2px solid white' : 'none',
-                      }}
-                    />
+                      type="button"
+                      variant={accent === 'purple' ? 'default' : 'outline'}
+                      className="justify-start"
+                      onClick={() => setAccent('purple')}
+                    >
+                      <span className="w-4 h-4 rounded-full bg-purple-500 mr-2"></span>
+                      Purple
+                    </Button>
                     <Button
-                      className="w-12 h-12 rounded-md bg-red-600"
-                      variant="outline"
-                      onClick={() => updateSetting('accent', 'red')}
-                      style={{
-                        outline: settings.accent === 'red' ? '2px solid white' : 'none',
-                      }}
-                    />
+                      type="button"
+                      variant={accent === 'red' ? 'default' : 'outline'}
+                      className="justify-start"
+                      onClick={() => setAccent('red')}
+                    >
+                      <span className="w-4 h-4 rounded-full bg-red-500 mr-2"></span>
+                      Red
+                    </Button>
                   </div>
                 </div>
-
-                <Separator />
-
-                <div className="space-y-4">
+                
+                <div className="space-y-2">
                   <Label>Font</Label>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="grid grid-cols-3 gap-2">
                     <Button
-                      variant={settings.font === 'JetBrains Mono' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => updateSetting('font', 'JetBrains Mono')}
-                      style={{ fontFamily: 'JetBrains Mono' }}
+                      type="button"
+                      variant={font === 'default' ? 'default' : 'outline'}
+                      className="justify-start"
+                      onClick={() => setFont('default')}
                     >
-                      JetBrains Mono
+                      Default
                     </Button>
                     <Button
-                      variant={settings.font === 'Fira Code' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => updateSetting('font', 'Fira Code')}
-                      style={{ fontFamily: 'Fira Code' }}
+                      type="button"
+                      variant={font === 'JetBrains Mono' ? 'default' : 'outline'}
+                      className="justify-start font-mono"
+                      onClick={() => setFont('JetBrains Mono')}
                     >
-                      Fira Code
+                      Monospace
                     </Button>
                     <Button
-                      variant={settings.font === 'Roboto Mono' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => updateSetting('font', 'Roboto Mono')}
-                      style={{ fontFamily: 'Roboto Mono' }}
+                      type="button"
+                      variant={font === 'sans-serif' ? 'default' : 'outline'}
+                      className="justify-start font-sans"
+                      onClick={() => setFont('sans-serif')}
                     >
-                      Roboto Mono
-                    </Button>
-                    <Button
-                      variant={settings.font === 'VT323' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => updateSetting('font', 'VT323')}
-                      style={{ fontFamily: 'VT323' }}
-                    >
-                      VT323 (Pixel)
-                    </Button>
-                  </div>
-                </div>
-
-                <Separator />
-
-                <div className="space-y-4">
-                  <Label>Chart Style</Label>
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      variant={settings.chartStyle === 'line' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => updateSetting('chartStyle', 'line')}
-                    >
-                      Line
-                    </Button>
-                    <Button
-                      variant={settings.chartStyle === 'candlestick' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => updateSetting('chartStyle', 'candlestick')}
-                    >
-                      Candlestick
-                    </Button>
-                    <Button
-                      variant={settings.chartStyle === 'bar' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => updateSetting('chartStyle', 'bar')}
-                    >
-                      Bar
+                      Sans-serif
                     </Button>
                   </div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Layout Settings</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid gap-4">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="terminal-height">Terminal Height</Label>
-                  <Input
-                    id="terminal-height"
-                    type="number"
-                    className="w-24 text-right"
-                    value={settings.terminalHeight}
-                    onChange={(e) => updateSetting('terminalHeight', Number(e.target.value))}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="sidebar-width">Sidebar Width</Label>
-                  <Input
-                    id="sidebar-width"
-                    type="number"
-                    className="w-24 text-right"
-                    value={settings.sidebarWidth}
-                    onChange={(e) => updateSetting('sidebarWidth', Number(e.target.value))}
-                  />
-                </div>
-              </div>
+              
+              <Button onClick={handleSettingsUpdate} disabled={saveLoading}>
+                {saveLoading ? 'Saving...' : 'Save Appearance Settings'}
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>
-
-        {/* Notifications Tab */}
-        <TabsContent value="notifications" className="space-y-6 mt-6">
+        
+        <TabsContent value="connections" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Email Preferences</CardTitle>
+              <CardTitle>API Connections</CardTitle>
+              <CardDescription>
+                Manage connections to WebSocket APIs and data sources
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="grid gap-4">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label htmlFor="email-notifications">Email Notifications</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Receive important updates via email
-                    </p>
-                  </div>
-                  <Switch
-                    id="email-notifications"
-                    checked={emailNotifications}
-                    onCheckedChange={setEmailNotifications}
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="ws-url">WebSocket URL</Label>
+                  <Input
+                    id="ws-url"
+                    value={wsUrl}
+                    onChange={(e) => setWsUrl(e.target.value)}
+                    placeholder="wss://ws.binaryws.com/websockets/v3?app_id=1089"
                   />
+                  <p className="text-xs text-muted-foreground">
+                    WebSocket endpoint for real-time market data
+                  </p>
                 </div>
-
-                <Separator />
-
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label htmlFor="app-notifications">App Notifications</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Receive notifications within the app
-                    </p>
-                  </div>
-                  <Switch
-                    id="app-notifications"
-                    checked={appNotifications}
-                    onCheckedChange={setAppNotifications}
+                
+                <div className="space-y-2">
+                  <Label htmlFor="subscription">Subscription Format</Label>
+                  <Input
+                    id="subscription"
+                    value={subscription}
+                    onChange={(e) => setSubscription(e.target.value)}
+                    placeholder='{"ticks":"R_10"}'
                   />
+                  <p className="text-xs text-muted-foreground">
+                    JSON subscription format for your WebSocket connection
+                  </p>
                 </div>
-
-                <Separator />
-
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label htmlFor="training-notifications">
-                      Training Notifications
-                    </Label>
-                    <p className="text-sm text-muted-foreground">
-                      Get notified when training completes
-                    </p>
-                  </div>
-                  <Switch
-                    id="training-notifications"
-                    checked={trainingNotifications}
-                    onCheckedChange={setTrainingNotifications}
-                  />
-                </div>
-
-                <Separator />
-
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label htmlFor="prediction-notifications">
-                      Prediction Notifications
-                    </Label>
-                    <p className="text-sm text-muted-foreground">
-                      Get notified about prediction results
-                    </p>
-                  </div>
-                  <Switch
-                    id="prediction-notifications"
-                    checked={predictionsNotifications}
-                    onCheckedChange={setPredictionsNotifications}
-                  />
-                </div>
-
-                <div className="flex justify-end mt-4">
-                  <Button onClick={handleProfileUpdate} disabled={saveLoading}>
-                    {saveLoading ? 'Saving...' : 'Save Preferences'}
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Subscription Tab */}
-        <TabsContent value="subscription" className="space-y-6 mt-6">
-          <div className="space-y-4">
-            <PayPalCheckout />
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Connection Settings</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid gap-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="ws-url">WebSocket URL</Label>
-                    <Input
-                      id="ws-url"
-                      value={wsUrl}
-                      onChange={(e) => setWsUrl(e.target.value)}
-                      placeholder="wss://..."
-                    />
-                  </div>
-
-                  <div className="grid gap-2">
-                    <Label htmlFor="subscription">Subscription JSON</Label>
-                    <Input
-                      id="subscription"
-                      value={subscription}
-                      onChange={(e) => setSubscription(e.target.value)}
-                      placeholder='{"ticks":"R_10"}'
-                    />
-                  </div>
-
-                  <div className="flex justify-end">
-                    <Button onClick={handleConnectionUpdate} disabled={saveLoading}>
-                      {saveLoading ? 'Saving...' : 'Save Connection Settings'}
+                
+                <div className="bg-muted/50 rounded-md p-4 space-y-2">
+                  <h4 className="font-medium">Connection Presets</h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setWsUrl('wss://ws.binaryws.com/websockets/v3?app_id=1089');
+                        setSubscription('{"ticks":"R_10"}');
+                      }}
+                    >
+                      Binary.com R_10
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setWsUrl('wss://ws.binaryws.com/websockets/v3?app_id=1089');
+                        setSubscription('{"ticks":"R_25"}');
+                      }}
+                    >
+                      Binary.com R_25
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setWsUrl('wss://ws.binaryws.com/websockets/v3?app_id=1089');
+                        setSubscription('{"ticks":"R_50"}');
+                      }}
+                    >
+                      Binary.com R_50
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setWsUrl('wss://ws.binaryws.com/websockets/v3?app_id=1089');
+                        setSubscription('{"ticks":"R_100"}');
+                      }}
+                    >
+                      Binary.com R_100
                     </Button>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Legal Information</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4 text-sm">
-                  <p>
-                    NNticks is provided "as is" without warranty of any kind. By using this application, you agree to our Terms of Service and Privacy Policy.
-                  </p>
-                  <p>
-                    Trading signals and predictions provided by this application are for informational purposes only and do not constitute financial advice.
-                  </p>
-                  <p>
-                    © 2025 Ruel McNeil. All rights reserved.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+              </div>
+              
+              <Button onClick={handleSettingsUpdate} disabled={saveLoading}>
+                {saveLoading ? 'Saving...' : 'Save Connection Settings'}
+              </Button>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader>
+              <CardTitle>API Keys</CardTitle>
+              <CardDescription>
+                Manage API keys for external services
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="api-key">Binary.com API Key (Optional)</Label>
+                <Input
+                  id="api-key"
+                  type="password"
+                  placeholder="Enter your API key"
+                />
+              </div>
+              
+              <Button variant="outline">
+                Save API Keys
+              </Button>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
-
-      <div className="text-center text-xs text-muted-foreground py-4">
-        <div className="flex items-center justify-center gap-1 mb-1">
-          <Logo size={14} />
-          <span>NNticks</span>
-        </div>
-        <p>Version 1.0.0 • © 2025 Ruel McNeil. All rights reserved.</p>
+      
+      <div className="mt-8 text-center">
+        <Logo className="h-8 mx-auto opacity-50" />
+        <p className="text-xs text-muted-foreground mt-2">
+          NNticks Neural Network Trading Platform
+          <br />
+          Version 1.0.0
+        </p>
       </div>
     </div>
   );
