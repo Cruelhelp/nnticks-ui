@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -28,17 +29,17 @@ const Account = () => {
   const [saveLoading, setSaveLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Notifications states
-  const [emailNotifications, setEmailNotifications] = useState(
+  // Notifications states - fixing by properly typing the state as boolean
+  const [emailNotifications, setEmailNotifications] = useState<boolean>(
     settings?.notifications?.email || false
   );
-  const [predictionAlerts, setPredictionAlerts] = useState(
+  const [predictionAlerts, setPredictionAlerts] = useState<boolean>(
     settings?.notifications?.predictions || true
   );
-  const [trainingAlerts, setTrainingAlerts] = useState(
+  const [trainingAlerts, setTrainingAlerts] = useState<boolean>(
     settings?.notifications?.training || true
   );
-  const [marketAlerts, setMarketAlerts] = useState(
+  const [marketAlerts, setMarketAlerts] = useState<boolean>(
     settings?.notifications?.market || false
   );
   
