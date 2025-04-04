@@ -12,6 +12,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useSettings } from '@/hooks/useSettings';
 import Logo from '@/components/Logo';
 import PayPalCheckout from '@/components/PayPalCheckout';
+import { supabase } from '@/lib/supabase';
 
 const Account = () => {
   const { user, userDetails, updateUserDetails } = useAuth();
@@ -24,6 +25,7 @@ const Account = () => {
   const [wsUrl, setWsUrl] = useState(settings?.wsUrl || '');
   const [subscription, setSubscription] = useState(settings?.subscription || '');
   const [saveLoading, setSaveLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Notifications states
   const [emailNotifications, setEmailNotifications] = useState(
@@ -97,42 +99,6 @@ const Account = () => {
       toast.error('Failed to update connection settings');
     } finally {
       setSaveLoading(false);
-    }
-  };
-
-  // Update this function in your Account component
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!user) {
-      toast.error('You need to be logged in to update your account.');
-      return;
-    }
-    
-    setIsSubmitting(true);
-    
-    try {
-      const { error } = await supabase
-        .from('users_extra')
-        .update({ 
-          username: username,
-          display_name: displayName
-        })
-        .eq('user_id', user.id);
-      
-      if (error) throw error;
-      
-      // Force a refresh of the user details to see the changes
-      if (fetchUserDetails) {
-        await fetchUserDetails();
-      }
-      
-      toast.success('Account updated successfully!');
-    } catch (error) {
-      console.error('Error updating account:', error);
-      toast.error('Failed to update account. Please try again.');
-    } finally {
-      setIsSubmitting(false);
     }
   };
 

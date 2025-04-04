@@ -20,7 +20,8 @@ const AdminPanel = () => {
   const [loading, setLoading] = useState(true);
   
   useEffect(() => {
-    if (userDetails?.role !== 'admin' && !userDetails?.isAdmin) {
+    // Updated to use isAdmin property instead of role
+    if (!userDetails?.isAdmin) {
       toast.error('You do not have permission to access the admin panel');
       return;
     }

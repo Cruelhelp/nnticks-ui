@@ -13,8 +13,8 @@ const SideBar = ({ activeSection, onSectionChange }: SideBarProps) => {
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   
   useEffect(() => {
-    // Check if user is admin
-    if (userDetails?.role === 'admin' || userDetails?.isAdmin) {
+    // Check if user is admin - fix the property access
+    if (userDetails?.isAdmin) {
       setShowAdminPanel(true);
     }
   }, [userDetails]);
