@@ -159,9 +159,7 @@ const Index = () => {
         return <Leaderboard />;
       case 'neuralnet':
         return <NeuralNet />;
-      case 'debug':
-        return <DebugTools />;
-      case 'account':
+      case 'settings':
         return <Account />;
       case 'admin':
         return <AdminPanel />;

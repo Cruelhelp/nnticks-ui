@@ -100,6 +100,42 @@ const Account = () => {
     }
   };
 
+  // Update this function in your Account component
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!user) {
+      toast.error('You need to be logged in to update your account.');
+      return;
+    }
+    
+    setIsSubmitting(true);
+    
+    try {
+      const { error } = await supabase
+        .from('users_extra')
+        .update({ 
+          username: username,
+          display_name: displayName
+        })
+        .eq('user_id', user.id);
+      
+      if (error) throw error;
+      
+      // Force a refresh of the user details to see the changes
+      if (fetchUserDetails) {
+        await fetchUserDetails();
+      }
+      
+      toast.success('Account updated successfully!');
+    } catch (error) {
+      console.error('Error updating account:', error);
+      toast.error('Failed to update account. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">

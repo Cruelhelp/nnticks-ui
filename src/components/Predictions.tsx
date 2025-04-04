@@ -1,18 +1,19 @@
-import React, { useState, useEffect, useCallback } from 'react';
+
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Brain, Clock, BadgeCheck, BadgeX, X, TrendingUp, TrendingDown, Zap, AlertCircle, Copyright } from 'lucide-react';
+import { Brain, Clock, BadgeCheck, BadgeX, X, TrendingUp, TrendingDown, Zap, AlertCircle, Copyright, Settings, Gauge } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { neuralNetwork } from '@/lib/neuralNetwork';
 import { supabase } from '@/lib/supabase';
 import { useWebSocket } from '@/hooks/useWebSocket';
-
-// Prediction phase types
-type PredictionPhase = 'warning' | 'counting' | 'completed';
+import { PREDICTION_MODES, PredictionMode, PredictionPhase, PredictionType } from '@/types/chartTypes';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
 
 interface Prediction {
   id: number;
@@ -23,7 +24,7 @@ interface Prediction {
   startPrice?: number;
   endPrice?: number;
   timePeriod: number;
-  predictionType: 'rise' | 'fall' | 'even' | 'odd';
+  predictionType: PredictionType;
 }
 
 interface PendingPrediction {
@@ -37,22 +38,26 @@ interface PendingPrediction {
   startPrice: number;
   tickPeriod: number;       // Number of ticks to wait
   ticksElapsed: number;     // Number of ticks elapsed during counting phase
-  predictionType: 'rise' | 'fall' | 'even' | 'odd';
+  predictionType: PredictionType;
 }
 
 // Visual representation of a neural network node
-const NNNode = ({ id, active, x, y }: { id: string; active: boolean; x: number; y: number }) => (
+const NNNode = ({ id, active, x, y, intensity = 1 }: { id: string; active: boolean; x: number; y: number; intensity?: number }) => (
   <div 
     id={id}
     className={`absolute w-4 h-4 rounded-full transform -translate-x-1/2 -translate-y-1/2 transition-all duration-300 ${
       active ? 'bg-primary animate-pulse shadow-lg shadow-primary/50' : 'bg-muted-foreground'
     }`}
-    style={{ left: `${x}%`, top: `${y}%` }}
+    style={{ 
+      left: `${x}%`, 
+      top: `${y}%`,
+      opacity: active ? 0.7 + (intensity * 0.3) : 0.5 
+    }}
   />
 );
 
 // Visual representation of a neural network connection
-const NNConnection = ({ from, to, active }: { from: string; to: string; active: boolean }) => {
+const NNConnection = ({ from, to, active, intensity = 1 }: { from: string; to: string; active: boolean; intensity?: number }) => {
   const [path, setPath] = useState({ x1: 0, y1: 0, x2: 0, y2: 0 });
   
   useEffect(() => {
@@ -90,22 +95,40 @@ const NNConnection = ({ from, to, active }: { from: string; to: string; active: 
         className={`transition-all duration-300 ${
           active ? 'stroke-primary stroke-[2px]' : 'stroke-muted-foreground stroke-[1px]'
         }`}
-        strokeOpacity={active ? 1 : 0.3}
+        strokeOpacity={active ? 0.7 + (intensity * 0.3) : 0.3}
+        strokeDasharray={active && intensity > 1.5 ? "4,2" : ""}
       />
     </svg>
   );
 };
 
-const NeuralNetworkVisual = ({ isTraining = false }) => {
+const NeuralNetworkVisual = ({ 
+  isTraining = false, 
+  isBotRunning = false, 
+  hasError = false 
+}) => {
   const [activeNodes, setActiveNodes] = useState<string[]>([]);
   const [pulseIntensity, setPulseIntensity] = useState(1);
+  const [sparkleNodes, setSparkleNodes] = useState<{id: string, intensity: number}[]>([]);
   
   // Simulate neural network activity with more animation
   useEffect(() => {
-    const interval = setInterval(() => {
-      // If in training mode, activate multiple nodes simultaneously
-      if (isTraining) {
-        const numberOfActiveNodes = Math.floor(Math.random() * 5) + 3; // 3-7 nodes
+    let interval: NodeJS.Timeout;
+    
+    if (hasError) {
+      // Error visualization - red flashing nodes
+      interval = setInterval(() => {
+        const errorNode = `node-${Math.floor(Math.random() * 3)}-${Math.floor(Math.random() * 5)}`;
+        setActiveNodes([errorNode]);
+        setPulseIntensity(2);
+        
+        // Clear nodes after a short delay
+        setTimeout(() => setActiveNodes([]), 200);
+      }, 500);
+    } else if (isTraining) {
+      // Training visualization - multiple nodes with high intensity
+      interval = setInterval(() => {
+        const numberOfActiveNodes = Math.floor(Math.random() * 5) + 5; // 5-10 nodes
         const newActiveNodes = [];
         
         for (let i = 0; i < numberOfActiveNodes; i++) {
@@ -116,20 +139,68 @@ const NeuralNetworkVisual = ({ isTraining = false }) => {
         
         setActiveNodes(newActiveNodes);
         setPulseIntensity(Math.random() * 2 + 1); // Varied pulse intensity during training
-      } else {
-        // Standard mode - just activate one node at a time
+        
+        // Generate sparkles for training
+        const newSparkles = Array(3).fill(0).map(() => ({
+          id: `node-${Math.floor(Math.random() * 3)}-${Math.floor(Math.random() * 5)}`,
+          intensity: Math.random() + 1
+        }));
+        setSparkleNodes(newSparkles);
+        
+        // Clear nodes after a delay
+        setTimeout(() => {
+          setActiveNodes([]);
+          setSparkleNodes([]);
+        }, 200);
+      }, 300);
+    } else if (isBotRunning) {
+      // Bot running visualization - coordinated pulses
+      interval = setInterval(() => {
+        // Generate a wave-like pattern
+        const phase = Math.floor(Date.now() / 500) % 3;
+        const newActiveNodes = [];
+        
+        // Activate nodes in the current phase/layer
+        for (let nodeIndex = 0; nodeIndex < 5; nodeIndex++) {
+          if (Math.random() > 0.5) {
+            newActiveNodes.push(`node-${phase}-${nodeIndex}`);
+          }
+        }
+        
+        setActiveNodes(newActiveNodes);
+        setPulseIntensity(1.5);
+        
+        // Occasional sparkles for active bot
+        if (Math.random() > 0.7) {
+          setSparkleNodes([{
+            id: `node-${Math.floor(Math.random() * 3)}-${Math.floor(Math.random() * 5)}`,
+            intensity: 2
+          }]);
+        } else {
+          setSparkleNodes([]);
+        }
+        
+        // Clear nodes after a delay
+        setTimeout(() => {
+          setActiveNodes([]);
+        }, 300);
+      }, 600);
+    } else {
+      // Standard mode - just activate one node at a time
+      interval = setInterval(() => {
         const layerIndex = Math.floor(Math.random() * 3);
         const nodeIndex = Math.floor(Math.random() * 5);
         setActiveNodes([`node-${layerIndex}-${nodeIndex}`]);
         setPulseIntensity(1);
-      }
-      
-      // Clear nodes after a delay
-      setTimeout(() => setActiveNodes([]), isTraining ? 400 : 800);
-    }, isTraining ? 600 : 1200);
+        setSparkleNodes([]);
+        
+        // Clear nodes after a delay
+        setTimeout(() => setActiveNodes([]), 800);
+      }, 1200);
+    }
     
     return () => clearInterval(interval);
-  }, [isTraining]);
+  }, [isTraining, isBotRunning, hasError]);
   
   // Generate nodes for 3 layers with 5 nodes each
   const layers = [0, 1, 2];
@@ -137,9 +208,17 @@ const NeuralNetworkVisual = ({ isTraining = false }) => {
   
   return (
     <div className="relative h-64 my-4">
-      {/* Special training visualization overlay */}
+      {/* Special visualization overlays */}
       {isTraining && (
         <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent animate-pulse z-0"></div>
+      )}
+      
+      {isBotRunning && (
+        <div className="absolute inset-0 bg-gradient-to-t from-primary/10 via-transparent to-transparent z-0" style={{animation: 'pulse 4s infinite'}}></div>
+      )}
+      
+      {hasError && (
+        <div className="absolute inset-0 bg-red-500/5 z-0" style={{animation: 'pulse 0.5s infinite'}}></div>
       )}
       
       {layers.map(layerIdx => (
@@ -149,14 +228,17 @@ const NeuralNetworkVisual = ({ isTraining = false }) => {
             const x = 20 + layerIdx * 30;
             const y = 10 + (nodeIdx * (100 - 20)) / (nodesPerLayer - 1);
             const isActive = activeNodes.includes(nodeId);
+            const sparkleNode = sparkleNodes.find(n => n.id === nodeId);
+            const intensity = sparkleNode ? sparkleNode.intensity : 1;
             
             return (
               <NNNode 
                 key={nodeId}
                 id={nodeId}
-                active={isActive}
+                active={isActive || !!sparkleNode}
                 x={x}
                 y={y}
+                intensity={intensity}
               />
             );
           })
@@ -171,12 +253,18 @@ const NeuralNetworkVisual = ({ isTraining = false }) => {
               [...Array(nodesPerLayer)].map((_, toNodeIdx) => {
                 const fromId = `node-${layerIdx}-${fromNodeIdx}`;
                 const toId = `node-${layerIdx + 1}-${toNodeIdx}`;
+                const isActive = activeNodes.includes(fromId) || activeNodes.includes(toId);
+                const sparkleFrom = sparkleNodes.find(n => n.id === fromId);
+                const sparkleTo = sparkleNodes.find(n => n.id === toId);
+                const intensity = sparkleFrom || sparkleTo ? 2 : 1;
+                
                 return (
                   <NNConnection 
                     key={`${fromId}-to-${toId}`}
                     from={fromId}
                     to={toId}
-                    active={activeNodes.includes(fromId) || activeNodes.includes(toId)}
+                    active={isActive || !!sparkleFrom || !!sparkleTo}
+                    intensity={intensity}
                   />
                 );
               })
@@ -185,20 +273,28 @@ const NeuralNetworkVisual = ({ isTraining = false }) => {
         )
       ))}
       
-      {/* Dynamic training visualization elements */}
-      {isTraining && (
+      {/* Dynamic visualization elements */}
+      {(isTraining || isBotRunning) && (
         <>
           <div 
             className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-primary/10 to-transparent"
             style={{
-              animation: `pulse ${3 - pulseIntensity}s infinite alternate`,
+              animation: `pulse ${isTraining ? 2 : 4}s infinite alternate`,
               opacity: 0.5 + (pulseIntensity * 0.2)
             }}
           ></div>
+          
           <div className="absolute top-2 right-2 px-2 py-1 bg-primary/20 text-xs rounded-md animate-pulse">
-            Training in progress...
+            {isTraining ? 'Training in progress...' : isBotRunning ? 'AI predictions active' : ''}
           </div>
         </>
+      )}
+      
+      {/* Error state indication */}
+      {hasError && (
+        <div className="absolute top-2 right-2 px-2 py-1 bg-red-500/20 text-xs text-red-500 rounded-md animate-pulse">
+          Neural network error
+        </div>
       )}
     </div>
   );
@@ -208,17 +304,20 @@ const Predictions = () => {
   const [pendingPredictions, setPendingPredictions] = useState<PendingPrediction[]>([]);
   const [completedPredictions, setCompletedPredictions] = useState<Prediction[]>([]);
   const [predictionTimePeriod, setPredictionTimePeriod] = useState(3);
-  const [predictionConfidence, setPredictionConfidence] = useState(50);
   const [isPredicting, setIsPredicting] = useState(false);
   const [isBotRunning, setIsBotRunning] = useState(false);
   const [isTraining, setIsTraining] = useState(false);
+  const [hasError, setHasError] = useState(false);
   const [trainingProgress, setTrainingProgress] = useState(0);
   const [currentMarket, setCurrentMarket] = useState('R_10');
   const [currentPrice, setCurrentPrice] = useState<number | null>(null);
-  const [predictionType, setPredictionType] = useState<'rise' | 'fall'>('rise');
+  const [predictionMode, setPredictionMode] = useState<PredictionMode>('balanced');
   const { user } = useAuth();
-  const autoIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
-  const tickCounterRef = React.useRef<Map<number, number>>(new Map());
+  
+  const autoIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const tickCounterRef = useRef<Map<number, number>>(new Map());
+  const lastPredictionTimeRef = useRef<number>(0);
+  const predictionRateRef = useRef<number>(15000); // Default 15 seconds between predictions
   
   // Connect to broker WebSocket for tick data
   const ws = useWebSocket({
@@ -235,9 +334,12 @@ const Predictions = () => {
     },
     onError: (error) => {
       console.error('WebSocket error:', error);
+      setHasError(true);
+      setTimeout(() => setHasError(false), 5000);
     },
     onOpen: () => {
       console.log('WebSocket connected for predictions');
+      setHasError(false);
     },
     onClose: () => {
       console.log('WebSocket closed for predictions');
@@ -256,6 +358,36 @@ const Predictions = () => {
       }
     };
   }, []);
+  
+  useEffect(() => {
+    // Adjust prediction rate based on selected mode
+    if (isBotRunning) {
+      if (autoIntervalRef.current) {
+        clearInterval(autoIntervalRef.current);
+      }
+      
+      // Set prediction rate based on mode
+      switch (predictionMode) {
+        case 'fast':
+          predictionRateRef.current = 8000; // 8 seconds
+          break;
+        case 'strict':
+          predictionRateRef.current = 30000; // 30 seconds
+          break;
+        default:
+          predictionRateRef.current = 15000; // 15 seconds (balanced)
+      }
+      
+      // Restart the bot with new settings
+      autoIntervalRef.current = setInterval(generatePrediction, predictionRateRef.current);
+      
+      // Generate one immediately if it's been long enough since the last prediction
+      const timeSinceLastPrediction = Date.now() - lastPredictionTimeRef.current;
+      if (timeSinceLastPrediction > 5000) {
+        setTimeout(generatePrediction, 1000);
+      }
+    }
+  }, [predictionMode, isBotRunning]);
   
   const loadPredictions = async () => {
     if (!user) return;
@@ -282,7 +414,7 @@ const Predictions = () => {
           startPrice: item.start_price,
           endPrice: item.end_price,
           timePeriod: item.time_period || 3,
-          predictionType: item.prediction || 'rise'
+          predictionType: item.prediction as PredictionType
         }));
         setCompletedPredictions(loaded);
       }
@@ -343,6 +475,9 @@ const Predictions = () => {
   const generatePrediction = useCallback(() => {
     if (!currentPrice || !isBotRunning) return null;
     
+    // Update last prediction time
+    lastPredictionTimeRef.current = Date.now();
+    
     // Get last 20 ticks from WebSocket history
     const tickValues = ws.ticks.map(t => t.value);
     
@@ -353,17 +488,26 @@ const Predictions = () => {
     // Generate a prediction using the neural network
     return neuralNetwork.predict(tickValues, 'rise', predictionTimePeriod as any, currentPrice)
       .then(prediction => {
-        handleAddPrediction(
-          prediction.type, 
-          prediction.period, 
-          Math.round(prediction.confidence * 100),
-          true
-        );
+        // Check if confidence meets the threshold for the selected mode
+        const minConfidence = PREDICTION_MODES[predictionMode].minConfidence;
+        
+        if (prediction.confidence >= minConfidence) {
+          handleAddPrediction(
+            prediction.type, 
+            prediction.period, 
+            Math.round(prediction.confidence * 100),
+            true
+          );
+        } else {
+          console.log(`Prediction skipped: confidence ${prediction.confidence.toFixed(2)} below threshold ${minConfidence.toFixed(2)}`);
+        }
       })
       .catch(err => {
         console.error("Error generating prediction:", err);
+        setHasError(true);
+        setTimeout(() => setHasError(false), 5000);
       });
-  }, [currentPrice, ws.ticks, isBotRunning, predictionTimePeriod]);
+  }, [currentPrice, ws.ticks, isBotRunning, predictionTimePeriod, predictionMode]);
   
   // Toggle bot
   const toggleBot = () => {
@@ -387,10 +531,10 @@ const Predictions = () => {
             
             // Start the bot
             setIsBotRunning(true);
-            toast.success('Bot started - auto predictions enabled');
+            toast.success(`Bot started - ${PREDICTION_MODES[predictionMode].mode} mode activated`);
             
-            // Generate a prediction every 15 seconds
-            autoIntervalRef.current = setInterval(generatePrediction, 15000);
+            // Generate a prediction on an interval based on mode
+            autoIntervalRef.current = setInterval(generatePrediction, predictionRateRef.current);
             // Generate one immediately
             setTimeout(generatePrediction, 1000);
             
@@ -403,9 +547,9 @@ const Predictions = () => {
   };
   
   const handleAddPrediction = async (
-    type: 'rise' | 'fall' | 'even' | 'odd' = 'rise',
+    type: PredictionType = 'rise',
     period: number = predictionTimePeriod, 
-    confidence: number = predictionConfidence,
+    confidence: number = 75,
     isAuto: boolean = false
   ) => {
     if (isPredicting) return;
@@ -424,7 +568,7 @@ const Predictions = () => {
       timestamp: new Date(),
       warningCountdown: 10, // 10-second warning countdown
       tickCountdown: 0,
-      phase: 'warning' as PredictionPhase, // Explicit cast to PredictionPhase
+      phase: 'warning' as PredictionPhase,
       market: currentMarket,
       startPrice: currentPrice,
       tickPeriod: period,
@@ -588,41 +732,39 @@ const Predictions = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="relative">
-              <NeuralNetworkVisual isTraining={isTraining} />
+              <NeuralNetworkVisual 
+                isTraining={isTraining} 
+                isBotRunning={isBotRunning}
+                hasError={hasError}
+              />
               
-              {/* Waiting for data message moved to the top */}
+              {/* Waiting for data message */}
               {!currentPrice && (
                 <div className="absolute top-0 right-0 text-muted-foreground bg-background/80 p-2 rounded-md">
                   Waiting for market data...
                 </div>
               )}
               
-              <div className="absolute top-1/4 right-8 text-lg font-semibold">
-                {currentPrice && !isTraining && (
-                  <div className="flex flex-col items-end">
-                    <span className="text-sm text-muted-foreground">Predicted movement:</span>
-                    <div className="flex items-center gap-1 mt-1">
-                      {predictionType === 'rise' ? (
-                        <>
-                          <TrendingUp className="h-5 w-5 text-green-500" />
-                          <span className="text-green-500">Rising</span>
-                        </>
-                      ) : (
-                        <>
-                          <TrendingDown className="h-5 w-5 text-red-500" />
-                          <span className="text-red-500">Falling</span>
-                        </>
+              {currentPrice && !isTraining && (
+                <div className="absolute top-1/4 right-8 text-lg font-semibold">
+                  {!hasError && (
+                    <div className="flex flex-col items-end">
+                      <span className="text-sm text-muted-foreground">
+                        {isBotRunning ? 'AI is analyzing the market...' : 'Neural network ready'}
+                      </span>
+                      {isBotRunning && (
+                        <div className="flex items-center gap-1 mt-1">
+                          <Gauge className="h-5 w-5 text-primary" />
+                          <span className="text-primary">{PREDICTION_MODES[predictionMode].mode} mode</span>
+                        </div>
                       )}
                     </div>
-                    
-                    <div className="mt-3">
-                      <span className="text-sm text-muted-foreground">Confidence:</span>
-                      <Progress value={predictionConfidence} className="h-2 w-32 mt-1" />
-                    </div>
-                  </div>
-                )}
-                
-                {isTraining && (
+                  )}
+                </div>
+              )}
+              
+              {isTraining && (
+                <div className="absolute top-1/4 right-8">
                   <div className="flex flex-col items-end">
                     <div className="px-3 py-2 bg-primary/10 animate-pulse rounded-md border border-primary/20">
                       <div className="text-sm font-medium">Training Model</div>
@@ -633,8 +775,8 @@ const Predictions = () => {
                       </div>
                     </div>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
             
             <div className="grid grid-cols-2 gap-4">
@@ -657,53 +799,23 @@ const Predictions = () => {
               
               <div>
                 <label className="block text-sm font-medium mb-1 text-muted-foreground">
-                  Confidence Level: {predictionConfidence}%
+                  Prediction Mode
                 </label>
-                <input
-                  type="range"
-                  value={predictionConfidence}
-                  onChange={(e) => setPredictionConfidence(Number(e.target.value))}
-                  className="w-full"
-                  min="1"
-                  max="99"
+                <RadioGroup 
+                  value={predictionMode}
+                  onValueChange={(value) => setPredictionMode(value as PredictionMode)}
+                  className="flex flex-col space-y-1"
                   disabled={isBotRunning}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1 text-muted-foreground">
-                  Prediction Type
-                </label>
-                <div className="flex gap-2">
-                  <Button 
-                    variant={predictionType === 'rise' ? "default" : "outline"} 
-                    size="sm"
-                    onClick={() => setPredictionType('rise')}
-                    className="flex-1"
-                    disabled={isBotRunning}
-                  >
-                    <TrendingUp className="h-4 w-4 mr-1" /> Rise
-                  </Button>
-                  <Button 
-                    variant={predictionType === 'fall' ? "default" : "outline"} 
-                    size="sm"
-                    onClick={() => setPredictionType('fall')}
-                    className="flex-1"
-                    disabled={isBotRunning}
-                  >
-                    <TrendingDown className="h-4 w-4 mr-1" /> Fall
-                  </Button>
-                </div>
-              </div>
-
-              <div className="flex items-end">
-                <Button 
-                  onClick={() => handleAddPrediction(predictionType, predictionTimePeriod, predictionConfidence)} 
-                  className="w-full"
-                  disabled={!currentPrice || isBotRunning || isPredicting}
                 >
-                  Make Prediction
-                </Button>
+                  {Object.entries(PREDICTION_MODES).map(([key, config]) => (
+                    <div key={key} className="flex items-center space-x-2">
+                      <RadioGroupItem value={key} id={`mode-${key}`} />
+                      <Label htmlFor={`mode-${key}`} className="text-sm cursor-pointer">
+                        {config.mode} ({(config.minConfidence * 100).toFixed(0)}%+)
+                      </Label>
+                    </div>
+                  ))}
+                </RadioGroup>
               </div>
             </div>
             
@@ -727,6 +839,10 @@ const Predictions = () => {
                 </>
               )}
             </Button>
+            
+            <div className="text-xs text-muted-foreground">
+              The Neural Network automatically analyzes market patterns and makes predictions based on detected opportunities. Select a mode that fits your trading style.
+            </div>
           </CardContent>
           <CardFooter className="text-xs text-muted-foreground pt-2 border-t">
             <Copyright className="h-3 w-3 mr-1" /> NNticks Enterprise Analytics 2025 - Neural Predictions

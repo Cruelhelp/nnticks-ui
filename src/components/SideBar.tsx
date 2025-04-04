@@ -1,80 +1,121 @@
 
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import { Home, LineChart, FileText, Dumbbell, History, Trophy, Shield, BrainCircuit, Bug, UserCog } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
-import { Badge } from "./ui/badge";
-import ConnectionStatus from "./ConnectionStatus";
+import { useEffect, useState } from 'react';
+import { Bell, Brain, ChartBar, Clock, CreditCard, Home, Users, Settings, BarChart, Gauge, User } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface SideBarProps {
   activeSection: string;
   onSectionChange: (section: string) => void;
 }
 
-interface SidebarItem {
-  id: string;
-  icon: React.ElementType;
-  label: string;
-  proOnly?: boolean;
-  adminOnly?: boolean;
-}
-
 const SideBar = ({ activeSection, onSectionChange }: SideBarProps) => {
-  const { userDetails } = useAuth();
+  const { user, userDetails } = useAuth();
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
   
-  const isPro = userDetails?.proStatus || false;
-  const isAdmin = userDetails?.isAdmin || false;
-
-  const sidebarItems: SidebarItem[] = [
-    { id: 'home', icon: Home, label: 'Home' },
-    { id: 'charts', icon: LineChart, label: 'Charts' },
-    { id: 'predictions', icon: FileText, label: 'Predictions' },
-    { id: 'training', icon: Dumbbell, label: 'Training' },
-    { id: 'neuralnet', icon: BrainCircuit, label: 'Neural Net' },
-    { id: 'history', icon: History, label: 'History' },
-    { id: 'debug', icon: Bug, label: 'Debug' },
-    { id: 'account', icon: UserCog, label: 'Account' },
-    { id: 'leaderboard', icon: Trophy, label: 'Leaderboard', proOnly: true },
-    { id: 'admin', icon: Shield, label: 'Admin', adminOnly: true },
-  ];
-
-  const handleClick = (id: string) => {
-    onSectionChange(id);
+  useEffect(() => {
+    // Check if user is admin
+    if (userDetails?.role === 'admin' || userDetails?.isAdmin) {
+      setShowAdminPanel(true);
+    }
+  }, [userDetails]);
+  
+  const handleClick = (section: string) => {
+    onSectionChange(section);
+    
+    const event = new CustomEvent('navigate-section', { detail: section });
+    document.dispatchEvent(event);
   };
-
+  
+  const isActive = (section: string) => activeSection === section;
+  
+  const menuItems = [
+    { id: 'home', label: 'Home', icon: Home },
+    { id: 'charts', label: 'Charts', icon: ChartBar },
+    { id: 'predictions', label: 'Predictions', icon: Gauge },
+    { id: 'training', label: 'Training', icon: Brain },
+    { id: 'history', label: 'History', icon: Clock },
+    { id: 'leaderboard', label: 'Leaderboard', icon: Users },
+    { id: 'neuralnet', label: 'Neural Net', icon: BarChart },
+  ];
+  
   return (
-    <div 
-      className="h-full bg-black border-r border-border flex flex-col"
-      style={{ width: '200px', fontFamily: 'VT323, monospace' }}
-    >
-      <div className="px-3 py-2">
-        <ConnectionStatus compact={true} className="w-full justify-center text-xs font-vt323" />
+    <div className="min-h-full border-r bg-card w-64 overflow-hidden flex flex-col">
+      <div className="p-4 border-b">
+        <div className="flex items-center gap-3">
+          <div className="rounded-md bg-primary/10 p-1.5">
+            <Brain className="h-6 w-6 text-primary" />
+          </div>
+          <div>
+            <div className="font-semibold leading-none">NNticks</div>
+            <div className="text-xs text-muted-foreground mt-0.5">Neural Network Trading</div>
+          </div>
+        </div>
       </div>
-
-      <div className="flex flex-col py-2 flex-1">
-        {sidebarItems.map((item) => {
-          // Skip if the item is pro-only and user is not pro
-          if (item.proOnly && !isPro) return null;
-          
-          // Skip if the item is admin-only and user is not admin
-          if (item.adminOnly && !isAdmin) return null;
-          
-          return (
-            <Button
+      
+      <div className="py-2 flex-1 overflow-y-auto">
+        <div className="p-2">
+          {menuItems.map((item) => (
+            <button
               key={item.id}
-              variant="ghost"
-              className={cn(
-                "sidebar-item justify-start font-vt323",
-                activeSection === item.id && "bg-secondary text-primary"
-              )}
               onClick={() => handleClick(item.id)}
+              className={`w-full flex items-center gap-3 p-2 rounded-md transition-colors ${
+                isActive(item.id)
+                  ? 'bg-primary/10 text-primary hover:bg-primary/15'
+                  : 'hover:bg-muted'
+              }`}
             >
-              <item.icon size={18} className="mr-2" />
+              <item.icon className="h-5 w-5" />
               <span>{item.label}</span>
-              {item.proOnly && <span className="ml-auto text-xs text-primary">PRO</span>}
-            </Button>
-          );
-        })}
+            </button>
+          ))}
+        </div>
+        
+        <div className="p-2 pt-4">
+          <div className="text-xs font-medium text-muted-foreground ml-2 mb-2">Preferences</div>
+          <button
+            onClick={() => handleClick('settings')}
+            className={`w-full flex items-center gap-3 p-2 rounded-md transition-colors ${
+              isActive('settings')
+                ? 'bg-primary/10 text-primary hover:bg-primary/15'
+                : 'hover:bg-muted'
+            }`}
+          >
+            <Settings className="h-5 w-5" />
+            <span>Settings</span>
+          </button>
+          
+          {showAdminPanel && (
+            <button
+              onClick={() => handleClick('admin')}
+              className={`w-full flex items-center gap-3 p-2 rounded-md transition-colors ${
+                isActive('admin')
+                  ? 'bg-primary/10 text-primary hover:bg-primary/15'
+                  : 'hover:bg-muted'
+              }`}
+            >
+              <CreditCard className="h-5 w-5" />
+              <span>Admin Panel</span>
+            </button>
+          )}
+        </div>
+      </div>
+      
+      <div className="p-4 border-t bg-muted/50">
+        {user ? (
+          <div className="flex items-center gap-3">
+            <div className="flex-shrink-0 rounded-full bg-background p-1">
+              <User className="h-6 w-6" />
+            </div>
+            <div className="truncate">
+              <div className="font-medium truncate">{userDetails?.username || user.email}</div>
+              <div className="text-xs text-muted-foreground">
+                {userDetails?.proStatus ? 'Pro Account' : 'Standard Account'}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="text-sm text-muted-foreground">Guest Mode</div>
+        )}
       </div>
     </div>
   );
