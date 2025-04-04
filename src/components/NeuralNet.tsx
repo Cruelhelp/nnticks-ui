@@ -313,7 +313,8 @@ const NeuralNet = () => {
         });
       }
       
-      toast.success(`Model trained successfully with ${accuracy.toFixed(2) * 100}% accuracy`);
+      const accuracyPercentage = typeof accuracy === 'number' ? accuracy * 100 : 0;
+      toast.success(`Model trained successfully with ${accuracyPercentage.toFixed(2)}% accuracy`);
       
       setActiveTab('history');
     } catch (error) {
