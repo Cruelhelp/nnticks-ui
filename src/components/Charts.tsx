@@ -233,7 +233,6 @@ const Charts: React.FC = () => {
 
   // Connect to WebSocket for real-time data
   const ws = useWebSocket({
-    wsUrl: settings?.wsUrl || 'wss://ws.binaryws.com/websockets/v3?app_id=1089',
     subscription: settings?.subscription ? JSON.parse(settings.subscription) : { ticks: selectedMarket },
     onMessage: (data) => {
       if (data.tick) {
@@ -477,7 +476,7 @@ const Charts: React.FC = () => {
             </CardFooter>
           </Card>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Card>
               <CardHeader>
                 <div className="flex justify-between items-center">
@@ -539,36 +538,6 @@ const Charts: React.FC = () => {
               </CardContent>
               <CardFooter className="text-xs text-muted-foreground pt-2 border-t">
                 <Copyright className="h-3 w-3 mr-1" /> NNticks Enterprise
-              </CardFooter>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <div className="flex justify-between items-center">
-                  <CardTitle className="flex items-center">
-                    <span>Volatility Index</span>
-                    <Badge className="ml-2" variant="secondary">
-                      {selectedMarket}
-                    </Badge>
-                  </CardTitle>
-                  <Button variant="ghost" size="sm" onClick={() => setMaximizedChart('Volatility')}>
-                    <Maximize2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[300px]">
-                  <AreaChartView data={tickData} />
-                </div>
-                {tickData.length > 0 && (
-                  <p className="text-sm mt-2">
-                    <span className="text-muted-foreground">Volatility Score:</span>{' '}
-                    <span className="font-medium">{tickData[tickData.length - 1].value.toFixed(5)}</span>
-                  </p>
-                )}
-              </CardContent>
-              <CardFooter className="text-xs text-muted-foreground pt-2 border-t">
-                <Copyright className="h-3 w-3 mr-1" /> NNticks Volatility Analysis
               </CardFooter>
             </Card>
           </div>

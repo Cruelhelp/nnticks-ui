@@ -138,6 +138,7 @@ export class NeuralNetwork {
   private biases: number[][] = []; // Layer biases
   private modelVersion: string = "1.0.0";
   private trainingData: { inputs: number[], outputs: number[], result: string }[] = [];
+  private onProgressCallback: ((progress: number) => void) | null = null;
 
   constructor(config: NNConfiguration = DEFAULT_NN_CONFIG) {
     this.config = { ...config };
@@ -219,7 +220,7 @@ export class NeuralNetwork {
     };
   }
 
-  // Simplified prediction function (in real app, this would use TensorFlow/PyTorch in a worker)
+  // Prediction function that works immediately with current tick data
   async predict(
     tickData: number[], 
     type: PredictionType = 'rise', 
@@ -273,25 +274,22 @@ export class NeuralNetwork {
     // Introduce some randomness to simulate real prediction variability
     confidence = Math.min(0.98, Math.max(0.51, confidence + (Math.random() * 0.1 - 0.05)));
     
-    // Determine prediction based on type
-    let predictedType: PredictionType;
+    // For type-specific predictions
+    let adjustedConfidence = confidence;
     
-    if (type === 'rise' || type === 'fall') {
-      predictedType = trend >= 0 ? 'rise' : 'fall';
-    } else {
-      // For even/odd prediction, use the last digit of the price
-      const lastDigit = Math.round((lastPrice * 100) % 10);
-      predictedType = lastDigit % 2 === 0 ? 'even' : 'odd';
-      
-      // Adjust confidence for even/odd which is less predictable
-      confidence = Math.min(0.85, confidence);
+    if (type === 'rise' && trend < 0) {
+      // Lower confidence for rise prediction when trend is down
+      adjustedConfidence = Math.max(0.51, confidence - 0.2); 
+    } else if (type === 'fall' && trend > 0) {
+      // Lower confidence for fall prediction when trend is up
+      adjustedConfidence = Math.max(0.51, confidence - 0.2);
     }
     
     // Create prediction result
     const prediction: PredictionResult = {
-      type: predictedType,
+      type: type,
       period: period,
-      confidence: confidence,
+      confidence: adjustedConfidence,
       timestamp: new Date(),
       startPrice: currentPrice || lastPrice
     };
@@ -302,9 +300,14 @@ export class NeuralNetwork {
     return prediction;
   }
 
-  // Simulate training process with real data storage
-  async train(historicalData: number[], options?: { maxEpochs?: number }): Promise<number> {
-    // Simulation of training process
+  // Enhanced train function that supports progress tracking
+  async train(
+    historicalData: number[], 
+    options?: { 
+      maxEpochs?: number;
+      onProgress?: (progress: number) => void;
+    }
+  ): Promise<number> {
     if (historicalData.length < 100) {
       throw new Error("Insufficient data for training");
     }
@@ -312,18 +315,24 @@ export class NeuralNetwork {
     this.isTraining = true;
     this.trainingProgress = 0;
     this.trainingData = [];
+    this.onProgressCallback = options?.onProgress || null;
     
     // Simulate epochs
     const maxEpochs = options?.maxEpochs || this.config.epochs;
     
     for (let epoch = 0; epoch < maxEpochs; epoch++) {
       // Simulate processing delay
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 50));
       
       // Update progress
       this.trainingProgress = (epoch + 1) / maxEpochs;
       
-      // Create synthetic training example
+      // Notify progress callback if provided
+      if (this.onProgressCallback) {
+        this.onProgressCallback(this.trainingProgress);
+      }
+      
+      // Create synthetic training example using real data
       const sampleIndex = Math.floor(Math.random() * (historicalData.length - 20));
       const inputData = historicalData.slice(sampleIndex, sampleIndex + 10);
       const outputData = historicalData.slice(sampleIndex + 10, sampleIndex + 20);
@@ -405,7 +414,11 @@ export class NeuralNetwork {
       
       reader.onload = (event) => {
         try {
-          const modelData = JSON.parse(event.target?.result as string) as NetworkModel;
+          if (!event.target?.result) {
+            throw new Error("Failed to read file");
+          }
+          
+          const modelData = JSON.parse(event.target.result as string) as NetworkModel;
           const success = this.importModel(modelData);
           resolve(success);
         } catch (error) {
