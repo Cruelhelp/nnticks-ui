@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,6 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 import { Brain, Trophy, Check, Lock, Zap, BarChart, Star, Activity, Copyright } from 'lucide-react';
+import { trainingService } from '@/services/TrainingService';
+import { neuralNetwork } from '@/lib/neuralNetwork';
 
 interface Mission {
   id: number;
@@ -36,6 +39,140 @@ const TrainingNotice = () => (
     </div>
   </div>
 );
+
+const NeuralNetworkVisualization = ({ activeNodes, animationIntensity }: { activeNodes: string[], animationIntensity: number }) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    
+    // Set canvas dimensions
+    canvas.width = canvas.clientWidth;
+    canvas.height = canvas.clientHeight;
+    
+    // Clear canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Define layers
+    const layers = [3, 5, 5, 3]; // Input, hidden, hidden, output
+    const layerSpacing = canvas.width / (layers.length + 1);
+    
+    // Draw connections first (so they're behind nodes)
+    ctx.lineWidth = 1;
+    
+    for (let layerIdx = 0; layerIdx < layers.length - 1; layerIdx++) {
+      const fromNodesCount = layers[layerIdx];
+      const toNodesCount = layers[layerIdx + 1];
+      
+      const startX = (layerIdx + 1) * layerSpacing;
+      const endX = (layerIdx + 2) * layerSpacing;
+      
+      for (let fromNodeIdx = 0; fromNodeIdx < fromNodesCount; fromNodeIdx++) {
+        const nodeId = `nn-node-${layerIdx}-${fromNodeIdx}`;
+        const fromY = (canvas.height / (fromNodesCount + 1)) * (fromNodeIdx + 1);
+        
+        for (let toNodeIdx = 0; toNodeIdx < toNodesCount; toNodeIdx++) {
+          const toNodeId = `nn-node-${layerIdx + 1}-${toNodeIdx}`;
+          const toY = (canvas.height / (toNodesCount + 1)) * (toNodeIdx + 1);
+          
+          // Check if either node is active for connection highlighting
+          const isActive = activeNodes.includes(nodeId) || activeNodes.includes(toNodeId);
+          
+          if (isActive) {
+            // Gradient for active connections
+            const gradient = ctx.createLinearGradient(startX, fromY, endX, toY);
+            gradient.addColorStop(0, 'rgba(16, 185, 129, 0.8)'); // Start color (green-500)
+            gradient.addColorStop(1, 'rgba(16, 185, 129, 0.3)'); // End color (more transparent)
+            ctx.strokeStyle = gradient;
+            ctx.lineWidth = 2;
+            
+            // Animated dash for higher animation intensity
+            if (animationIntensity > 3) {
+              ctx.setLineDash([4, 2]);
+              ctx.lineDashOffset = (Date.now() / 100) % 6;
+            } else {
+              ctx.setLineDash([]);
+            }
+          } else {
+            // Inactive connections
+            ctx.strokeStyle = 'rgba(100, 116, 139, 0.2)'; // slate-400 with low opacity
+            ctx.lineWidth = 1;
+            ctx.setLineDash([]);
+          }
+          
+          ctx.beginPath();
+          ctx.moveTo(startX, fromY);
+          ctx.lineTo(endX, toY);
+          ctx.stroke();
+        }
+      }
+    }
+    
+    // Draw nodes
+    for (let layerIdx = 0; layerIdx < layers.length; layerIdx++) {
+      const nodesCount = layers[layerIdx];
+      const x = (layerIdx + 1) * layerSpacing;
+      
+      for (let nodeIdx = 0; nodeIdx < nodesCount; nodeIdx++) {
+        const y = (canvas.height / (nodesCount + 1)) * (nodeIdx + 1);
+        const nodeId = `nn-node-${layerIdx}-${nodeIdx}`;
+        const isActive = activeNodes.includes(nodeId);
+        
+        // Draw node
+        ctx.beginPath();
+        ctx.arc(x, y, isActive ? 6 : 4, 0, Math.PI * 2);
+        
+        if (isActive) {
+          // Draw glow for active nodes
+          const gradient = ctx.createRadialGradient(x, y, 2, x, y, 10);
+          gradient.addColorStop(0, 'rgba(16, 185, 129, 1)'); // Green-500
+          gradient.addColorStop(1, 'rgba(16, 185, 129, 0)');
+          
+          ctx.fillStyle = 'rgb(16, 185, 129)'; // Green-500
+          ctx.shadowColor = 'rgba(16, 185, 129, 0.7)';
+          ctx.shadowBlur = 10 * animationIntensity;
+        } else {
+          ctx.fillStyle = 'rgba(100, 116, 139, 0.5)'; // slate-400 with medium opacity
+          ctx.shadowBlur = 0;
+        }
+        
+        ctx.fill();
+        ctx.shadowBlur = 0; // Reset shadow for next elements
+        
+        // Draw small pulse effect for active nodes
+        if (isActive && animationIntensity > 2) {
+          const pulseSize = 10 + Math.sin(Date.now() / 200) * 5;
+          ctx.beginPath();
+          ctx.arc(x, y, pulseSize, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(16, 185, 129, 0.1)';
+          ctx.fill();
+        }
+      }
+    }
+    
+    // Add layer labels at the bottom
+    ctx.fillStyle = 'rgba(100, 116, 139, 0.7)'; // slate-400 with medium opacity
+    ctx.font = '10px sans-serif';
+    ctx.textAlign = 'center';
+    
+    ctx.fillText('Input Layer', layerSpacing, canvas.height - 10);
+    ctx.fillText('Hidden Layers', (layerSpacing * 2.5), canvas.height - 10);
+    ctx.fillText('Output Layer', layerSpacing * 4, canvas.height - 10);
+    
+  }, [activeNodes, animationIntensity]);
+
+  return (
+    <canvas 
+      ref={canvasRef} 
+      className="w-full h-64 border-0"
+      style={{ background: 'transparent' }}
+    />
+  );
+};
 
 const Training = () => {
   const { user, userDetails } = useAuth();
@@ -153,6 +290,17 @@ const Training = () => {
   const [trainingEpochs, setTrainingEpochs] = useState(0);
   const [availableEpochs, setAvailableEpochs] = useState(0);
   const [isLoadingEpochs, setIsLoadingEpochs] = useState(true);
+  const [showTrainingAnimation, setShowTrainingAnimation] = useState(false);
+  const [neuralNetworkWeights, setNeuralNetworkWeights] = useState<number[][]>([]);
+  
+  // Set up training service user ID
+  useEffect(() => {
+    if (user) {
+      trainingService.setUserId(user.id);
+    } else {
+      trainingService.setUserId(null);
+    }
+  }, [user]);
   
   // Define level thresholds
   const levelThresholds = [
@@ -165,42 +313,65 @@ const Training = () => {
   
   // Load user training data from Supabase
   useEffect(() => {
-    if (user) {
-      // Fetch available epochs from Supabase
-      const fetchEpochs = async () => {
-        setIsLoadingEpochs(true);
-        try {
-          const { data, error } = await supabase
-            .from('users_extra')
-            .select('available_epochs, total_epochs')
-            .eq('user_id', user.id)
-            .single();
-            
-          if (error) {
-            console.error('Error fetching epochs:', error);
-            // Set default values if there's an error
-            setAvailableEpochs(50);
-          } else if (data) {
-            setAvailableEpochs(data.available_epochs || 50);
-          } else {
-            // Default value if no data is found
-            setAvailableEpochs(50);
-          }
-        } catch (err) {
-          console.error('Failed to load epochs:', err);
-          setAvailableEpochs(50);
-        } finally {
-          setIsLoadingEpochs(false);
-        }
-      };
+    const fetchEpochs = async () => {
+      setIsLoadingEpochs(true);
       
-      fetchEpochs();
-    } else {
-      // Set default for guests
-      setAvailableEpochs(25);
-      setIsLoadingEpochs(false);
-    }
-  }, [user]);
+      try {
+        if (user) {
+          const { available, total } = await trainingService.getUserEpochs();
+          setAvailableEpochs(available);
+          setTrainingEpochs(total);
+        } else {
+          // Default for guests
+          setAvailableEpochs(25);
+          setTrainingEpochs(25);
+        }
+      } catch (err) {
+        console.error('Failed to load epochs:', err);
+        setAvailableEpochs(25);
+        setTrainingEpochs(25);
+      } finally {
+        setIsLoadingEpochs(false);
+      }
+    };
+    
+    fetchEpochs();
+    
+    // Also load training history
+    const loadTrainingHistory = async () => {
+      if (!user) return;
+      
+      try {
+        // Get completed missions from training history
+        const history = await trainingService.getTrainingHistory();
+        
+        // Update missions completion status
+        if (history.length > 0) {
+          const completedMissionTitles = history.map(h => h.mission.replace('Mission ', ''));
+          
+          setMissions(prev => prev.map(mission => ({
+            ...mission,
+            completed: completedMissionTitles.includes(mission.id.toString())
+          })));
+          
+          // Calculate total points
+          const points = history.reduce((sum, item) => sum + item.points, 0);
+          setTotalPoints(points);
+          
+          // Set level based on points
+          const currentLevelData = levelThresholds.find(
+            lt => points >= lt.minPoints && points <= lt.maxPoints
+          ) || levelThresholds[0];
+          
+          setLevel(currentLevelData.level);
+        }
+      } catch (error) {
+        console.error('Error loading training history:', error);
+      }
+    };
+    
+    loadTrainingHistory();
+  }, [user, levelThresholds]);
   
   // Effect for neural network animation
   useEffect(() => {
@@ -233,7 +404,72 @@ const Training = () => {
     return () => clearTimeout(timeout);
   }, [animationIntensity]);
   
-  const startMission = (mission: Mission) => {
+  // Neural network training visualization
+  useEffect(() => {
+    if (!showTrainingAnimation) return;
+    
+    let frameId: number;
+    const layerSizes = [3, 5, 5, 3];
+    let currentStep = 0;
+    const maxSteps = 100;
+    const framesPerStep = 3;
+    let currentFrame = 0;
+    
+    const animate = () => {
+      if (currentFrame % framesPerStep === 0 && currentStep < maxSteps) {
+        // Generate random weights for visualization
+        const weights: number[][] = [];
+        
+        for (let i = 0; i < layerSizes.length - 1; i++) {
+          const layerWeights: number[] = [];
+          const connections = layerSizes[i] * layerSizes[i + 1];
+          
+          for (let j = 0; j < connections; j++) {
+            // Weight values converge toward optimum as training progresses
+            const randomFactor = Math.max(0.8, 1 - currentStep / maxSteps);
+            const baseWeight = 0.7 + (currentStep / maxSteps) * 0.3; // Weights improve over time
+            layerWeights.push(baseWeight + (Math.random() - 0.5) * randomFactor);
+          }
+          
+          weights.push(layerWeights);
+        }
+        
+        setNeuralNetworkWeights(weights);
+        currentStep++;
+        
+        // Activate random nodes for visual effect
+        const newActiveNodes = [];
+        for (let i = 0; i < Math.min(8, 3 + Math.floor(currentStep / 10)); i++) {
+          const layerIdx = Math.floor(Math.random() * layerSizes.length);
+          const nodeIdx = Math.floor(Math.random() * layerSizes[layerIdx]);
+          newActiveNodes.push(`nn-node-${layerIdx}-${nodeIdx}`);
+        }
+        
+        setActiveNodes(newActiveNodes);
+        
+        // Update progress
+        setMissionProgress((currentStep / maxSteps) * 100);
+      }
+      
+      currentFrame++;
+      
+      if (currentStep >= maxSteps) {
+        // Training is complete
+        setShowTrainingAnimation(false);
+        completeMission(activeMission!);
+      } else {
+        frameId = requestAnimationFrame(animate);
+      }
+    };
+    
+    frameId = requestAnimationFrame(animate);
+    
+    return () => {
+      cancelAnimationFrame(frameId);
+    };
+  }, [showTrainingAnimation, activeMission]);
+  
+  const startMission = async (mission: Mission) => {
     if (mission.locked) {
       if (mission.proBadge && !isPro) {
         toast.error('This mission requires a Pro subscription');
@@ -248,6 +484,12 @@ const Training = () => {
       return;
     }
     
+    // Check if user has enough epochs
+    if (mission.epochs && mission.epochs > availableEpochs) {
+      toast.error(`Not enough epochs. This mission requires ${mission.epochs} epochs, but you only have ${availableEpochs} available.`);
+      return;
+    }
+    
     setActiveMission(mission);
     setMissionProgress(0);
     toast.info(`Mission started: ${mission.title}`);
@@ -256,24 +498,30 @@ const Training = () => {
     const prevIntensity = animationIntensity;
     setAnimationIntensity(Math.min(prevIntensity + 2, 5));
     
-    // Simulate epoch progress
-    const totalEpochs = mission.epochs || 10000;
-    const interval = setInterval(() => {
-      setMissionProgress(prev => {
-        // Make progress more unpredictable
-        const increment = Math.floor(Math.random() * 4) + 1;
+    // If epochs are sufficient, attempt to use them
+    if (mission.epochs) {
+      try {
+        const success = await trainingService.useEpochs(mission.epochs);
         
-        if (prev + increment >= 100) {
-          clearInterval(interval);
-          // Reset animation intensity after mission
-          setTimeout(() => setAnimationIntensity(prevIntensity), 2000);
-          
-          completeMission(mission);
-          return 100;
+        if (!success) {
+          // Revert state on failure
+          setActiveMission(null);
+          setAnimationIntensity(prevIntensity);
+          return;
         }
-        return prev + increment;
-      });
-    }, 200);
+        
+        // Update available epochs
+        setAvailableEpochs(prev => prev - mission.epochs!);
+        
+        // Start training animation
+        setShowTrainingAnimation(true);
+      } catch (error) {
+        console.error('Error using epochs:', error);
+        toast.error('Failed to start mission');
+        setActiveMission(null);
+        setAnimationIntensity(prevIntensity);
+      }
+    }
   };
   
   const completeMission = async (mission: Mission) => {
@@ -313,38 +561,39 @@ const Training = () => {
         setAnimationIntensity(Math.min(newLevelValue, 5));
       }
       
+      // Calculate simulated accuracy (higher with higher level/mission difficulty)
+      const baseAccuracy = 70;
+      const levelBonus = newLevelValue * 2;
+      const difficultyBonus = Math.floor(mission.points / 5);
+      const randomVariation = Math.floor(Math.random() * 6);
+      
+      const accuracy = Math.min(95, baseAccuracy + levelBonus + difficultyBonus + randomVariation);
+      
       // Save to Supabase
       if (user) {
-        const { error } = await supabase
-          .from('training_history')
-          .insert({
-            user_id: user.id,
-            mission: mission.title,
-            date: new Date().toISOString(),
-            points: mission.points,
-            epochs: mission.epochs || 0,
-            accuracy: 70 + Math.floor(Math.random() * 15) // Simulated accuracy between 70-85%
-          });
-          
-        if (error) throw error;
+        await trainingService.saveMissionResult({
+          missionId: mission.id,
+          epochs: mission.epochs || 0,
+          accuracy,
+          points: mission.points
+        });
       }
       
-      // Update leaderboard
-      if (user) {
-        const { error } = await supabase
-          .from('leaderboard')
-          .upsert({
-            user_id: user.id,
-            username: userDetails?.username || 'Anonymous',
-            accuracy: 75 + Math.floor(Math.random() * 10),
-            level: newLevelValue,
-            epochs: newEpochs
-          });
-          
-        if (error) throw error;
+      // Train neural network with new parameters
+      try {
+        // Provide a progress callback for the training process
+        await neuralNetwork.train(
+          ticks.map(t => t.value), 
+          { 
+            maxEpochs: 20,
+            onProgress: (progress) => console.log(`Training progress: ${Math.round(progress * 100)}%`) 
+          }
+        );
+      } catch (err) {
+        console.error('Error training neural network:', err);
       }
       
-      toast.success(`Mission completed! Trained for ${mission.epochs?.toLocaleString()} epochs.`, {
+      toast.success(`Mission completed! Trained for ${mission.epochs?.toLocaleString()} epochs with ${accuracy}% accuracy.`, {
         icon: <Trophy className="h-5 w-5 text-yellow-500" />,
       });
     } catch (error) {
@@ -371,6 +620,9 @@ const Training = () => {
     return Math.min(Math.max(levelProgress, 0), 100);
   };
   
+  // Mock data for training
+  const ticks = Array(100).fill(0).map((_, i) => ({ value: 100 + Math.sin(i / 10) * 20 + Math.random() * 5 }));
+  
   return (
     <>
       <TrainingNotice />
@@ -389,7 +641,7 @@ const Training = () => {
               {isLoadingEpochs ? (
                 <span className="animate-pulse">Loading...</span>
               ) : (
-                availableEpochs
+                availableEpochs.toLocaleString()
               )}
             </div>
           </div>
@@ -467,10 +719,22 @@ const Training = () => {
                         <span className="text-sm">Accuracy optimization: {60 + Math.floor(missionProgress * 0.3)}%</span>
                       </div>
                     </div>
+                    
+                    {/* Neural network training visualization */}
+                    <div className="mt-4 p-2 border rounded bg-background/50">
+                      <div className="text-xs text-muted-foreground mb-2">Neural Network Training Visualization</div>
+                      <NeuralNetworkVisualization 
+                        activeNodes={activeNodes} 
+                        animationIntensity={animationIntensity} 
+                      />
+                    </div>
                   </div>
                   
                   <Button 
-                    onClick={() => setActiveMission(null)} 
+                    onClick={() => {
+                      setActiveMission(null);
+                      setShowTrainingAnimation(false);
+                    }} 
                     variant="outline"
                     disabled={isProcessing}
                   >
@@ -518,7 +782,7 @@ const Training = () => {
                           <Button 
                             size="sm" 
                             onClick={() => startMission(mission)}
-                            disabled={mission.locked || isProcessing}
+                            disabled={mission.locked || isProcessing || (mission.epochs || 0) > availableEpochs}
                             className={`w-full ${!mission.locked && !mission.completed ? 'relative overflow-hidden group' : ''}`}
                           >
                             {mission.locked ? (
@@ -527,6 +791,8 @@ const Training = () => {
                               </>
                             ) : mission.completed ? (
                               'Retrain'
+                            ) : (mission.epochs || 0) > availableEpochs ? (
+                              'Not Enough Epochs'
                             ) : (
                               <>
                                 <span className="relative z-10">Start Training</span>
@@ -592,83 +858,10 @@ const Training = () => {
                 Neural Network Visualization
               </h4>
               <div className="border p-4 rounded-md bg-background relative">
-                {/* Neural network visualization with enhanced animation */}
-                <div className="relative h-64 overflow-hidden">
-                  {Array.from({ length: 4 }).map((_, layerIdx) => (
-                    <div 
-                      key={`layer-${layerIdx}`} 
-                      className="absolute top-0 bottom-0 flex flex-col justify-around"
-                      style={{ left: `${20 + layerIdx * 20}%`, width: '10%' }}
-                    >
-                      {Array.from({ length: layerIdx === 0 || layerIdx === 3 ? 3 : 5 }).map((_, nodeIdx) => (
-                        <div key={`node-${layerIdx}-${nodeIdx}`} className="flex justify-center">
-                          <div 
-                            id={`nn-node-${layerIdx}-${nodeIdx}`}
-                            className={`w-3 h-3 rounded-full transition-all duration-300 ${
-                              activeNodes.includes(`nn-node-${layerIdx}-${nodeIdx}`) 
-                                ? 'bg-primary scale-125 animate-pulse shadow-lg shadow-primary/50' 
-                                : 'bg-muted-foreground/50'
-                            }`}
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  ))}
-                  
-                  {/* Neural network connections with dynamic animation */}
-                  <svg className="absolute top-0 left-0 w-full h-full">
-                    {Array.from({ length: 3 }).map((_, layerIdx) => (
-                      <React.Fragment key={`lines-layer-${layerIdx}`}>
-                        {Array.from({ length: layerIdx === 0 ? 3 : 5 }).map((_, fromIdx) => (
-                          <React.Fragment key={`lines-from-${layerIdx}-${fromIdx}`}>
-                            {Array.from({ length: layerIdx === 2 ? 3 : 5 }).map((_, toIdx) => {
-                              const fromNodeId = `nn-node-${layerIdx}-${fromIdx}`;
-                              const toNodeId = `nn-node-${layerIdx+1}-${toIdx}`;
-                              const isActive = activeNodes.includes(fromNodeId) || activeNodes.includes(toNodeId);
-                              
-                              return (
-                                <line
-                                  key={`line-${layerIdx}-${fromIdx}-${toIdx}`}
-                                  x1={`${25 + layerIdx * 20}%`}
-                                  y1={`${layerIdx === 0 
-                                    ? (fromIdx + 1) * 25 
-                                    : ((fromIdx + 1) * 100) / 6}%`}
-                                  x2={`${25 + (layerIdx + 1) * 20}%`}
-                                  y2={`${layerIdx === 2 
-                                    ? (toIdx + 1) * 25 
-                                    : ((toIdx + 1) * 100) / 6}%`}
-                                  stroke="currentColor"
-                                  strokeOpacity={isActive ? 0.8 : 0.2}
-                                  strokeWidth={isActive ? 2 : 1}
-                                  className={isActive ? 'text-primary transition-all duration-300' : 'text-muted-foreground'}
-                                  strokeDasharray={isActive && animationIntensity > 3 ? "4,4" : ""}
-                                  strokeDashoffset={isActive && animationIntensity > 3 ? "6" : "0"}
-                                >
-                                  {isActive && animationIntensity > 3 && (
-                                    <animate 
-                                      attributeName="stroke-dashoffset" 
-                                      values="12;0" 
-                                      dur="1s" 
-                                      repeatCount="indefinite" 
-                                    />
-                                  )}
-                                </line>
-                              );
-                            })}
-                          </React.Fragment>
-                        ))}
-                      </React.Fragment>
-                    ))}
-                  </svg>
-                </div>
-                
-                <div className="text-xs text-muted-foreground mt-2">
-                  <div className="flex justify-between">
-                    <span>Input Layer</span>
-                    <span>Hidden Layers</span>
-                    <span>Output Layer</span>
-                  </div>
-                </div>
+                <NeuralNetworkVisualization 
+                  activeNodes={activeNodes} 
+                  animationIntensity={animationIntensity} 
+                />
                 
                 {/* Training stats */}
                 <div className="mt-4 pt-4 border-t grid grid-cols-3 gap-2 text-center text-xs">

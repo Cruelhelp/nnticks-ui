@@ -27,7 +27,6 @@ export function usePredictions() {
   const [pendingTicks, setPendingTicks] = useState<TickData[]>([]);
   const [predictionHistory, setPredictionHistory] = useState<PredictionData[]>([]);
   const [stats, setStats] = useState({ wins: 0, losses: 0, winRate: 0 });
-  const [lastPredictionTime, setLastPredictionTime] = useState<number | null>(null);
   
   const predictionModes: Record<string, PredictionMode> = {
     strict: {
@@ -80,17 +79,10 @@ export function usePredictions() {
     loadData();
   }, [loadData]);
   
-  // Determine if a new prediction can be made based on time elapsed
+  // Determine if a new prediction can be made
   const canMakeNewPrediction = useCallback(() => {
-    if (pendingPrediction) return false;
-    
-    if (lastPredictionTime === null) return true;
-    
-    // Enforce a minimum delay between predictions (15 seconds)
-    const minDelayMs = 15000;
-    const now = Date.now();
-    return now - lastPredictionTime > minDelayMs;
-  }, [pendingPrediction, lastPredictionTime]);
+    return predictionService.canMakeNewPrediction();
+  }, []);
   
   // Calculate indicators for the current market state
   const calculateIndicators = useCallback((ticksData: TickData[]) => {
@@ -117,64 +109,43 @@ export function usePredictions() {
       const indicators = calculateIndicators(ticks);
       if (!indicators) return;
       
-      // Determine prediction type based on indicators
-      let predictionType: PredictionType = 'rise';
+      // Use neural network to determine the prediction type
+      const values = ticks.map(t => t.value);
+      const prediction = await neuralNetwork.predict(values);
       
-      // Check various indicators to determine the prediction
-      const { rsi, ma20, lastPrice, priceChange } = indicators;
+      // Calculate confidence and apply mode filter
+      const confidence = prediction.confidence;
+      const minConfidence = predictionModes[predictionMode].minConfidence;
       
-      if (rsi > 70) {
-        // Overbought condition suggests price may fall
-        predictionType = 'fall';
-      } else if (rsi < 30) {
-        // Oversold condition suggests price may rise
-        predictionType = 'rise';
-      } else if (lastPrice > ma20 && priceChange > 0) {
-        // Price above MA with positive momentum suggests continued rise
-        predictionType = 'rise';
-      } else if (lastPrice < ma20 && priceChange < 0) {
-        // Price below MA with negative momentum suggests continued fall
-        predictionType = 'fall';
-      } else {
-        // Use neural network for more complex pattern recognition
-        const values = ticks.map(t => t.value);
-        const prediction = await neuralNetwork.predict(values, predictionType);
-        predictionType = prediction.type;
-        
-        // Calculate confidence and apply mode filter
-        const confidence = prediction.confidence;
-        const minConfidence = predictionModes[predictionMode].minConfidence;
-        
-        if (confidence < minConfidence) {
-          console.log(`Prediction confidence (${confidence}) too low for ${predictionMode} mode (minimum ${minConfidence})`);
-          return;
-        }
-        
-        // Create prediction in database
-        const predictionData: PredictionData = {
-          type: predictionType,
-          confidence,
-          timePeriod: 3, // Default to 3 ticks
-          market: latestTick.market || 'unknown',
-          startPrice: latestTick.value,
-          indicators
-        };
-        
-        // Start 10-second countdown
-        setCountdown(10);
-        
-        // Set last prediction time
-        setLastPredictionTime(Date.now());
-        
-        // Create a toast notification
-        toast.info(`Preparing ${predictionType.toUpperCase()} prediction (${Math.round(confidence * 100)}% confidence)`, {
-          duration: 5000
-        });
+      if (confidence < minConfidence) {
+        console.log(`Prediction confidence (${confidence}) too low for ${predictionMode} mode (minimum ${minConfidence})`);
+        return;
       }
+      
+      // Important: Use prediction type from neural network, don't default to 'rise'
+      const predictionType = prediction.type;
+      
+      // Create prediction in database
+      const predictionData: PredictionData = {
+        type: predictionType,
+        confidence,
+        timePeriod: 3, // Default to 3 ticks
+        market: latestTick.market || 'unknown',
+        startPrice: latestTick.value,
+        indicators
+      };
+      
+      // Start 10-second countdown
+      setCountdown(10);
+      
+      // Create a toast notification
+      toast.info(`Preparing ${predictionType.toUpperCase()} prediction (${Math.round(confidence * 100)}% confidence)`, {
+        duration: 5000
+      });
     } catch (error) {
       console.error('Error making prediction:', error);
     }
-  }, [isRunning, canMakeNewPrediction, latestTick, ticks, calculateIndicators, predictionMode]);
+  }, [isRunning, canMakeNewPrediction, latestTick, ticks, calculateIndicators, predictionMode, predictionModes]);
   
   // Handle the countdown timer
   useEffect(() => {
@@ -232,6 +203,44 @@ export function usePredictions() {
     return () => clearTimeout(timer);
   }, [countdown, latestTick, ticks, calculateIndicators, user]);
   
+  // Handle new ticks for pending predictions - Using localStorage for persistence
+  useEffect(() => {
+    // Try to load pending prediction from localStorage on component mount
+    const storedPrediction = localStorage.getItem('pendingPrediction');
+    if (storedPrediction && !pendingPrediction) {
+      try {
+        const parsedPrediction = JSON.parse(storedPrediction);
+        setPendingPrediction(parsedPrediction);
+        predictionService.setPendingPrediction(parsedPrediction);
+        
+        // Restore tick countdown if it exists
+        const storedTickCountdown = localStorage.getItem('tickCountdown');
+        if (storedTickCountdown) {
+          setTickCountdown(parseInt(storedTickCountdown, 10));
+        }
+      } catch (e) {
+        console.error('Error parsing stored prediction:', e);
+        localStorage.removeItem('pendingPrediction');
+        localStorage.removeItem('tickCountdown');
+      }
+    }
+  }, [pendingPrediction]);
+  
+  // Update localStorage when prediction changes
+  useEffect(() => {
+    if (pendingPrediction) {
+      localStorage.setItem('pendingPrediction', JSON.stringify(pendingPrediction));
+    } else {
+      localStorage.removeItem('pendingPrediction');
+    }
+    
+    if (tickCountdown !== null) {
+      localStorage.setItem('tickCountdown', tickCountdown.toString());
+    } else {
+      localStorage.removeItem('tickCountdown');
+    }
+  }, [pendingPrediction, tickCountdown]);
+  
   // Handle new ticks for pending predictions
   useEffect(() => {
     if (!pendingPrediction || tickCountdown === null || !latestTick) return;
@@ -286,6 +295,10 @@ export function usePredictions() {
               winRate: (outcome === 'win' ? prev.wins + 1 : prev.wins) / (prev.wins + prev.losses + 1) * 100
             }));
             
+            // Clean up localStorage
+            localStorage.removeItem('pendingPrediction');
+            localStorage.removeItem('tickCountdown');
+            
             // Notify user
             toast[outcome === 'win' ? 'success' : 'error'](
               `Prediction ${outcome === 'win' ? 'WON' : 'LOST'}: ${pendingPrediction.type.toUpperCase()} (${pendingPrediction.startPrice} → ${endPrice})`,
@@ -300,7 +313,7 @@ export function usePredictions() {
     } else {
       setTickCountdown(tickCountdown - 1);
     }
-  }, [latestTick, pendingTicks.length]);
+  }, [latestTick, pendingTicks.length, pendingPrediction, tickCountdown]);
   
   // Auto-run the prediction engine when isRunning is true
   useEffect(() => {

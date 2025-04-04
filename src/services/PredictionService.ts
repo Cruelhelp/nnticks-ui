@@ -23,6 +23,8 @@ export interface PredictionData {
 class PredictionService {
   private userId: string | null = null;
   private pendingPrediction: PredictionData | null = null;
+  private lastPredictionTime: number | null = null;
+  private minimumDelayMs: number = 30000; // 30 seconds minimum delay between predictions
   
   setUserId(userId: string | null) {
     this.userId = userId;
@@ -36,9 +38,24 @@ class PredictionService {
     return this.pendingPrediction;
   }
   
+  canMakeNewPrediction(): boolean {
+    if (this.pendingPrediction) return false;
+    
+    if (!this.lastPredictionTime) return true;
+    
+    const now = Date.now();
+    return now - this.lastPredictionTime > this.minimumDelayMs;
+  }
+  
   async createPrediction(prediction: PredictionData): Promise<string | null> {
     if (!this.userId) {
       toast.error('You must be logged in to make predictions');
+      return null;
+    }
+    
+    if (!this.canMakeNewPrediction()) {
+      const timeLeft = Math.ceil((this.minimumDelayMs - (Date.now() - (this.lastPredictionTime || 0))) / 1000);
+      toast.error(`Please wait ${timeLeft} seconds before making another prediction`);
       return null;
     }
     
@@ -67,6 +84,8 @@ class PredictionService {
         outcome: 'pending',
         createdAt: new Date().toISOString()
       };
+      
+      this.lastPredictionTime = Date.now();
       
       return data.id;
     } catch (error) {

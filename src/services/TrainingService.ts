@@ -50,7 +50,17 @@ class TrainingService {
         .eq('user_id', this.userId)
         .single();
       
-      if (error) throw error;
+      if (error) {
+        // If no record exists, create one with default values
+        if (error.code === 'PGRST116') {
+          const tickCount = await this.getTickCount();
+          const defaultEpochs = Math.min(tickCount, 50);
+          
+          await this.initializeUserEpochs(defaultEpochs);
+          return { available: defaultEpochs, total: defaultEpochs };
+        }
+        throw error;
+      }
       
       return {
         available: data?.available_epochs || 0,
@@ -59,6 +69,44 @@ class TrainingService {
     } catch (error) {
       console.error('Error getting user epochs:', error);
       return { available: 0, total: 0 };
+    }
+  }
+  
+  async initializeUserEpochs(initialEpochs: number): Promise<boolean> {
+    if (!this.userId) return false;
+    
+    try {
+      const { error } = await supabase
+        .from('users_extra')
+        .upsert({
+          user_id: this.userId,
+          available_epochs: initialEpochs,
+          total_epochs: initialEpochs
+        });
+      
+      if (error) throw error;
+      
+      return true;
+    } catch (error) {
+      console.error('Error initializing user epochs:', error);
+      return false;
+    }
+  }
+  
+  async getTickCount(): Promise<number> {
+    if (!this.userId) return 0;
+    
+    try {
+      const { count, error } = await supabase
+        .from('ticks')
+        .select('*', { count: 'exact', head: true });
+      
+      if (error) throw error;
+      
+      return count || 0;
+    } catch (error) {
+      console.error('Error getting tick count:', error);
+      return 0;
     }
   }
   
@@ -72,7 +120,13 @@ class TrainingService {
         .eq('user_id', this.userId)
         .single();
       
-      if (userError) throw userError;
+      if (userError) {
+        // If the record doesn't exist, create one
+        if (userError.code === 'PGRST116') {
+          return this.initializeUserEpochs(count);
+        }
+        throw userError;
+      }
       
       const newAvailable = (userData?.available_epochs || 0) + count;
       const newTotal = (userData?.total_epochs || 0) + count;
@@ -104,7 +158,13 @@ class TrainingService {
         .eq('user_id', this.userId)
         .single();
       
-      if (userError) throw userError;
+      if (userError) {
+        if (userError.code === 'PGRST116') {
+          toast.error('You don\'t have any epochs yet');
+          return false;
+        }
+        throw userError;
+      }
       
       if ((userData?.available_epochs || 0) < count) {
         toast.error(`Not enough epochs. You need ${count} but have ${userData?.available_epochs || 0}`);
