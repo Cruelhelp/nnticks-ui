@@ -25,6 +25,7 @@ class PredictionService {
   private pendingPrediction: PredictionData | null = null;
   private lastPredictionTime: number | null = null;
   private minimumDelayMs: number = 30000; // 30 seconds minimum delay between predictions
+  private tickCountdownActive: boolean = false;
   
   setUserId(userId: string | null) {
     this.userId = userId;
@@ -38,9 +39,22 @@ class PredictionService {
     return this.pendingPrediction;
   }
   
+  setTickCountdownActive(active: boolean) {
+    this.tickCountdownActive = active;
+  }
+  
+  isTickCountdownActive(): boolean {
+    return this.tickCountdownActive;
+  }
+  
   canMakeNewPrediction(): boolean {
+    // Don't allow new predictions if a countdown is active
+    if (this.tickCountdownActive) return false;
+    
+    // Don't allow new predictions if there's already a pending one
     if (this.pendingPrediction) return false;
     
+    // Check time-based delay
     if (!this.lastPredictionTime) return true;
     
     const now = Date.now();
@@ -54,6 +68,16 @@ class PredictionService {
     }
     
     if (!this.canMakeNewPrediction()) {
+      if (this.tickCountdownActive) {
+        toast.error('Please wait for the current prediction to complete');
+        return null;
+      }
+      
+      if (this.pendingPrediction) {
+        toast.error('You already have a pending prediction');
+        return null;
+      }
+      
       const timeLeft = Math.ceil((this.minimumDelayMs - (Date.now() - (this.lastPredictionTime || 0))) / 1000);
       toast.error(`Please wait ${timeLeft} seconds before making another prediction`);
       return null;
@@ -86,6 +110,7 @@ class PredictionService {
       };
       
       this.lastPredictionTime = Date.now();
+      this.tickCountdownActive = true;
       
       return data.id;
     } catch (error) {
@@ -114,6 +139,8 @@ class PredictionService {
       if (this.pendingPrediction?.id === id) {
         this.pendingPrediction = null;
       }
+      
+      this.tickCountdownActive = false;
       
       return true;
     } catch (error) {

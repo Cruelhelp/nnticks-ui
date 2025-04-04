@@ -69,6 +69,13 @@ export function usePredictions() {
     if (pendingPredictions.length > 0) {
       setPendingPrediction(pendingPredictions[0]);
       predictionService.setPendingPrediction(pendingPredictions[0]);
+      
+      // Restore countdown state if we have a pending prediction
+      if (localStorage.getItem('tickCountdown')) {
+        const storedCountdown = parseInt(localStorage.getItem('tickCountdown') || '0', 10);
+        setTickCountdown(storedCountdown);
+        predictionService.setTickCountdownActive(true);
+      }
     }
     
     const statsData = await predictionService.getStats();
@@ -122,7 +129,7 @@ export function usePredictions() {
         return;
       }
       
-      // Important: Use prediction type from neural network, don't default to 'rise'
+      // Use prediction type from neural network
       const predictionType = prediction.type;
       
       // Create prediction in database
@@ -160,11 +167,11 @@ export function usePredictions() {
           const indicators = calculateIndicators(ticks);
           if (!indicators) return;
           
-          // Use neural network for prediction
+          // Use neural network for prediction with proper type
           const values = ticks.map(t => t.value);
           neuralNetwork.predict(values).then(async prediction => {
             const predictionData: PredictionData = {
-              type: prediction.type,
+              type: prediction.type, // Use the neural network's prediction type
               confidence: prediction.confidence,
               timePeriod: 3, // Default to 3 ticks
               market: latestTick.market || 'unknown',
@@ -185,6 +192,7 @@ export function usePredictions() {
               
               setPendingPrediction(newPrediction);
               predictionService.setPendingPrediction(newPrediction);
+              predictionService.setTickCountdownActive(true);
               setTickCountdown(3); // Start the 3-tick countdown
               setPendingTicks([]);
               
@@ -203,30 +211,7 @@ export function usePredictions() {
     return () => clearTimeout(timer);
   }, [countdown, latestTick, ticks, calculateIndicators, user]);
   
-  // Handle new ticks for pending predictions - Using localStorage for persistence
-  useEffect(() => {
-    // Try to load pending prediction from localStorage on component mount
-    const storedPrediction = localStorage.getItem('pendingPrediction');
-    if (storedPrediction && !pendingPrediction) {
-      try {
-        const parsedPrediction = JSON.parse(storedPrediction);
-        setPendingPrediction(parsedPrediction);
-        predictionService.setPendingPrediction(parsedPrediction);
-        
-        // Restore tick countdown if it exists
-        const storedTickCountdown = localStorage.getItem('tickCountdown');
-        if (storedTickCountdown) {
-          setTickCountdown(parseInt(storedTickCountdown, 10));
-        }
-      } catch (e) {
-        console.error('Error parsing stored prediction:', e);
-        localStorage.removeItem('pendingPrediction');
-        localStorage.removeItem('tickCountdown');
-      }
-    }
-  }, [pendingPrediction]);
-  
-  // Update localStorage when prediction changes
+  // Persistent storage for predictions - update when pendingPrediction changes
   useEffect(() => {
     if (pendingPrediction) {
       localStorage.setItem('pendingPrediction', JSON.stringify(pendingPrediction));
@@ -240,6 +225,32 @@ export function usePredictions() {
       localStorage.removeItem('tickCountdown');
     }
   }, [pendingPrediction, tickCountdown]);
+  
+  // Try to restore pending prediction from localStorage on component mount
+  useEffect(() => {
+    if (!pendingPrediction) {
+      const storedPrediction = localStorage.getItem('pendingPrediction');
+      if (storedPrediction) {
+        try {
+          const parsedPrediction = JSON.parse(storedPrediction);
+          setPendingPrediction(parsedPrediction);
+          predictionService.setPendingPrediction(parsedPrediction);
+          
+          // Restore tick countdown if it exists
+          const storedTickCountdown = localStorage.getItem('tickCountdown');
+          if (storedTickCountdown) {
+            const countdown = parseInt(storedTickCountdown, 10);
+            setTickCountdown(countdown);
+            predictionService.setTickCountdownActive(true);
+          }
+        } catch (e) {
+          console.error('Error parsing stored prediction:', e);
+          localStorage.removeItem('pendingPrediction');
+          localStorage.removeItem('tickCountdown');
+        }
+      }
+    }
+  }, [pendingPrediction]);
   
   // Handle new ticks for pending predictions
   useEffect(() => {
@@ -287,6 +298,7 @@ export function usePredictions() {
             // Clear pending prediction
             setPendingPrediction(null);
             predictionService.setPendingPrediction(null);
+            predictionService.setTickCountdownActive(false);
             
             // Update stats
             setStats(prev => ({
@@ -320,11 +332,13 @@ export function usePredictions() {
     if (!isRunning || !isConnected) return;
     
     const interval = setInterval(() => {
-      makePrediction();
+      if (canMakeNewPrediction()) {
+        makePrediction();
+      }
     }, 5000); // Check for prediction opportunities every 5 seconds
     
     return () => clearInterval(interval);
-  }, [isRunning, isConnected, makePrediction]);
+  }, [isRunning, isConnected, makePrediction, canMakeNewPrediction]);
   
   return {
     isRunning,

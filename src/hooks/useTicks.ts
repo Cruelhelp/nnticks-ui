@@ -18,6 +18,7 @@ export function useTicks(options: {
   
   const [ticks, setTicks] = useState<TickData[]>([]);
   const [tickCount, setTickCount] = useState(0);
+  const [availableEpochs, setAvailableEpochs] = useState(0);
   
   // Set user ID in tick service
   useEffect(() => {
@@ -48,30 +49,37 @@ export function useTicks(options: {
     loadHistoricalTicks();
   }, [loadHistoricalTicks]);
   
-  // Get tick count from Supabase
-  const getTickCount = useCallback(async () => {
+  // Get tick count and available epochs from Supabase
+  const getTickCountAndEpochs = useCallback(async () => {
     if (!user || !storeInSupabase) return;
     
     const count = await tickService.getTickCount(market);
     setTickCount(count);
     
-    // If updateEpochs is enabled, add new epochs based on tick count
-    if (updateEpochs && count > 0) {
-      // Add 1 epoch for every 100 ticks
-      const epochsToAdd = Math.floor(count / 100);
-      if (epochsToAdd > 0) {
-        await trainingService.addEpochs(epochsToAdd);
+    if (updateEpochs) {
+      // Get available epochs from Supabase
+      const epochs = await trainingService.getAvailableEpochs();
+      setAvailableEpochs(epochs);
+      
+      // If no explicit epochs added yet, calculate from tick count
+      if (epochs === 0 && count > 0) {
+        // Add 1 epoch for every 100 ticks
+        const epochsToAdd = Math.floor(count / 100);
+        if (epochsToAdd > 0) {
+          const updatedEpochs = await trainingService.addEpochs(epochsToAdd);
+          setAvailableEpochs(updatedEpochs);
+        }
       }
     }
   }, [user, storeInSupabase, market, updateEpochs]);
   
   useEffect(() => {
-    getTickCount();
+    getTickCountAndEpochs();
     
     // Refresh count every minute
-    const interval = setInterval(getTickCount, 60000);
+    const interval = setInterval(getTickCountAndEpochs, 60000);
     return () => clearInterval(interval);
-  }, [getTickCount]);
+  }, [getTickCountAndEpochs]);
   
   // Store new ticks in Supabase
   useEffect(() => {
@@ -83,7 +91,9 @@ export function useTicks(options: {
         
         // If updateEpochs is enabled and we've hit a multiple of 100
         if (updateEpochs && newCount % 100 === 0) {
-          trainingService.addEpochs(1);
+          trainingService.addEpochs(1).then(updatedEpochs => {
+            setAvailableEpochs(updatedEpochs);
+          });
         }
         
         return newCount;
@@ -122,6 +132,7 @@ export function useTicks(options: {
     isConnected,
     connectionStatus,
     tickCount,
+    availableEpochs,
     loadHistoricalTicks
   };
 }

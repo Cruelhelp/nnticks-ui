@@ -16,6 +16,8 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { neuralNetwork, NNConfiguration, DEFAULT_NN_CONFIG } from '@/lib/neuralNetwork';
 import { PredictionPhase, PredictionType } from '@/types/chartTypes';
+import { useTicks } from '@/hooks/useTicks';
+import { motion } from 'framer-motion';
 
 interface PendingPrediction {
   id: number;
@@ -41,8 +43,12 @@ const NeuralNet = () => {
   const [currentConfig, setCurrentConfig] = useState<NNConfiguration>(DEFAULT_NN_CONFIG);
   const [pendingPredictions, setPendingPredictions] = useState<PendingPrediction[]>([]);
   const [completedPredictions, setCompletedPredictions] = useState<any[]>([]);
+  const [networkNeurons, setNetworkNeurons] = useState<{x: number, y: number, layer: number}[]>([]);
+  const [networkConnections, setNetworkConnections] = useState<{startX: number, startY: number, endX: number, endY: number}[]>([]);
+  const [animatingNeurons, setAnimatingNeurons] = useState<number[]>([]);
   const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
   
   const ws = useWebSocket({
     subscription: { ticks: 'R_10' },
@@ -53,13 +59,83 @@ const NeuralNet = () => {
     }
   });
 
+  const { availableEpochs } = useTicks({ updateEpochs: true });
+
   useEffect(() => {
     setCurrentConfig(neuralNetwork.getConfig());
+    generateNetworkVisualization();
     
     if (user) {
       loadPredictions();
     }
   }, [user]);
+  
+  const generateNetworkVisualization = () => {
+    const layers = currentConfig.layers;
+    const neurons: {x: number, y: number, layer: number}[] = [];
+    const connections: {startX: number, startY: number, endX: number, endY: number}[] = [];
+    
+    const containerWidth = 400;
+    const containerHeight = 200; 
+    const margin = 50;
+    
+    layers.forEach((neuronsCount, layerIndex) => {
+      const layerX = margin + (containerWidth - 2 * margin) * (layerIndex / (layers.length - 1));
+      
+      const displayedNeurons = Math.min(neuronsCount, 7);
+      
+      for (let i = 0; i < displayedNeurons; i++) {
+        const neuronY = margin + (containerHeight - 2 * margin) * (i / (displayedNeurons - 1 || 1));
+        neurons.push({ x: layerX, y: neuronY, layer: layerIndex });
+      }
+    });
+    
+    for (let layer = 0; layer < layers.length - 1; layer++) {
+      const currentLayerNeurons = neurons.filter(n => n.layer === layer);
+      const nextLayerNeurons = neurons.filter(n => n.layer === layer + 1);
+      
+      currentLayerNeurons.forEach(startNeuron => {
+        nextLayerNeurons.forEach(endNeuron => {
+          connections.push({
+            startX: startNeuron.x,
+            startY: startNeuron.y,
+            endX: endNeuron.x,
+            endY: endNeuron.y
+          });
+        });
+      });
+    }
+    
+    setNetworkNeurons(neurons);
+    setNetworkConnections(connections);
+  };
+
+  const animateNeuralNetwork = () => {
+    if (!networkNeurons.length) return;
+    
+    const randomNeuron = Math.floor(Math.random() * networkNeurons.length);
+    setAnimatingNeurons(prev => [...prev, randomNeuron]);
+    
+    setTimeout(() => {
+      setAnimatingNeurons(prev => prev.filter(n => n !== randomNeuron));
+    }, 300);
+  };
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    
+    if (isTraining) {
+      interval = setInterval(animateNeuralNetwork, 100);
+    }
+    
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isTraining, networkNeurons]);
+
+  useEffect(() => {
+    generateNetworkVisualization();
+  }, [currentConfig]);
 
   const loadPredictions = async () => {
     if (!user) return;
@@ -277,6 +353,11 @@ const NeuralNet = () => {
   const handleTrainModel = async () => {
     if (isTraining) return;
     
+    if (currentConfig.epochs > availableEpochs) {
+      toast.error(`Not enough epochs available. You have ${availableEpochs} epochs but need ${currentConfig.epochs} epochs for training.`);
+      return;
+    }
+    
     setIsTraining(true);
     setTrainingProgress(0);
     
@@ -299,6 +380,8 @@ const NeuralNet = () => {
       });
       
       if (user) {
+        await trainingService.useEpochs(currentConfig.epochs);
+        
         const model = neuralNetwork.exportModel();
         await supabase.from('models').insert({
           user_id: user.id,
@@ -369,6 +452,7 @@ const NeuralNet = () => {
     const updatedConfig = { ...currentConfig, [key]: value };
     setCurrentConfig(updatedConfig);
     neuralNetwork.updateConfig(updatedConfig);
+    generateNetworkVisualization();
   };
 
   return (
@@ -408,6 +492,15 @@ const NeuralNet = () => {
           <Progress value={trainingProgress} className="h-2" />
         </div>
       )}
+      
+      <div className="flex justify-between items-center">
+        <Badge variant="outline" className="text-sm">
+          Available Epochs: {availableEpochs}
+        </Badge>
+        <Badge variant="outline" className="text-sm">
+          Tick Count: {ws.ticks?.length || 0}
+        </Badge>
+      </div>
       
       <Tabs defaultValue="history" value={activeTab} onValueChange={setActiveTab}>
         <div className="flex justify-between items-center mb-4">
@@ -530,41 +623,62 @@ const NeuralNet = () => {
                   </div>
                   
                   <div className="mt-6">
-                    <Label>Connection Diagram</Label>
-                    <div className="border rounded-md p-4 mt-2 h-32 relative">
-                      {currentConfig.layers.map((neurons, layerIndex) => (
-                        <div 
-                          key={layerIndex}
-                          className="absolute"
-                          style={{
-                            left: `${(layerIndex / (currentConfig.layers.length - 1)) * 80 + 10}%`,
-                            top: '10%',
-                            height: '80%',
-                          }}
-                        >
-                          {Array.from({ length: Math.min(5, neurons) }).map((_, neuronIndex) => (
-                            <div
-                              key={neuronIndex}
-                              className="absolute w-3 h-3 bg-primary rounded-full"
-                              style={{
-                                top: `${(neuronIndex / Math.min(4, neurons - 1)) * 100}%`,
-                              }}
-                            />
-                          ))}
-                          {neurons > 5 && (
-                            <div className="absolute w-3 h-3 text-xs flex items-center justify-center bottom-0">
-                              +{neurons - 5}
-                            </div>
-                          )}
+                    <Label>Network Visualization</Label>
+                    <div className="border rounded-md p-4 mt-2 h-[250px] relative bg-muted/30">
+                      <svg 
+                        ref={svgRef}
+                        width="100%" 
+                        height="100%" 
+                        className="overflow-visible"
+                      >
+                        {networkConnections.map((conn, idx) => (
+                          <line 
+                            key={`conn-${idx}`}
+                            x1={conn.startX} 
+                            y1={conn.startY} 
+                            x2={conn.endX} 
+                            y2={conn.endY}
+                            stroke="rgba(147, 51, 234, 0.2)"
+                            strokeWidth="1"
+                          />
+                        ))}
+                        
+                        {networkNeurons.map((neuron, idx) => (
+                          <motion.circle 
+                            key={`neuron-${idx}`}
+                            cx={neuron.x} 
+                            cy={neuron.y} 
+                            r="6"
+                            fill={animatingNeurons.includes(idx) ? "#f43f5e" : "#9333ea"}
+                            initial={{ scale: 1 }}
+                            animate={animatingNeurons.includes(idx) ? 
+                              { scale: [1, 1.5, 1], fill: ["#9333ea", "#f43f5e", "#9333ea"] } : 
+                              { scale: 1 }
+                            }
+                            transition={{ duration: 0.3 }}
+                          />
+                        ))}
+                      </svg>
+                      
+                      {isTraining && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/30 backdrop-blur-sm rounded-md">
+                          <div className="text-center">
+                            <Brain className="h-10 w-10 mx-auto animate-pulse text-primary" />
+                            <p className="mt-2 font-semibold">Training in progress...</p>
+                            <p className="text-sm text-muted-foreground">{Math.round(trainingProgress)}% complete</p>
+                          </div>
                         </div>
-                      ))}
+                      )}
                     </div>
                   </div>
                 </div>
               </div>
               
-              <div className="flex justify-end">
-                <Button onClick={handleTrainModel} disabled={isTraining}>
+              <div className="flex justify-between">
+                <div className="text-sm text-muted-foreground">
+                  Required epochs: {currentConfig.epochs} / Available: {availableEpochs}
+                </div>
+                <Button onClick={handleTrainModel} disabled={isTraining || currentConfig.epochs > availableEpochs}>
                   {isTraining ? 'Training...' : 'Train with these Settings'}
                 </Button>
               </div>
