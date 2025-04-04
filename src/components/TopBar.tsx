@@ -223,7 +223,7 @@ const TopBar: React.FC<TopBarProps> = ({ toggleSidebar, toggleTerminal, onReset,
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-9 w-9 rounded-full" onClick={handleAvatarClick}>
               <Avatar className="h-9 w-9">
-                <AvatarImage src={userDetails?.avatar_url || undefined} alt={username} />
+                <AvatarImage src={userDetails?.avatarUrl || undefined} alt={username} />
                 <AvatarFallback className="bg-primary/10 text-primary">
                   {username.substring(0, 2).toUpperCase()}
                 </AvatarFallback>

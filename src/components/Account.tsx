@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -16,14 +15,14 @@ import PayPalCheckout from '@/components/PayPalCheckout';
 import { supabase } from '@/lib/supabase';
 
 const Account = () => {
-  const { user, userDetails, updateUserDetails } = useAuth();
+  const { user, userDetails, updateUserDetails, refreshUserDetails } = useAuth();
   const { settings, updateSettings } = useSettings();
   
   const [username, setUsername] = useState(userDetails?.username || '');
   const [activeTab, setActiveTab] = useState('general');
   const [theme, setTheme] = useState(settings?.theme || 'dark');
   const [accent, setAccent] = useState(settings?.accent || 'green');
-  const [font, setFont] = useState(settings?.font || 'default');
+  const [font, setFont] = useState<UserSettings['font']>(settings?.font || 'default');
   const [wsUrl, setWsUrl] = useState(settings?.wsUrl || '');
   const [subscription, setSubscription] = useState(settings?.subscription || '');
   const [saveLoading, setSaveLoading] = useState(false);
@@ -113,6 +112,45 @@ const Account = () => {
     }
   };
   
+  const handleAvatarClick = async () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      
+      const saveToast = toast.loading('Uploading avatar...');
+      
+      try {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${user?.id}.${fileExt}`;
+        
+        const { error: uploadError, data } = await supabase.storage
+          .from('avatars')
+          .upload(fileName, file, { upsert: true });
+        
+        if (uploadError) throw uploadError;
+        
+        const { data: { publicUrl } } = supabase.storage
+          .from('avatars')
+          .getPublicUrl(fileName);
+        
+        await updateUserDetails({ avatarUrl: publicUrl });
+        
+        toast.dismiss(saveToast);
+        toast.success('Avatar updated successfully');
+        
+        await refreshUserDetails();
+      } catch (error) {
+        console.error('Error uploading avatar:', error);
+        toast.dismiss(saveToast);
+        toast.error('Failed to upload avatar');
+      }
+    };
+    input.click();
+  };
+  
   return (
     <div className="container mx-auto p-4 max-w-5xl">
       <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -139,7 +177,7 @@ const Account = () => {
                       {username ? username.charAt(0).toUpperCase() : 'U'}
                     </AvatarFallback>
                   </Avatar>
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" onClick={handleAvatarClick}>
                     Change Avatar
                   </Button>
                 </div>

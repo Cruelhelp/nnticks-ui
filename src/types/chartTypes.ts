@@ -1,6 +1,6 @@
 
 export interface TickData {
-  timestamp: string;
+  timestamp: string | number;
   value: number;
   market: string;
   symbol?: string;  // Optional symbol property for compatibility

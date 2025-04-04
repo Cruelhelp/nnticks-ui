@@ -5,11 +5,12 @@ interface LogoProps {
   size?: number;
   showText?: boolean;
   animated?: boolean;
+  className?: string;
 }
 
-const Logo = ({ size = 24, showText = true, animated = false }: LogoProps) => {
+const Logo = ({ size = 24, showText = true, animated = false, className = '' }: LogoProps) => {
   return (
-    <div className="flex items-center gap-2">
+    <div className={`flex items-center gap-2 ${className}`}>
       <div className={`relative nnticks-logo ${animated ? 'animate-pulse' : ''}`}>
         <Brain 
           size={size} 

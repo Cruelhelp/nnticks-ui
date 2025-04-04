@@ -5,13 +5,19 @@ import { useAuth } from '@/contexts/AuthContext';
 export type UserSettings = {
   theme: string;
   accent: 'green' | 'blue' | 'purple' | 'red';
-  font: 'JetBrains Mono' | 'Fira Code' | 'Courier New' | 'Consolas' | 'Menlo' | 'Monaco' | 'Roboto Mono' | 'Source Code Pro' | 'VT323';
+  font: 'JetBrains Mono' | 'Fira Code' | 'Courier New' | 'Consolas' | 'Menlo' | 'Monaco' | 'Roboto Mono' | 'Source Code Pro' | 'VT323' | 'default' | 'sans-serif';
   chartStyle: 'line' | 'candlestick' | 'bar';
   terminalHeight: number;
   sidebarWidth: number;
   wsUrl: string;
   apiKey: string;
   subscription: string;
+  notifications?: {
+    email: boolean;
+    predictions: boolean;
+    training: boolean;
+    market: boolean;
+  };
 };
 
 export const DEFAULT_SETTINGS: UserSettings = {
@@ -24,6 +30,12 @@ export const DEFAULT_SETTINGS: UserSettings = {
   wsUrl: 'wss://ws.binaryws.com/websockets/v3?app_id=1089',
   apiKey: '',
   subscription: '{"ticks":"R_10"}',
+  notifications: {
+    email: false,
+    predictions: true,
+    training: true,
+    market: false
+  }
 };
 
 interface SettingsContextType {
@@ -75,6 +87,7 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
               wsUrl: data.ws_url,
               apiKey: data.api_key,
               subscription: data.subscription,
+              notifications: data.notifications
             };
             
             setSettings({ ...DEFAULT_SETTINGS, ...userSettings });
