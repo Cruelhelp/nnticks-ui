@@ -3,7 +3,7 @@ export interface TickData {
   timestamp: string;
   value: number;
   market: string;
-  symbol?: string;  // Add optional symbol property for compatibility
+  symbol?: string;  // Optional symbol property for compatibility
 }
 
 export interface ProcessedTickData {
@@ -25,6 +25,12 @@ export interface BrokerConfig {
   apiKey: string;
   subscription: object;
 }
+
+// Define valid prediction phases
+export type PredictionPhase = 'warning' | 'counting' | 'completed';
+
+// Define valid prediction types
+export type PredictionType = 'rise' | 'fall' | 'even' | 'odd';
 
 export const brokerWebSockets: { [key: string]: string } = {
   deriv: 'wss://frontend.binaryws.com/websockets/v3',

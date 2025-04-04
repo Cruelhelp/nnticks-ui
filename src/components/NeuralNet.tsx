@@ -15,8 +15,7 @@ import { useWebSocket } from '@/hooks/useWebSocket';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { neuralNetwork, NNConfiguration, DEFAULT_NN_CONFIG } from '@/lib/neuralNetwork';
-
-type PredictionPhase = 'warning' | 'counting' | 'completed';
+import { PredictionPhase, PredictionType } from '@/types/chartTypes';
 
 interface PendingPrediction {
   id: number;
@@ -29,7 +28,7 @@ interface PendingPrediction {
   startPrice: number;
   tickPeriod: number;
   ticksElapsed: number;
-  predictionType: 'rise' | 'fall' | 'even' | 'odd';
+  predictionType: PredictionType;
 }
 
 const NeuralNet = () => {
@@ -37,7 +36,7 @@ const NeuralNet = () => {
   const [isTraining, setIsTraining] = useState(false);
   const [trainingProgress, setTrainingProgress] = useState(0);
   const [isPredicting, setIsPredicting] = useState(false);
-  const [predictionType, setPredictionType] = useState<'rise' | 'fall'>('rise');
+  const [predictionType, setPredictionType] = useState<PredictionType>('rise');
   const [tickPeriod, setTickPeriod] = useState(3);
   const [currentConfig, setCurrentConfig] = useState<NNConfiguration>(DEFAULT_NN_CONFIG);
   const [pendingPredictions, setPendingPredictions] = useState<PendingPrediction[]>([]);
@@ -109,7 +108,7 @@ const NeuralNet = () => {
           
           return {
             ...prediction,
-            phase: 'completed',
+            phase: 'completed' as PredictionPhase,
             ticksElapsed: prediction.tickPeriod
           };
         }
@@ -133,7 +132,7 @@ const NeuralNet = () => {
     const endPrice = finalPrice;
     let outcome: "win" | "loss" = "loss";
     
-    switch (prediction.type) {
+    switch (prediction.predictionType) {
       case 'rise':
         outcome = endPrice > startPrice ? "win" : "loss";
         break;
@@ -148,7 +147,7 @@ const NeuralNet = () => {
     
     const completedPrediction = {
       id,
-      type: prediction.type,
+      type: prediction.predictionType,
       market: prediction.market,
       confidence: prediction.confidence,
       timestamp: prediction.timestamp,
@@ -161,9 +160,9 @@ const NeuralNet = () => {
     setCompletedPredictions(prev => [completedPrediction, ...prev]);
     
     if (outcome === 'win') {
-      toast.success(`Prediction correct! Market ${prediction.type === 'rise' ? 'rose' : 'fell'} from ${startPrice.toFixed(5)} to ${endPrice.toFixed(5)}`);
+      toast.success(`Prediction correct! Market ${prediction.predictionType === 'rise' ? 'rose' : 'fell'} from ${startPrice.toFixed(5)} to ${endPrice.toFixed(5)}`);
     } else {
-      toast.error(`Prediction incorrect. Market ${prediction.type === 'rise' ? 'fell' : 'rose'} from ${startPrice.toFixed(5)} to ${endPrice.toFixed(5)}`);
+      toast.error(`Prediction incorrect. Market ${prediction.predictionType === 'rise' ? 'fell' : 'rose'} from ${startPrice.toFixed(5)} to ${endPrice.toFixed(5)}`);
     }
     
     if (user) {
@@ -172,7 +171,7 @@ const NeuralNet = () => {
           user_id: user.id,
           timestamp: new Date().toISOString(),
           market: prediction.market,
-          prediction: prediction.type,
+          prediction: prediction.predictionType,
           confidence: prediction.confidence,
           outcome,
           start_price: startPrice,
@@ -186,13 +185,13 @@ const NeuralNet = () => {
           date: new Date().toISOString(),
           model_data: {
             inputs: currentTicks.slice(-20),
-            prediction: prediction.type,
-            actual: outcome === 'win' ? prediction.type : (prediction.type === 'rise' ? 'fall' : 'rise'),
+            prediction: prediction.predictionType,
+            actual: outcome === 'win' ? prediction.predictionType : (prediction.predictionType === 'rise' ? 'fall' : 'rise'),
             weights: neuralNetwork.exportModel().weights
           },
           accuracy: outcome === 'win' ? 1 : 0,
           points: outcome === 'win' ? 1 : 0,
-          mission: `Prediction ${prediction.type}`
+          mission: `Prediction ${prediction.predictionType}`
         });
       } catch (error) {
         console.error('Error saving prediction to Supabase:', error);
@@ -223,7 +222,7 @@ const NeuralNet = () => {
       
       const newPrediction: PendingPrediction = {
         id: Date.now(),
-        type: predictionType,
+        predictionType: predictionType,
         market: ws.latestTick.market || 'Unknown',
         confidence: Math.round(prediction.confidence * 100),
         timestamp: new Date(),
@@ -232,8 +231,7 @@ const NeuralNet = () => {
         startPrice: ws.latestTick.value,
         tickPeriod,
         ticksElapsed: 0,
-        tickCountdown: 0,
-        predictionType
+        tickCountdown: 0
       };
       
       setPendingPredictions(prev => [...prev, newPrediction]);
@@ -678,7 +676,7 @@ const NeuralNet = () => {
                             <div className="flex items-center gap-2">
                               <Brain className="h-4 w-4 text-primary" />
                               <p className="font-medium">
-                                Prediction: {prediction.type.toUpperCase()}
+                                Prediction: {prediction.predictionType.toUpperCase()}
                               </p>
                             </div>
                             <p className="text-xs text-muted-foreground mt-1">
