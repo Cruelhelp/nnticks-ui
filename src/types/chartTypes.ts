@@ -1,7 +1,9 @@
+
 export interface TickData {
   timestamp: string;
   value: number;
   market: string;
+  symbol?: string;  // Add optional symbol property for compatibility
 }
 
 export interface ProcessedTickData {

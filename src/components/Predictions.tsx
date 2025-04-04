@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -324,7 +323,7 @@ const Predictions = () => {
           
           return {
             ...prediction,
-            phase: 'completed',
+            phase: 'completed' as PredictionPhase,
             ticksElapsed: prediction.tickPeriod
           };
         }
@@ -425,7 +424,7 @@ const Predictions = () => {
       timestamp: new Date(),
       warningCountdown: 10, // 10-second warning countdown
       tickCountdown: 0,
-      phase: 'warning', // Start in warning phase
+      phase: 'warning' as PredictionPhase, // Explicit cast to PredictionPhase
       market: currentMarket,
       startPrice: currentPrice,
       tickPeriod: period,
@@ -469,7 +468,7 @@ const Predictions = () => {
               return {
                 ...p,
                 warningCountdown: 0,
-                phase: 'counting',
+                phase: 'counting' as PredictionPhase,
                 startPrice: startPriceAtCounting,  // Update start price at counting phase
                 ticksElapsed: 0
               };

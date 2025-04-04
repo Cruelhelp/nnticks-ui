@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -17,6 +16,22 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { neuralNetwork, NNConfiguration, DEFAULT_NN_CONFIG } from '@/lib/neuralNetwork';
 
+type PredictionPhase = 'warning' | 'counting' | 'completed';
+
+interface PendingPrediction {
+  id: number;
+  confidence: number;
+  timestamp: Date;
+  warningCountdown: number;
+  tickCountdown: number;
+  phase: PredictionPhase;
+  market: string;
+  startPrice: number;
+  tickPeriod: number;
+  ticksElapsed: number;
+  predictionType: 'rise' | 'fall' | 'even' | 'odd';
+}
+
 const NeuralNet = () => {
   const [activeTab, setActiveTab] = useState('history');
   const [isTraining, setIsTraining] = useState(false);
@@ -25,27 +40,23 @@ const NeuralNet = () => {
   const [predictionType, setPredictionType] = useState<'rise' | 'fall'>('rise');
   const [tickPeriod, setTickPeriod] = useState(3);
   const [currentConfig, setCurrentConfig] = useState<NNConfiguration>(DEFAULT_NN_CONFIG);
-  const [pendingPredictions, setPendingPredictions] = useState<any[]>([]);
+  const [pendingPredictions, setPendingPredictions] = useState<PendingPrediction[]>([]);
   const [completedPredictions, setCompletedPredictions] = useState<any[]>([]);
   const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  // Connect to WebSocket for real-time data
   const ws = useWebSocket({
     subscription: { ticks: 'R_10' },
     onMessage: (data) => {
       if (data.tick) {
-        // Process pending predictions on each tick
         handleNewTick(data.tick.quote);
       }
     }
   });
 
   useEffect(() => {
-    // Load initial configuration from neural network
     setCurrentConfig(neuralNetwork.getConfig());
     
-    // Load completed predictions if user is logged in
     if (user) {
       loadPredictions();
     }
@@ -83,20 +94,15 @@ const NeuralNet = () => {
   };
 
   const handleNewTick = (price: number) => {
-    // Process pending predictions
     setPendingPredictions(prevPredictions => {
       const updatedPredictions = prevPredictions.map(prediction => {
-        // Skip predictions that are not in the counting phase
         if (prediction.phase !== 'counting') {
           return prediction;
         }
         
-        // Increment tick counter
         const newTicksElapsed = prediction.ticksElapsed + 1;
         
-        // Check if we've reached the target number of ticks
         if (newTicksElapsed >= prediction.tickPeriod) {
-          // Mark as completed and schedule evaluation
           setTimeout(() => {
             handleCompletePrediction(prediction.id, price);
           }, 100);
@@ -108,7 +114,6 @@ const NeuralNet = () => {
           };
         }
         
-        // Update tick count
         return {
           ...prediction,
           ticksElapsed: newTicksElapsed
@@ -120,12 +125,10 @@ const NeuralNet = () => {
   };
 
   const handleCompletePrediction = async (id: number, finalPrice: number) => {
-    // Find the prediction
     const prediction = pendingPredictions.find(p => p.id === id);
     
     if (!prediction) return;
     
-    // Check the result based on prediction type
     const startPrice = prediction.startPrice;
     const endPrice = finalPrice;
     let outcome: "win" | "loss" = "loss";
@@ -141,10 +144,8 @@ const NeuralNet = () => {
         outcome = "loss";
     }
     
-    // Remove from pending predictions
     setPendingPredictions(prev => prev.filter(p => p.id !== id));
     
-    // Add to completed predictions
     const completedPrediction = {
       id,
       type: prediction.type,
@@ -159,14 +160,12 @@ const NeuralNet = () => {
     
     setCompletedPredictions(prev => [completedPrediction, ...prev]);
     
-    // Show notification with price details
     if (outcome === 'win') {
       toast.success(`Prediction correct! Market ${prediction.type === 'rise' ? 'rose' : 'fell'} from ${startPrice.toFixed(5)} to ${endPrice.toFixed(5)}`);
     } else {
       toast.error(`Prediction incorrect. Market ${prediction.type === 'rise' ? 'fell' : 'rose'} from ${startPrice.toFixed(5)} to ${endPrice.toFixed(5)}`);
     }
     
-    // Save to Supabase if user is logged in
     if (user) {
       try {
         await supabase.from('trade_history').insert({
@@ -181,13 +180,12 @@ const NeuralNet = () => {
           time_period: prediction.tickPeriod
         });
         
-        // Also store the tick data sequence and model information for training
         const currentTicks = ws.ticks.map(t => t.value);
         await supabase.from('training_history').insert({
           user_id: user.id,
           date: new Date().toISOString(),
           model_data: {
-            inputs: currentTicks.slice(-20), // Last 20 ticks
+            inputs: currentTicks.slice(-20),
             prediction: prediction.type,
             actual: outcome === 'win' ? prediction.type : (prediction.type === 'rise' ? 'fall' : 'rise'),
             weights: neuralNetwork.exportModel().weights
@@ -196,7 +194,6 @@ const NeuralNet = () => {
           points: outcome === 'win' ? 1 : 0,
           mission: `Prediction ${prediction.type}`
         });
-        
       } catch (error) {
         console.error('Error saving prediction to Supabase:', error);
       }
@@ -209,7 +206,6 @@ const NeuralNet = () => {
     setIsPredicting(true);
     
     try {
-      // Get tick values from WebSocket history
       const tickValues = ws.ticks.map(t => t.value);
       
       if (tickValues.length < 10) {
@@ -218,7 +214,6 @@ const NeuralNet = () => {
         return;
       }
       
-      // Make an immediate prediction using neural network
       const prediction = await neuralNetwork.predict(
         tickValues,
         predictionType,
@@ -226,25 +221,25 @@ const NeuralNet = () => {
         ws.latestTick.value
       );
       
-      // Create new prediction with initial warning phase
-      const newPrediction = {
+      const newPrediction: PendingPrediction = {
         id: Date.now(),
         type: predictionType,
-        market: ws.latestTick.symbol || 'Unknown',
+        market: ws.latestTick.market || 'Unknown',
         confidence: Math.round(prediction.confidence * 100),
         timestamp: new Date(),
-        warningCountdown: 10, // 10-second warning countdown
-        phase: 'warning', // Start in warning phase
+        warningCountdown: 10,
+        phase: 'warning',
         startPrice: ws.latestTick.value,
         tickPeriod,
-        ticksElapsed: 0
+        ticksElapsed: 0,
+        tickCountdown: 0,
+        predictionType
       };
       
       setPendingPredictions(prev => [...prev, newPrediction]);
       
       toast.success(`New prediction: Market will ${predictionType} after 10s + ${tickPeriod} ticks`);
       
-      // Start the warning countdown (10 seconds)
       let countdown = 10;
       const warningInterval = setInterval(() => {
         countdown -= 1;
@@ -252,13 +247,11 @@ const NeuralNet = () => {
         if (countdown <= 0) {
           clearInterval(warningInterval);
           
-          // Transition to counting phase
           setPendingPredictions(prev => 
             prev.map(p => p.id === newPrediction.id ? {
               ...p,
-              phase: 'counting',
+              phase: 'counting' as PredictionPhase,
               warningCountdown: 0,
-              // Record the current price at the moment counting begins
               startPrice: ws.latestTick?.value || p.startPrice
             } : p)
           );
@@ -267,7 +260,6 @@ const NeuralNet = () => {
             description: `Initial price: ${ws.latestTick?.value?.toFixed(5)}`
           });
         } else {
-          // Update countdown
           setPendingPredictions(prev => 
             prev.map(p => p.id === newPrediction.id ? {
               ...p,
@@ -291,7 +283,6 @@ const NeuralNet = () => {
     setTrainingProgress(0);
     
     try {
-      // Get tick values from WebSocket history
       const tickValues = ws.ticks.map(t => t.value);
       
       if (tickValues.length < 100) {
@@ -300,18 +291,15 @@ const NeuralNet = () => {
         return;
       }
       
-      // Set up progress tracking
       const updateProgress = (progress: number) => {
         setTrainingProgress(progress * 100);
       };
       
-      // Train model with real tick data
       const accuracy = await neuralNetwork.train(tickValues, {
         maxEpochs: currentConfig.epochs,
         onProgress: updateProgress
       });
       
-      // Save trained model if user is logged in
       if (user) {
         const model = neuralNetwork.exportModel();
         await supabase.from('models').insert({
@@ -329,9 +317,7 @@ const NeuralNet = () => {
       
       toast.success(`Model trained successfully with ${accuracy.toFixed(2) * 100}% accuracy`);
       
-      // Refresh to history tab to show new model
       setActiveTab('history');
-      
     } catch (error) {
       console.error('Error training model:', error);
       toast.error('Failed to train model');
@@ -374,7 +360,6 @@ const NeuralNet = () => {
       console.error('Error importing model:', error);
       toast.error('Failed to import model');
     } finally {
-      // Reset the input
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -548,7 +533,6 @@ const NeuralNet = () => {
                   <div className="mt-6">
                     <Label>Connection Diagram</Label>
                     <div className="border rounded-md p-4 mt-2 h-32 relative">
-                      {/* Render simple network visualization */}
                       {currentConfig.layers.map((neurons, layerIndex) => (
                         <div 
                           key={layerIndex}
