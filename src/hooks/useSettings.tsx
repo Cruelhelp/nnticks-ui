@@ -12,7 +12,7 @@ export type UserSettings = {
   wsUrl: string;
   apiKey: string;
   subscription: string;
-  notifications?: {
+  notifications: {
     email: boolean;
     predictions: boolean;
     training: boolean;

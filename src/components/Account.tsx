@@ -9,7 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { useSettings } from '@/hooks/useSettings';
+import { useSettings, UserSettings } from '@/hooks/useSettings';
 import Logo from '@/components/Logo';
 import PayPalCheckout from '@/components/PayPalCheckout';
 import { supabase } from '@/lib/supabase';
@@ -261,7 +261,7 @@ const Account = () => {
                 <Switch
                   id="email-notifications"
                   checked={emailNotifications}
-                  onCheckedChange={setEmailNotifications}
+                  onCheckedChange={(checked) => setEmailNotifications(checked)}
                 />
               </div>
               
@@ -277,7 +277,7 @@ const Account = () => {
                 <Switch
                   id="prediction-alerts"
                   checked={predictionAlerts}
-                  onCheckedChange={setPredictionAlerts}
+                  onCheckedChange={(checked) => setPredictionAlerts(checked)}
                 />
               </div>
               
@@ -291,7 +291,7 @@ const Account = () => {
                 <Switch
                   id="training-alerts"
                   checked={trainingAlerts}
-                  onCheckedChange={setTrainingAlerts}
+                  onCheckedChange={(checked) => setTrainingAlerts(checked)}
                 />
               </div>
               
@@ -305,7 +305,7 @@ const Account = () => {
                 <Switch
                   id="market-alerts"
                   checked={marketAlerts}
-                  onCheckedChange={setMarketAlerts}
+                  onCheckedChange={(checked) => setMarketAlerts(checked)}
                 />
               </div>
               
