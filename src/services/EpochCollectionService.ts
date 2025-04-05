@@ -1,491 +1,273 @@
-import { persistentWebSocket, TickData } from './PersistentWebSocketService';
-import { neuralNetwork } from '@/lib/neuralNetwork';
+import { EventEmitter } from 'events';
 import { supabase } from '@/lib/supabase';
-import { toast } from 'sonner';
+import { neuralNetwork } from '@/lib/neuralNetwork';
+import { TickData } from '@/types/chartTypes';
 
 export interface EpochCollectionStatus {
   active: boolean;
-  currentCount: number;
   progress: number;
   epochsCompleted: number;
+  currentCount: number;
   isProcessing: boolean;
-  lastCompleted: string | null;
-  subscription: string;
 }
 
-// Default status
-const DEFAULT_STATUS: EpochCollectionStatus = {
-  active: false,
-  currentCount: 0,
-  progress: 0,
-  epochsCompleted: 0,
-  isProcessing: false,
-  lastCompleted: null,
-  subscription: 'R_10'
-};
+interface ModelTrainingResults {
+  loss: number;
+  accuracy: number;
+  time: number;
+}
 
-class EpochCollectionService {
+class EpochCollectionService extends EventEmitter {
   private userId: string | null = null;
-  private status: EpochCollectionStatus = { ...DEFAULT_STATUS };
+  private active: boolean = false;
+  private tickBuffer: TickData[] = [];
   private tickBatchSize: number = 100;
-  private currentBatch: TickData[] = [];
-  private subscribers: Map<string, (status: EpochCollectionStatus) => void> = new Map();
-  private initialized: boolean = false;
-  private isLoadingSettings: boolean = false;
-  private tickHandler: ((tick: TickData) => void) | null = null;
+  private currentCount: number = 0;
+  private epochsCompleted: number = 0;
+  private progress: number = 0;
+  private isProcessing: boolean = false;
+  private lastTickTime: number = 0;
+  private status: EpochCollectionStatus = {
+    active: false,
+    progress: 0,
+    epochsCompleted: 0,
+    currentCount: 0,
+    isProcessing: false
+  };
   
   constructor() {
-    // Bind methods
-    this.handleTick = this.handleTick.bind(this);
-    
-    // Initialize
-    this.init();
+    super();
+    this.loadTickBatchSize();
+    this.loadEpochsCompleted();
   }
   
-  /**
-   * Initialize the service
-   */
-  private async init(): Promise<void> {
-    if (this.initialized) return;
-    
-    // Load saved status from localStorage
-    const savedStatus = localStorage.getItem('epochCollectionStatus');
-    if (savedStatus) {
-      try {
-        const parsedStatus = JSON.parse(savedStatus);
-        this.status = { ...this.status, ...parsedStatus };
-      } catch (error) {
-        console.error('Error parsing saved epoch collection status:', error);
-      }
-    }
-    
-    this.initialized = true;
-  }
-  
-  /**
-   * Set user ID
-   */
+  // Set the user ID
   public setUserId(userId: string | null): void {
-    if (this.userId === userId) return;
-    
-    const prevUserId = this.userId;
     this.userId = userId;
-    
-    // If user ID changed, reset and load settings
-    if (prevUserId !== userId) {
-      this.reset();
-      this.loadUserSettings();
+  }
+  
+  // Load the tick batch size from local storage
+  private loadTickBatchSize(): void {
+    const storedBatchSize = localStorage.getItem('tickBatchSize');
+    if (storedBatchSize) {
+      this.tickBatchSize = parseInt(storedBatchSize, 10);
     }
   }
   
-  /**
-   * Load user settings from Supabase
-   */
-  private async loadUserSettings(): Promise<void> {
-    if (!this.userId || this.isLoadingSettings) return;
-    
-    this.isLoadingSettings = true;
-    
-    try {
-      // Load batch size from tick_collection_settings
-      const { data, error } = await supabase
-        .from('tick_collection_settings')
-        .select('*')
-        .eq('user_id', this.userId)
-        .single();
-      
-      if (error) {
-        if (error.code !== 'PGRST116') { // PGRST116 is "no rows returned"
-          console.error('Error loading tick collection settings:', error);
-        }
-        
-        // No settings found, create default settings
-        if (error.code === 'PGRST116') {
-          await this.createDefaultSettings();
-        }
-      } else if (data) {
-        this.tickBatchSize = data.batch_size;
-        this.status.active = data.enabled;
-        this.updateSubscribers();
-      }
-      
-      // Load epochs completed
-      await this.loadEpochsCompleted();
-      
-    } catch (error) {
-      console.error('Error loading user settings:', error);
-    } finally {
-      this.isLoadingSettings = false;
+  // Load the epochs completed from local storage
+  private loadEpochsCompleted(): void {
+    const storedEpochsCompleted = localStorage.getItem('epochsCompleted');
+    if (storedEpochsCompleted) {
+      this.epochsCompleted = parseInt(storedEpochsCompleted, 10);
+      this.status.epochsCompleted = this.epochsCompleted;
     }
   }
   
-  /**
-   * Create default settings in Supabase
-   */
-  private async createDefaultSettings(): Promise<void> {
-    if (!this.userId) return;
-    
-    try {
-      const { error } = await supabase
-        .from('tick_collection_settings')
-        .insert({
-          user_id: this.userId,
-          batch_size: this.tickBatchSize,
-          enabled: this.status.active
-        });
-      
-      if (error) {
-        console.error('Error creating default tick collection settings:', error);
-      }
-    } catch (error) {
-      console.error('Error creating default settings:', error);
-    }
-  }
-  
-  /**
-   * Load epochs completed from Supabase
-   */
-  private async loadEpochsCompleted(): Promise<void> {
-    if (!this.userId) return;
-    
-    try {
-      const { count, error } = await supabase
-        .from('epochs')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', this.userId);
-      
-      if (error) {
-        if (!error.message.includes('does not exist')) {
-          console.error('Error loading epochs count:', error);
-        }
-      } else if (count !== null) {
-        this.status.epochsCompleted = count;
-        this.updateSubscribers();
-      }
-    } catch (error) {
-      console.error('Error loading epochs completed:', error);
-    }
-  }
-  
-  /**
-   * Start epoch collection
-   */
-  public async start(batchSize?: number): Promise<boolean> {
-    if (!this.userId) {
-      toast.error('You must be logged in to start epoch collection');
-      return false;
-    }
-    
-    // If batch size is provided, update it
-    if (batchSize !== undefined) {
-      await this.updateTickBatchSize(batchSize);
-    }
-    
-    console.log('[EpochCollectionService] Starting epoch collection with batch size:', this.tickBatchSize);
-    
-    // Clear current batch if stopping and starting again
-    if (!this.status.active) {
-      this.currentBatch = [];
-    }
-    
-    // Update status
-    this.status.active = true;
-    this.updateStatus();
-    
-    // Start listening for ticks
-    if (!this.tickHandler) {
-      this.tickHandler = this.handleTick;
-      persistentWebSocket.on('tick', this.tickHandler);
-    }
-    
-    try {
-      // Update settings in Supabase
-      if (this.userId) {
-        const { error } = await supabase
-          .from('tick_collection_settings')
-          .upsert({
-            user_id: this.userId,
-            enabled: true,
-            batch_size: this.tickBatchSize,
-            last_updated: new Date().toISOString()
-          });
-        
-        if (error) {
-          console.error('Error updating tick collection settings:', error);
-        }
-      }
-      
-      return true;
-    } catch (error) {
-      console.error('Error starting epoch collection:', error);
-      return false;
-    }
-  }
-  
-  /**
-   * Stop epoch collection
-   */
-  public async stop(): Promise<void> {
-    console.log('[EpochCollectionService] Stopping epoch collection');
-    
-    // Update status
-    this.status.active = false;
-    this.updateStatus();
-    
-    // Keep listening for ticks but don't process them for epochs
-    
-    try {
-      // Update settings in Supabase
-      if (this.userId) {
-        const { error } = await supabase
-          .from('tick_collection_settings')
-          .upsert({
-            user_id: this.userId,
-            enabled: false,
-            batch_size: this.tickBatchSize,
-            last_updated: new Date().toISOString()
-          });
-        
-        if (error) {
-          console.error('Error updating tick collection settings:', error);
-        }
-      }
-    } catch (error) {
-      console.error('Error stopping epoch collection:', error);
-    }
-  }
-  
-  /**
-   * Reset epoch collection
-   */
-  public reset(): void {
-    // Stop collection
-    this.stop();
-    
-    // Reset status
-    this.status = { ...DEFAULT_STATUS };
-    this.currentBatch = [];
-    
-    // Remove event listeners
-    if (this.tickHandler) {
-      persistentWebSocket.off('tick', this.tickHandler);
-      this.tickHandler = null;
-    }
-    
-    // Update subscribers
-    this.updateSubscribers();
-  }
-  
-  /**
-   * Handle tick data
-   */
-  private handleTick(tick: TickData): void {
-    // Only process ticks if active
-    if (!this.status.active) return;
-    
-    // Add tick to current batch
-    this.currentBatch.push(tick);
-    
-    // Update status
-    this.status.currentCount = this.currentBatch.length;
-    this.status.progress = (this.currentBatch.length / this.tickBatchSize) * 100;
-    
-    // Update the market in the status
-    this.status.subscription = tick.market;
-    
-    // Process batch if complete
-    if (this.currentBatch.length >= this.tickBatchSize) {
-      this.processBatch();
-    }
-    
-    // Update subscribers
-    this.updateSubscribers();
-  }
-  
-  /**
-   * Process completed batch
-   */
-  private async processBatch(): Promise<void> {
-    // Mark as processing
-    this.status.isProcessing = true;
-    this.updateSubscribers();
-    
-    console.log(`[EpochCollectionService] Processing batch of ${this.currentBatch.length} ticks`);
-    
-    try {
-      // Train neural network with batch
-      const normalizedData = this.currentBatch.map(tick => tick.value);
-      
-      // Simple normalized data for the neural network
-      const trainingResult = await neuralNetwork.train(normalizedData);
-      
-      console.log('[EpochCollectionService] Training result:', trainingResult);
-      
-      // Store epoch in Supabase
-      if (this.userId) {
-        const epochNumber = this.status.epochsCompleted + 1;
-        
-        const epochData = {
-          user_id: this.userId,
-          epoch_number: epochNumber,
-          batch_size: this.currentBatch.length,
-          loss: trainingResult.loss || 0,
-          accuracy: trainingResult.accuracy || 0,
-          training_time: trainingResult.time || 0,
-          model_state: neuralNetwork.exportModel()
-        };
-        
-        // Store epoch
-        const { data: epoch, error: epochError } = await supabase
-          .from('epochs')
-          .insert(epochData)
-          .select()
-          .single();
-        
-        if (epochError) {
-          console.error('Error storing epoch:', epochError);
-        } else if (epoch) {
-          console.log('[EpochCollectionService] Epoch stored:', epoch.id);
-          
-          // Store tick data for the epoch
-          const { error: ticksError } = await supabase
-            .from('epoch_ticks')
-            .insert({
-              epoch_id: epoch.id,
-              ticks: this.currentBatch
-            });
-          
-          if (ticksError) {
-            console.error('Error storing epoch ticks:', ticksError);
-          }
-        }
-      }
-      
-      // Update status
-      this.status.epochsCompleted++;
-      this.status.lastCompleted = new Date().toISOString();
-      
-      // Clear batch
-      this.currentBatch = [];
-      this.status.currentCount = 0;
-      this.status.progress = 0;
-      
-    } catch (error) {
-      console.error('Error processing batch:', error);
-      toast.error('Error processing epoch batch');
-      
-      // Clear half the batch to avoid getting stuck
-      this.currentBatch = this.currentBatch.slice(this.currentBatch.length / 2);
-      this.status.currentCount = this.currentBatch.length;
-      this.status.progress = (this.currentBatch.length / this.tickBatchSize) * 100;
-    } finally {
-      // Mark as done processing
-      this.status.isProcessing = false;
-      this.updateSubscribers();
-    }
-  }
-  
-  /**
-   * Update tick batch size
-   */
-  public async updateTickBatchSize(newSize: number): Promise<boolean> {
-    if (newSize < 10) {
-      toast.error('Batch size must be at least 10');
-      return false;
-    }
-    
-    if (newSize > 1000) {
-      toast.error('Batch size must be at most 1000');
-      return false;
-    }
-    
-    console.log(`[EpochCollectionService] Updating batch size from ${this.tickBatchSize} to ${newSize}`);
-    
-    this.tickBatchSize = newSize;
-    
-    // Update status
-    this.status.progress = (this.currentBatch.length / this.tickBatchSize) * 100;
-    this.updateSubscribers();
-    
-    try {
-      // Update settings in Supabase
-      if (this.userId) {
-        const { error } = await supabase
-          .from('tick_collection_settings')
-          .upsert({
-            user_id: this.userId,
-            batch_size: newSize,
-            last_updated: new Date().toISOString()
-          });
-        
-        if (error) {
-          console.error('Error updating tick batch size:', error);
-          return false;
-        }
-      }
-      
-      return true;
-    } catch (error) {
-      console.error('Error updating tick batch size:', error);
-      return false;
-    }
-  }
-  
-  /**
-   * Get current status
-   */
+  // Get the current status
   public getStatus(): EpochCollectionStatus {
-    return { ...this.status };
+    return this.status;
   }
   
-  /**
-   * Get tick batch size
-   */
+  // Get the tick batch size
   public getTickBatchSize(): number {
     return this.tickBatchSize;
   }
   
-  /**
-   * Subscribe to status updates
-   */
-  public subscribe(id: string, callback: (status: EpochCollectionStatus) => void): void {
-    this.subscribers.set(id, callback);
-    callback(this.getStatus());
-  }
-  
-  /**
-   * Unsubscribe from status updates
-   */
-  public unsubscribe(id: string): void {
-    this.subscribers.delete(id);
-  }
-  
-  /**
-   * Update status and save to localStorage
-   */
-  private updateStatus(): void {
-    // Save to localStorage
-    localStorage.setItem('epochCollectionStatus', JSON.stringify(this.status));
+  // Update the tick batch size
+  public async updateTickBatchSize(newBatchSize: number): Promise<boolean> {
+    if (newBatchSize < 10 || newBatchSize > 1000) {
+      console.error('Invalid batch size:', newBatchSize);
+      return false;
+    }
     
-    // Update subscribers
-    this.updateSubscribers();
+    this.tickBatchSize = newBatchSize;
+    localStorage.setItem('tickBatchSize', newBatchSize.toString());
+    return true;
   }
   
-  /**
-   * Update all subscribers with current status
-   */
-  private updateSubscribers(): void {
-    const status = this.getStatus();
-    this.subscribers.forEach(callback => {
-      try {
-        callback(status);
-      } catch (error) {
-        console.error('Error in epoch collection subscriber callback:', error);
+  // Start epoch collection
+  public async start(batchSize: number = this.tickBatchSize): Promise<boolean> {
+    if (!this.userId) {
+      console.error('User ID not set');
+      return false;
+    }
+    
+    if (this.active) {
+      console.warn('Epoch collection already active');
+      return true;
+    }
+    
+    this.active = true;
+    this.tickBatchSize = batchSize;
+    this.tickBuffer = [];
+    this.currentCount = 0;
+    this.progress = 0;
+    this.isProcessing = false;
+    
+    this.updateStatus();
+    
+    console.log('Epoch collection started');
+    return true;
+  }
+  
+  // Stop epoch collection
+  public stop(): void {
+    if (!this.active) {
+      console.warn('Epoch collection not active');
+      return;
+    }
+    
+    this.active = false;
+    this.updateStatus();
+    
+    console.log('Epoch collection stopped');
+  }
+  
+  // Reset epoch collection
+  public reset(): void {
+    this.stop();
+    this.tickBuffer = [];
+    this.currentCount = 0;
+    this.epochsCompleted = 0;
+    this.progress = 0;
+    this.isProcessing = false;
+    
+    localStorage.removeItem('epochsCompleted');
+    
+    this.updateStatus();
+    
+    console.log('Epoch collection reset');
+  }
+  
+  // Add a tick to the buffer
+  public async addTick(tick: TickData): Promise<void> {
+    if (!this.active) return;
+    
+    this.tickBuffer.push(tick);
+    this.currentCount++;
+    this.updateProgress();
+    this.lastTickTime = Date.now();
+    
+    if (this.tickBuffer.length >= this.tickBatchSize) {
+      await this.processEpoch();
+    }
+  }
+  
+  // Process an epoch
+  private async processEpoch(): Promise<void> {
+    if (this.isProcessing) {
+      console.warn('Already processing an epoch');
+      return;
+    }
+    
+    this.isProcessing = true;
+    this.updateStatus();
+    
+    console.log('Processing epoch...');
+    
+    try {
+      // Convert tick buffer to array of values
+      const tickValues = this.tickBuffer.map(tick => tick.value);
+      
+      // Train the neural network
+      const trainingResults = await neuralNetwork.train(tickValues);
+      
+      // Store the epoch data
+      const epochId = await this.storeEpochData(tickValues);
+      
+      if (epochId) {
+        // Store the training results
+        await this.storeEpochResults(epochId, trainingResults);
+        
+        // Increment the epochs completed
+        this.epochsCompleted++;
+        localStorage.setItem('epochsCompleted', this.epochsCompleted.toString());
+        
+        // Reset the tick buffer
+        this.tickBuffer = [];
+        this.currentCount = 0;
+        this.updateProgress();
+        this.updateStatus();
+        
+        console.log('Epoch processed successfully');
+      } else {
+        console.error('Failed to store epoch data');
       }
-    });
+    } catch (error) {
+      console.error('Error processing epoch:', error);
+    } finally {
+      this.isProcessing = false;
+      this.updateStatus();
+    }
+  }
+  
+  // Store epoch data in Supabase
+  private async storeEpochData(tickValues: number[]): Promise<string | null> {
+    if (!this.userId) {
+      console.error('User ID not set');
+      return null;
+    }
+    
+    try {
+      const { data, error } = await supabase
+        .from('epochs')
+        .insert([
+          {
+            user_id: this.userId,
+            ticks: tickValues,
+            created_at: new Date().toISOString()
+          }
+        ])
+        .select('id');
+      
+      if (error) {
+        throw error;
+      }
+      
+      return data && data.length > 0 ? data[0].id : null;
+    } catch (error) {
+      console.error('Error storing epoch data:', error);
+      return null;
+    }
+  }
+  
+  // Store epoch results in Supabase
+  private async storeEpochResults(epochId: string, trainingResults: ModelTrainingResults): Promise<boolean> {
+    // Now I can safely use these properties
+    const { loss, accuracy, time } = trainingResults;
+    
+    // Store in Supabase or use locally
+    try {
+      await supabase.from('epochs').update({
+        loss,
+        accuracy,
+        training_time: time
+      }).eq('id', epochId);
+      
+      return true;
+    } catch (error) {
+      console.error('Error storing epoch results:', error);
+      return false;
+    }
+  }
+  
+  // Update the progress
+  private updateProgress(): void {
+    this.progress = Math.min((this.tickBuffer.length / this.tickBatchSize) * 100, 100);
+  }
+  
+  // Update the status and emit an event
+  private updateStatus(): void {
+    this.status = {
+      active: this.active,
+      progress: this.progress,
+      epochsCompleted: this.epochsCompleted,
+      currentCount: this.currentCount,
+      isProcessing: this.isProcessing
+    };
+    
+    this.emit('update', this.status);
   }
 }
 
-// Create singleton instance
 export const epochCollectionService = new EpochCollectionService();
-export default epochCollectionService;

@@ -5,20 +5,26 @@ import { persistentWebSocket, TickData } from '@/services/PersistentWebSocketSer
 interface WebSocketHookOptions {
   autoConnect?: boolean;
   subscription?: object;
+  wsUrl?: string; // Added wsUrl property
   onMessage?: (data: any) => void;
   onTick?: (tick: TickData) => void;
   onStatusChange?: (status: string) => void;
   onError?: (error: any) => void;
+  onOpen?: () => void;
+  onClose?: () => void;
 }
 
 export function usePersistentWebSocket(options: WebSocketHookOptions = {}) {
   const {
     autoConnect = true,
     subscription,
+    wsUrl,
     onMessage,
     onTick,
     onStatusChange,
     onError,
+    onOpen,
+    onClose,
   } = options;
   
   const [isConnected, setIsConnected] = useState(persistentWebSocket.isConnected());
@@ -33,6 +39,8 @@ export function usePersistentWebSocket(options: WebSocketHookOptions = {}) {
     onTick,
     onStatusChange,
     onError,
+    onOpen,
+    onClose,
   });
   
   // Update callbacks ref when props change
@@ -42,8 +50,10 @@ export function usePersistentWebSocket(options: WebSocketHookOptions = {}) {
       onTick,
       onStatusChange,
       onError,
+      onOpen,
+      onClose,
     };
-  }, [onMessage, onTick, onStatusChange, onError]);
+  }, [onMessage, onTick, onStatusChange, onError, onOpen, onClose]);
   
   // Set up event listeners
   useEffect(() => {
@@ -68,11 +78,26 @@ export function usePersistentWebSocket(options: WebSocketHookOptions = {}) {
       callbacksRef.current.onError?.(error);
     };
     
+    const handleOpen = () => {
+      callbacksRef.current.onOpen?.();
+    };
+    
+    const handleClose = () => {
+      callbacksRef.current.onClose?.();
+    };
+    
     // Add event listeners
     persistentWebSocket.on('message', handleMessage);
     persistentWebSocket.on('tick', handleTick);
     persistentWebSocket.on('statusChange', handleStatusChange);
     persistentWebSocket.on('error', handleError);
+    persistentWebSocket.on('open', handleOpen);
+    persistentWebSocket.on('close', handleClose);
+    
+    // Set custom WebSocket URL if provided
+    if (wsUrl) {
+      persistentWebSocket.setUrl(wsUrl);
+    }
     
     // Handle initial subscription if provided
     if (subscription && Object.keys(subscription).length > 0) {
@@ -96,9 +121,11 @@ export function usePersistentWebSocket(options: WebSocketHookOptions = {}) {
       persistentWebSocket.off('tick', handleTick);
       persistentWebSocket.off('statusChange', handleStatusChange);
       persistentWebSocket.off('error', handleError);
+      persistentWebSocket.off('open', handleOpen);
+      persistentWebSocket.off('close', handleClose);
       clearInterval(intervalId);
     };
-  }, [autoConnect, subscription]);
+  }, [autoConnect, subscription, wsUrl]);
   
   // Memoized API
   const api = useMemo(() => ({

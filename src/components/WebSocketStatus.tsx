@@ -1,11 +1,10 @@
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Wifi, WifiOff, AlertTriangle, Activity, RefreshCw } from 'lucide-react';
 import { persistentWebSocket } from '@/services/PersistentWebSocketService';
-import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 interface WebSocketStatusProps {
   className?: string;
@@ -14,7 +13,7 @@ interface WebSocketStatusProps {
   showControls?: boolean;
 }
 
-const WebSocketStatus: React.FC<WebSocketStatusProps> = ({
+const WebSocketStatus: React.FC<WebSocketStatusProps> = ({ 
   className,
   compact = false,
   showTickInfo = false,
@@ -38,14 +37,8 @@ const WebSocketStatus: React.FC<WebSocketStatusProps> = ({
       updateStatus();
     };
     
-    const handleStatusChange = (status: string) => {
-      setConnectionStatus(status);
-      setIsConnected(persistentWebSocket.isConnected());
-      setHasRecentData(persistentWebSocket.hasRecentData());
-      
-      if (status === 'connected') {
-        setIsReconnecting(false);
-      }
+    const handleStatusChange = () => {
+      updateStatus();
     };
     
     // Initial update
@@ -56,7 +49,7 @@ const WebSocketStatus: React.FC<WebSocketStatusProps> = ({
     persistentWebSocket.on('statusChange', handleStatusChange);
     
     // Update status periodically
-    const intervalId = setInterval(updateStatus, 2000);
+    const intervalId = setInterval(updateStatus, 1000);
     
     // Clean up
     return () => {
@@ -65,50 +58,29 @@ const WebSocketStatus: React.FC<WebSocketStatusProps> = ({
       clearInterval(intervalId);
     };
   }, []);
-  
+
   const handleReconnect = () => {
     setIsReconnecting(true);
+    persistentWebSocket.connect();
     
-    // Force reconnection
-    persistentWebSocket.disconnect();
-    
+    // Reset reconnecting state after a timeout
     setTimeout(() => {
-      const success = persistentWebSocket.connect();
-      if (success) {
-        toast.success('Reconnecting to market data...');
-      } else {
-        toast.error('Failed to reconnect. Please try again.');
-        setIsReconnecting(false);
-      }
-    }, 1000);
+      setIsReconnecting(false);
+    }, 2000);
   };
-  
+
   if (compact) {
     return (
-      <div className={cn("flex items-center gap-1", className)}>
-        <Badge 
-          variant={hasRecentData ? "success" : isConnected ? "outline" : "destructive"}
-          className="flex items-center gap-1"
-        >
-          {hasRecentData && <Wifi className="h-3 w-3" />}
-          {!hasRecentData && isConnected && <Wifi className="h-3 w-3 text-yellow-500" />}
-          {!isConnected && <WifiOff className="h-3 w-3" />}
-          {hasRecentData ? "ONLINE" : isConnected ? "CONNECTED" : "OFFLINE"}
-          {showTickInfo && hasRecentData && <span className="ml-1 text-xs">({tickCount})</span>}
-        </Badge>
-        
-        {showControls && (
-          <Button 
-            size="icon" 
-            variant="ghost" 
-            className="h-7 w-7" 
-            onClick={handleReconnect}
-            disabled={isReconnecting}
-          >
-            <RefreshCw className={cn("h-3 w-3", isReconnecting && "animate-spin")} />
-          </Button>
-        )}
-      </div>
+      <Badge 
+        variant={hasRecentData ? "success" : isConnected ? "outline" : "destructive"}
+        className={cn("flex items-center gap-1", className)}
+      >
+        {hasRecentData && <Wifi className="h-3 w-3" />}
+        {!hasRecentData && isConnected && <Wifi className="h-3 w-3 text-yellow-500" />}
+        {!isConnected && <WifiOff className="h-3 w-3" />}
+        {hasRecentData ? "ONLINE" : isConnected ? "CONNECTED" : "OFFLINE"}
+        {showTickInfo && hasRecentData && <span className="ml-1 text-xs">({tickCount})</span>}
+      </Badge>
     );
   }
 
@@ -140,14 +112,18 @@ const WebSocketStatus: React.FC<WebSocketStatusProps> = ({
       
       {showControls && (
         <Button 
-          size="sm" 
           variant="outline" 
+          size="sm" 
           onClick={handleReconnect}
-          disabled={isReconnecting}
+          disabled={isReconnecting || hasRecentData}
           className="ml-2 h-7"
         >
-          <RefreshCw className={cn("h-3 w-3 mr-1", isReconnecting && "animate-spin")} />
-          {isReconnecting ? 'Connecting...' : 'Reconnect'}
+          {isReconnecting ? (
+            <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <RefreshCw className="h-3.5 w-3.5" />
+          )}
+          <span className="ml-1.5">Reconnect</span>
         </Button>
       )}
     </div>

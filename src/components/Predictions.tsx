@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -41,7 +40,6 @@ interface PendingPrediction {
   predictionType: PredictionType;
 }
 
-// Visual representation of a neural network node
 const NNNode = ({ id, active, x, y, intensity = 1 }: { id: string; active: boolean; x: number; y: number; intensity?: number }) => (
   <div 
     id={id}
@@ -56,7 +54,6 @@ const NNNode = ({ id, active, x, y, intensity = 1 }: { id: string; active: boole
   />
 );
 
-// Visual representation of a neural network connection
 const NNConnection = ({ from, to, active, intensity = 1 }: { from: string; to: string; active: boolean; intensity?: number }) => {
   const [path, setPath] = useState({ x1: 0, y1: 0, x2: 0, y2: 0 });
   
@@ -111,24 +108,20 @@ const NeuralNetworkVisual = ({
   const [pulseIntensity, setPulseIntensity] = useState(1);
   const [sparkleNodes, setSparkleNodes] = useState<{id: string, intensity: number}[]>([]);
   
-  // Simulate neural network activity with more animation
   useEffect(() => {
     let interval: NodeJS.Timeout;
     
     if (hasError) {
-      // Error visualization - red flashing nodes
       interval = setInterval(() => {
         const errorNode = `node-${Math.floor(Math.random() * 3)}-${Math.floor(Math.random() * 5)}`;
         setActiveNodes([errorNode]);
         setPulseIntensity(2);
         
-        // Clear nodes after a short delay
         setTimeout(() => setActiveNodes([]), 200);
       }, 500);
     } else if (isTraining) {
-      // Training visualization - multiple nodes with high intensity
       interval = setInterval(() => {
-        const numberOfActiveNodes = Math.floor(Math.random() * 5) + 5; // 5-10 nodes
+        const numberOfActiveNodes = Math.floor(Math.random() * 5) + 5;
         const newActiveNodes = [];
         
         for (let i = 0; i < numberOfActiveNodes; i++) {
@@ -138,29 +131,24 @@ const NeuralNetworkVisual = ({
         }
         
         setActiveNodes(newActiveNodes);
-        setPulseIntensity(Math.random() * 2 + 1); // Varied pulse intensity during training
+        setPulseIntensity(Math.random() * 2 + 1);
         
-        // Generate sparkles for training
         const newSparkles = Array(3).fill(0).map(() => ({
           id: `node-${Math.floor(Math.random() * 3)}-${Math.floor(Math.random() * 5)}`,
           intensity: Math.random() + 1
         }));
         setSparkleNodes(newSparkles);
         
-        // Clear nodes after a delay
         setTimeout(() => {
           setActiveNodes([]);
           setSparkleNodes([]);
         }, 200);
       }, 300);
     } else if (isBotRunning) {
-      // Bot running visualization - coordinated pulses
       interval = setInterval(() => {
-        // Generate a wave-like pattern
         const phase = Math.floor(Date.now() / 500) % 3;
         const newActiveNodes = [];
         
-        // Activate nodes in the current phase/layer
         for (let nodeIndex = 0; nodeIndex < 5; nodeIndex++) {
           if (Math.random() > 0.5) {
             newActiveNodes.push(`node-${phase}-${nodeIndex}`);
@@ -170,7 +158,6 @@ const NeuralNetworkVisual = ({
         setActiveNodes(newActiveNodes);
         setPulseIntensity(1.5);
         
-        // Occasional sparkles for active bot
         if (Math.random() > 0.7) {
           setSparkleNodes([{
             id: `node-${Math.floor(Math.random() * 3)}-${Math.floor(Math.random() * 5)}`,
@@ -180,13 +167,11 @@ const NeuralNetworkVisual = ({
           setSparkleNodes([]);
         }
         
-        // Clear nodes after a delay
         setTimeout(() => {
           setActiveNodes([]);
         }, 300);
       }, 600);
     } else {
-      // Standard mode - just activate one node at a time
       interval = setInterval(() => {
         const layerIndex = Math.floor(Math.random() * 3);
         const nodeIndex = Math.floor(Math.random() * 5);
@@ -194,7 +179,6 @@ const NeuralNetworkVisual = ({
         setPulseIntensity(1);
         setSparkleNodes([]);
         
-        // Clear nodes after a delay
         setTimeout(() => setActiveNodes([]), 800);
       }, 1200);
     }
@@ -202,13 +186,11 @@ const NeuralNetworkVisual = ({
     return () => clearInterval(interval);
   }, [isTraining, isBotRunning, hasError]);
   
-  // Generate nodes for 3 layers with 5 nodes each
   const layers = [0, 1, 2];
   const nodesPerLayer = 5;
   
   return (
     <div className="relative h-64 my-4">
-      {/* Special visualization overlays */}
       {isTraining && (
         <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent animate-pulse z-0"></div>
       )}
@@ -245,7 +227,6 @@ const NeuralNetworkVisual = ({
         )
       ))}
       
-      {/* Connections between layers */}
       {layers.slice(0, -1).map(layerIdx => (
         React.createElement(React.Fragment, { key: `connections-${layerIdx}` },
           [...Array(nodesPerLayer)].map((_, fromNodeIdx) => (
@@ -273,7 +254,6 @@ const NeuralNetworkVisual = ({
         )
       ))}
       
-      {/* Dynamic visualization elements */}
       {(isTraining || isBotRunning) && (
         <>
           <div 
@@ -290,7 +270,6 @@ const NeuralNetworkVisual = ({
         </>
       )}
       
-      {/* Error state indication */}
       {hasError && (
         <div className="absolute top-2 right-2 px-2 py-1 bg-red-500/20 text-xs text-red-500 rounded-md animate-pulse">
           Neural network error
@@ -317,18 +296,16 @@ const Predictions = () => {
   const autoIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const tickCounterRef = useRef<Map<number, number>>(new Map());
   const lastPredictionTimeRef = useRef<number>(0);
-  const predictionRateRef = useRef<number>(15000); // Default 15 seconds between predictions
+  const predictionRateRef = useRef<number>(15000);
   
-  // Connect to broker WebSocket for tick data
   const ws = useWebSocket({
-    wsUrl: 'wss://ws.binaryws.com/websockets/v3?app_id=1089',
+    autoConnect: true,
     subscription: { ticks: 'R_10' },
     onMessage: (data) => {
       if (data.tick) {
         setCurrentPrice(data.tick.quote);
         setCurrentMarket(data.tick.symbol);
         
-        // Process tick for pending predictions
         handleNewTick(data.tick.quote);
       }
     },
@@ -344,15 +321,12 @@ const Predictions = () => {
     onClose: () => {
       console.log('WebSocket closed for predictions');
     },
-    autoReconnect: true,
   });
   
   useEffect(() => {
-    // Load initial data from Supabase
     loadPredictions();
     
     return () => {
-      // Cleanup
       if (autoIntervalRef.current) {
         clearInterval(autoIntervalRef.current);
       }
@@ -360,30 +334,16 @@ const Predictions = () => {
   }, []);
   
   useEffect(() => {
-    // Adjust prediction rate based on selected mode
     if (isBotRunning) {
       if (autoIntervalRef.current) {
         clearInterval(autoIntervalRef.current);
       }
       
-      // Set prediction rate based on mode
-      switch (predictionMode) {
-        case 'fast':
-          predictionRateRef.current = 8000; // 8 seconds
-          break;
-        case 'strict':
-          predictionRateRef.current = 30000; // 30 seconds
-          break;
-        default:
-          predictionRateRef.current = 15000; // 15 seconds (balanced)
-      }
+      predictionRateRef.current = PREDICTION_MODES[predictionMode].predictionRate;
       
-      // Restart the bot with new settings
       autoIntervalRef.current = setInterval(generatePrediction, predictionRateRef.current);
       
-      // Generate one immediately if it's been long enough since the last prediction
-      const timeSinceLastPrediction = Date.now() - lastPredictionTimeRef.current;
-      if (timeSinceLastPrediction > 5000) {
+      if (Date.now() - lastPredictionTimeRef.current > 5000) {
         setTimeout(generatePrediction, 1000);
       }
     }
@@ -424,32 +384,24 @@ const Predictions = () => {
     }
   };
   
-  // Generate prediction ID
   const generateId = () => {
     return Date.now() + Math.floor(Math.random() * 1000);
   };
   
-  // Handle a new tick from the WebSocket
   const handleNewTick = (price: number) => {
-    // Process pending predictions
     setPendingPredictions(prevPredictions => {
       const updatedPredictions = prevPredictions.map(prediction => {
-        // Skip predictions that are not in the counting phase
         if (prediction.phase !== 'counting') {
           return prediction;
         }
         
-        // Increment tick counter for this prediction
         const currentTicks = tickCounterRef.current.get(prediction.id) || 0;
         const newTicksCount = currentTicks + 1;
         tickCounterRef.current.set(prediction.id, newTicksCount);
         
-        // Check if we've reached the target number of ticks
         if (newTicksCount >= prediction.tickPeriod) {
-          // Mark as completed and schedule evaluation
           setTimeout(() => {
             handleCompletePrediction(prediction.id, price);
-            // Remove this prediction's tick counter
             tickCounterRef.current.delete(prediction.id);
           }, 100);
           
@@ -460,7 +412,6 @@ const Predictions = () => {
           };
         }
         
-        // Update tick count
         return {
           ...prediction,
           ticksElapsed: newTicksCount
@@ -471,24 +422,19 @@ const Predictions = () => {
     });
   };
   
-  // Neural network-generated prediction
   const generatePrediction = useCallback(() => {
     if (!currentPrice || !isBotRunning) return null;
     
-    // Update last prediction time
     lastPredictionTimeRef.current = Date.now();
     
-    // Get last 20 ticks from WebSocket history
     const tickValues = ws.ticks.map(t => t.value);
     
     if (tickValues.length < 10) {
-      return null; // Not enough data yet
+      return null;
     }
     
-    // Generate a prediction using the neural network
     return neuralNetwork.predict(tickValues, 'rise', predictionTimePeriod as any, currentPrice)
       .then(prediction => {
-        // Check if confidence meets the threshold for the selected mode
         const minConfidence = PREDICTION_MODES[predictionMode].minConfidence;
         
         if (prediction.confidence >= minConfidence) {
@@ -509,7 +455,6 @@ const Predictions = () => {
       });
   }, [currentPrice, ws.ticks, isBotRunning, predictionTimePeriod, predictionMode]);
   
-  // Toggle bot
   const toggleBot = () => {
     if (isBotRunning) {
       setIsBotRunning(false);
@@ -519,7 +464,6 @@ const Predictions = () => {
       }
       toast.info('Bot stopped');
     } else {
-      // Start with a training sequence
       setIsTraining(true);
       setTrainingProgress(0);
       
@@ -529,18 +473,15 @@ const Predictions = () => {
             clearInterval(trainingInterval);
             setIsTraining(false);
             
-            // Start the bot
             setIsBotRunning(true);
             toast.success(`Bot started - ${PREDICTION_MODES[predictionMode].mode} mode activated`);
             
-            // Generate a prediction on an interval based on mode
             autoIntervalRef.current = setInterval(generatePrediction, predictionRateRef.current);
-            // Generate one immediately
             setTimeout(generatePrediction, 1000);
             
             return 100;
           }
-          return prev + Math.floor(Math.random() * 5) + 2; // Random progress increment
+          return prev + Math.floor(Math.random() * 5) + 2;
         });
       }, 300);
     }
@@ -561,12 +502,11 @@ const Predictions = () => {
     
     setIsPredicting(true);
     
-    // Create new prediction with initial warning phase
     const newPrediction: PendingPrediction = {
       id: generateId(),
       confidence,
       timestamp: new Date(),
-      warningCountdown: 10, // 10-second warning countdown
+      warningCountdown: 10,
       tickCountdown: 0,
       phase: 'warning' as PredictionPhase,
       market: currentMarket,
@@ -587,24 +527,19 @@ const Predictions = () => {
       toast.success(`Prediction added: Market will ${type} after 10s + ${period} ticks`);
     }
     
-    // Start the warning countdown (10 seconds)
     const warningCountdownInterval = setInterval(() => {
       setPendingPredictions(prev => {
         const updatedPredictions = prev.map(p => {
           if (p.id === newPrediction.id) {
             const newCountdown = p.warningCountdown - 1;
             
-            // If warning countdown reaches 0, transition to counting phase
             if (newCountdown <= 0) {
               clearInterval(warningCountdownInterval);
               
-              // Initialize tick counter for this prediction
               tickCounterRef.current.set(p.id, 0);
               
-              // Record the starting price at this moment
               const startPriceAtCounting = currentPrice;
               
-              // Notify about transition to tick counting
               toast(`Starting tick count for ${period} ticks`, {
                 description: `Initial price: ${startPriceAtCounting?.toFixed(5)}`
               });
@@ -613,7 +548,7 @@ const Predictions = () => {
                 ...p,
                 warningCountdown: 0,
                 phase: 'counting' as PredictionPhase,
-                startPrice: startPriceAtCounting,  // Update start price at counting phase
+                startPrice: startPriceAtCounting,
                 ticksElapsed: 0
               };
             }
@@ -631,12 +566,10 @@ const Predictions = () => {
   };
   
   const handleCompletePrediction = async (id: number, finalPrice: number) => {
-    // Find the prediction
     const pendingPred = pendingPredictions.find(p => p.id === id);
     
     if (!pendingPred) return;
     
-    // Check the result based on prediction type
     const startPrice = pendingPred.startPrice;
     const endPrice = finalPrice;
     let outcome: "win" | "loss" = "loss";
@@ -656,10 +589,8 @@ const Predictions = () => {
         break;
     }
     
-    // Remove from pending predictions
     setPendingPredictions(prev => prev.filter(p => p.id !== id));
     
-    // Add to completed predictions
     const completedPrediction: Prediction = {
       id,
       confidence: pendingPred.confidence,
@@ -674,14 +605,12 @@ const Predictions = () => {
     
     setCompletedPredictions(prevCompleted => [completedPrediction, ...prevCompleted]);
     
-    // Show notification with price details
     if (outcome === 'win') {
       toast.success(`Prediction correct! Market ${pendingPred.predictionType === 'rise' ? 'rose' : 'fell'} from ${startPrice.toFixed(5)} to ${endPrice.toFixed(5)}`);
     } else {
       toast.error(`Prediction incorrect. Market ${pendingPred.predictionType === 'rise' ? 'fell' : 'rose'} from ${startPrice.toFixed(5)} to ${endPrice.toFixed(5)}`);
     }
     
-    // Save to Supabase
     if (user) {
       try {
         const { error } = await supabase.from('trade_history').insert({
@@ -738,7 +667,6 @@ const Predictions = () => {
                 hasError={hasError}
               />
               
-              {/* Waiting for data message */}
               {!currentPrice && (
                 <div className="absolute top-0 right-0 text-muted-foreground bg-background/80 p-2 rounded-md">
                   Waiting for market data...

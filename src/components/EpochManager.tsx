@@ -112,7 +112,7 @@ const EpochManager: React.FC<EpochManagerProps> = ({
               <span className="text-xs bg-muted px-2 py-0.5 rounded-full">
                 {isActive ? 'Active' : 'Inactive'}
               </span>
-              <ConnectionStatus compact showTickInfo />
+              <WebSocketStatus compact showTickInfo />
             </div>
           </div>
           
@@ -164,7 +164,7 @@ const EpochManager: React.FC<EpochManagerProps> = ({
             <Brain className="h-5 w-5 text-primary" />
             Neural Network Epoch Collection
           </CardTitle>
-          <ConnectionStatus compact showTickInfo />
+          <WebSocketStatus compact showTickInfo />
         </div>
         <CardDescription>
           Collecting and processing market data for neural network training

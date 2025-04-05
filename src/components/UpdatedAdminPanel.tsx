@@ -104,63 +104,66 @@ const UpdatedAdminPanel = () => {
       
       setEpochsCount(epochsCount);
       
-      // Get users - first try with users_extra table
+      // Get users - try the auth admin API first
       let usersData: UserData[] = [];
-      let usersError = null;
-      
       try {
+        // Try to fetch users from users_extra table
         const { data, error } = await supabase
           .from('users_extra')
-          .select('*, auth.users!inner(*)')
+          .select('*')
           .order('created_at', { ascending: false })
           .limit(10);
         
-        if (error) throw error;
-        if (data) {
+        if (error && !error.message.includes('does not exist')) {
+          throw error;
+        }
+        
+        if (data && data.length > 0) {
+          // Successfully got users from users_extra
           usersData = data.map(user => ({
             id: user.user_id || user.id,
             username: user.username,
-            email: user.auth?.users?.email || user.email,
+            email: user.email,
             created_at: user.created_at,
             last_login: user.last_login,
             proStatus: user.pro_status
           }));
+        } else {
+          // Try getting users from auth.users directly (requires admin rights)
+          try {
+            const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
+            
+            if (authError) throw authError;
+            if (authUsers && authUsers.users) {
+              usersData = authUsers.users.map(user => ({
+                id: user.id,
+                email: user.email,
+                created_at: user.created_at || new Date().toISOString(),
+                last_login: user.last_sign_in_at
+              }));
+            }
+          } catch (authError) {
+            console.error('Error loading users from auth:', authError);
+            // Will fall back to demo data below
+          }
         }
       } catch (error) {
-        console.error('Error loading users from users_extra:', error);
-        usersError = error;
+        console.error('Error loading users:', error);
       }
       
-      // If no users from users_extra, try getting just auth users
-      if (usersData.length === 0 || usersError) {
-        try {
-          // Note: This requires admin rights on Supabase
-          const { data, error } = await supabase.auth.admin.listUsers();
-          
-          if (error) throw error;
-          if (data && data.users) {
-            usersData = data.users.map(user => ({
-              id: user.id,
-              email: user.email,
-              created_at: user.created_at,
-              last_login: user.last_sign_in_at
-            }));
-          }
-        } catch (authError) {
-          console.error('Error loading users from auth:', authError);
-          
-          // Generate fake data for demo if both methods fail
-          const fakeUsers = Array.from({ length: 10 }, (_, i) => ({
-            id: `id-${i}`,
-            username: `user${i}`,
-            email: `user${i}@example.com`,
-            proStatus: Math.random() > 0.7,
-            last_login: new Date(Date.now() - Math.random() * 86400000 * 30).toISOString(),
-            created_at: new Date(Date.now() - Math.random() * 86400000 * 60).toISOString(),
-          }));
-          
-          usersData = fakeUsers;
-        }
+      // If we couldn't get real users, use fake demo data
+      if (usersData.length === 0) {
+        // Generate fake data for demo
+        const fakeUsers = Array.from({ length: 10 }, (_, i) => ({
+          id: `id-${i}`,
+          username: `user${i}`,
+          email: `user${i}@example.com`,
+          proStatus: Math.random() > 0.7,
+          last_login: new Date(Date.now() - Math.random() * 86400000 * 30).toISOString(),
+          created_at: new Date(Date.now() - Math.random() * 86400000 * 60).toISOString(),
+        }));
+        
+        usersData = fakeUsers;
       }
       
       setUsers(usersData);

@@ -1,382 +1,347 @@
 
-import { useState, useEffect, useRef } from 'react';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { persistentWebSocket } from '@/services/PersistentWebSocketService';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Copy, RefreshCw, Play, Pause, Download, Trash } from 'lucide-react';
-import { toast } from 'sonner';
+import { persistentWebSocket, TickData } from '@/services/PersistentWebSocketService';
+import { Badge } from '@/components/ui/badge';
+import { RefreshCw, Send, Trash, Download, PlayCircle, StopCircle } from 'lucide-react';
 import WebSocketStatus from './WebSocketStatus';
-import { useSettings } from '@/hooks/useSettings';
+import { toast } from 'sonner';
 
 const WebSocketDebug: React.FC = () => {
-  const { settings, updateSettings } = useSettings();
-  const [wsUrl, setWsUrl] = useState(persistentWebSocket.getStatus());
-  const [customWsUrl, setCustomWsUrl] = useState('');
-  const [subscription, setSubscription] = useState('');
-  const [messages, setMessages] = useState<string[]>([]);
-  const [tickCount, setTickCount] = useState(0);
-  const [isCollecting, setIsCollecting] = useState(true);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
+  const [messages, setMessages] = useState<Array<{data: any, direction: 'in' | 'out', timestamp: number}>>([]);
+  const [ticks, setTicks] = useState<TickData[]>([]);
+  const [customMessage, setCustomMessage] = useState('{"ping": 1}');
+  const [customSubscription, setCustomSubscription] = useState('{"ticks": "R_10"}');
+  const [wsUrl, setWsUrl] = useState(localStorage.getItem('ws_url') || 'wss://ws.binaryws.com/websockets/v3?app_id=70997');
+  const [activeTab, setActiveTab] = useState('overview');
+  
   useEffect(() => {
-    // Set initial subscription from settings
-    try {
-      if (settings?.subscription) {
-        setSubscription(settings.subscription);
-      } else {
-        setSubscription(JSON.stringify({ ticks: 'R_10' }, null, 2));
-      }
-    } catch (error) {
-      console.error("Error parsing subscription:", error);
-      setSubscription(JSON.stringify({ ticks: 'R_10' }, null, 2));
-    }
-    
     const handleMessage = (data: any) => {
-      if (isCollecting) {
-        setMessages(prev => {
-          const newMessages = [...prev, JSON.stringify(data, null, 2)];
-          return newMessages.slice(-100); // Keep only latest 100 messages
-        });
-      }
+      setMessages(prev => [...prev.slice(-99), {
+        data,
+        direction: 'in',
+        timestamp: Date.now()
+      }]);
     };
     
-    const handleTick = () => {
-      setTickCount(prev => prev + 1);
+    const handleTick = (tick: TickData) => {
+      setTicks(prev => [...prev.slice(-99), tick]);
     };
     
+    // Add event listeners
     persistentWebSocket.on('message', handleMessage);
     persistentWebSocket.on('tick', handleTick);
+    
+    // Initial state
+    setTicks(persistentWebSocket.getTicks());
     
     return () => {
       persistentWebSocket.off('message', handleMessage);
       persistentWebSocket.off('tick', handleTick);
     };
-  }, [settings, isCollecting]);
+  }, []);
   
-  // Scroll to bottom when new messages arrive
-  useEffect(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [messages]);
-  
-  const handleApplySettings = () => {
+  const handleSendMessage = () => {
     try {
-      // Update WebSocket URL if provided
-      if (customWsUrl) {
-        persistentWebSocket.updateConfig({ url: customWsUrl });
-        setCustomWsUrl('');
-        toast.success('WebSocket URL updated');
-      }
+      const message = JSON.parse(customMessage);
+      const success = persistentWebSocket.send(message);
       
-      // Update subscription
-      if (subscription) {
-        const parsedSubscription = JSON.parse(subscription);
-        persistentWebSocket.setSubscription(parsedSubscription);
-        
-        // Save to settings
-        if (settings) {
-          updateSettings({ ...settings, subscription });
-        }
-        
-        toast.success('Subscription updated');
+      if (success) {
+        setMessages(prev => [...prev.slice(-99), {
+          data: message,
+          direction: 'out',
+          timestamp: Date.now()
+        }]);
+        toast.success('Message sent successfully');
+      } else {
+        toast.error('Failed to send message: not connected');
       }
     } catch (error) {
-      console.error("Error applying settings:", error);
-      toast.error('Failed to parse subscription. Please check the format.');
+      toast.error('Invalid JSON: ' + (error as Error).message);
     }
   };
   
-  const handleSendCustomMessage = () => {
+  const handleSetSubscription = () => {
     try {
-      const parsedMessage = JSON.parse(subscription);
-      persistentWebSocket.send(parsedMessage);
-      toast.success('Message sent');
+      const subscription = JSON.parse(customSubscription);
+      persistentWebSocket.setSubscription(subscription);
+      toast.success('Subscription updated');
     } catch (error) {
-      toast.error('Failed to parse message. Please check the format.');
+      toast.error('Invalid JSON: ' + (error as Error).message);
     }
   };
   
   const handleClearMessages = () => {
     setMessages([]);
-    setTickCount(0);
+    toast.info('Messages cleared');
   };
   
-  const handleToggleCollection = () => {
-    setIsCollecting(prev => !prev);
+  const handleClearTicks = () => {
+    setTicks([]);
+    persistentWebSocket.clearBuffer();
+    toast.info('Ticks cleared');
   };
   
-  const handleExportMessages = () => {
+  const handleConnect = () => {
+    localStorage.setItem('ws_url', wsUrl);
+    persistentWebSocket.setUrl(wsUrl);
+    persistentWebSocket.connect();
+    toast.info('Connecting to WebSocket...');
+  };
+  
+  const handleDisconnect = () => {
+    persistentWebSocket.disconnect();
+    toast.info('Disconnected from WebSocket');
+  };
+  
+  const handleExportData = (data: any, filename: string) => {
     try {
-      const dataStr = JSON.stringify(messages, null, 2);
-      const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
-      const exportFileName = `websocket-logs-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+      const jsonString = JSON.stringify(data, null, 2);
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
       
-      const linkElement = document.createElement('a');
-      linkElement.setAttribute('href', dataUri);
-      linkElement.setAttribute('download', exportFileName);
-      linkElement.click();
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
       
-      toast.success('Messages exported successfully');
+      toast.success(`Exported ${filename} successfully`);
     } catch (error) {
-      toast.error('Failed to export messages');
+      toast.error('Failed to export data: ' + (error as Error).message);
     }
   };
   
-  const handleCopyMessage = (message: string) => {
-    navigator.clipboard.writeText(message);
-    toast.success('Copied to clipboard');
-  };
-  
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <div className="flex justify-between items-center">
-          <div>
-            <CardTitle>WebSocket Debug</CardTitle>
-            <CardDescription>Monitor and control the WebSocket connection</CardDescription>
-          </div>
-          <WebSocketStatus showControls showTickInfo />
-        </div>
-      </CardHeader>
-      
-      <CardContent>
-        <Tabs defaultValue="connection">
-          <TabsList className="mb-4">
-            <TabsTrigger value="connection">Connection</TabsTrigger>
-            <TabsTrigger value="messages">Messages ({messages.length})</TabsTrigger>
-            <TabsTrigger value="subscription">Subscription</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="connection" className="space-y-4">
-            <div className="grid gap-2">
-              <Label htmlFor="ws-url">Current WebSocket URL</Label>
-              <Input
-                id="ws-url"
-                value={persistentWebSocket['config'].url}
-                disabled
-              />
-            </div>
-            
-            <div className="grid gap-2">
-              <Label htmlFor="custom-ws-url">Custom WebSocket URL</Label>
-              <Input
-                id="custom-ws-url"
-                placeholder="wss://example.com/ws"
-                value={customWsUrl}
-                onChange={(e) => setCustomWsUrl(e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">
-                Default: wss://ws.binaryws.com/websockets/v3?app_id=70997
-              </p>
-            </div>
-            
-            <div className="grid gap-2">
-              <Label>Connection Status</Label>
-              <div className="flex items-center gap-2 p-2 border rounded-md">
-                <WebSocketStatus />
-                <div className="ml-auto">
+    <div className="space-y-4">
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <CardTitle className="text-xl">WebSocket Debugging</CardTitle>
+          <WebSocketStatus showControls />
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="flex flex-col space-y-3">
+              <div className="grid grid-cols-12 gap-2">
+                <div className="col-span-8">
+                  <Label htmlFor="wsUrl">WebSocket URL</Label>
+                  <Input 
+                    id="wsUrl" 
+                    value={wsUrl} 
+                    onChange={e => setWsUrl(e.target.value)} 
+                    placeholder="WebSocket URL" 
+                  />
+                </div>
+                <div className="col-span-4 flex items-end space-x-2">
                   <Button 
-                    size="sm" 
-                    onClick={() => persistentWebSocket.connect()}
+                    onClick={handleConnect} 
+                    className="flex-1"
+                    variant="default"
                   >
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    Reconnect
+                    <PlayCircle className="h-4 w-4 mr-1.5" />
+                    Connect
+                  </Button>
+                  <Button 
+                    onClick={handleDisconnect} 
+                    className="flex-1"
+                    variant="outline"
+                  >
+                    <StopCircle className="h-4 w-4 mr-1.5" />
+                    Disconnect
                   </Button>
                 </div>
               </div>
             </div>
             
-            <div className="grid gap-2">
-              <Label>Statistics</Label>
-              <div className="grid grid-cols-2 gap-4 p-4 border rounded-md">
-                <div>
-                  <p className="text-sm font-medium">Ticks Received</p>
-                  <p className="text-2xl font-bold">{tickCount}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium">Messages Logged</p>
-                  <p className="text-2xl font-bold">{messages.length}</p>
-                </div>
-              </div>
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="messages">
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <Label>Real-time Messages</Label>
-                <div className="flex gap-2">
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
-                    onClick={handleToggleCollection}
-                  >
-                    {isCollecting ? (
-                      <>
-                        <Pause className="h-4 w-4 mr-1" />
-                        Pause
-                      </>
-                    ) : (
-                      <>
-                        <Play className="h-4 w-4 mr-1" />
-                        Resume
-                      </>
-                    )}
-                  </Button>
-                  
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
-                    onClick={handleClearMessages}
-                  >
-                    <Trash className="h-4 w-4 mr-1" />
-                    Clear
-                  </Button>
-                  
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
-                    onClick={handleExportMessages}
-                    disabled={messages.length === 0}
-                  >
-                    <Download className="h-4 w-4 mr-1" />
-                    Export
-                  </Button>
-                </div>
-              </div>
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="grid grid-cols-3 mb-2">
+                <TabsTrigger value="overview">Overview</TabsTrigger>
+                <TabsTrigger value="messages">Messages</TabsTrigger>
+                <TabsTrigger value="ticks">Ticks</TabsTrigger>
+              </TabsList>
               
-              <ScrollArea className="h-[400px] border rounded-md p-2 bg-muted/10">
-                {messages.length === 0 ? (
-                  <div className="text-center p-4 text-muted-foreground">
-                    No messages received yet
-                  </div>
-                ) : (
+              <TabsContent value="overview" className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    {messages.map((message, index) => (
-                      <div 
-                        key={index} 
-                        className="p-2 border rounded bg-card text-sm font-mono relative group"
-                      >
-                        <pre className="whitespace-pre-wrap overflow-auto break-all max-h-24">
-                          {message}
-                        </pre>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 h-6 w-6"
-                          onClick={() => handleCopyMessage(message)}
-                        >
-                          <Copy className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    ))}
-                    <div ref={messagesEndRef} />
+                    <Label htmlFor="customSubscription">Subscription</Label>
+                    <div className="flex space-x-2">
+                      <Input 
+                        id="customSubscription" 
+                        value={customSubscription} 
+                        onChange={e => setCustomSubscription(e.target.value)} 
+                        placeholder='{"ticks": "R_10"}'
+                      />
+                      <Button onClick={handleSetSubscription}>
+                        <Send className="h-4 w-4 mr-1.5" />
+                        Subscribe
+                      </Button>
+                    </div>
                   </div>
-                )}
-              </ScrollArea>
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="subscription" className="space-y-4">
-            <div className="grid gap-2">
-              <Label htmlFor="subscription">Custom Subscription / Message</Label>
-              <Textarea
-                id="subscription"
-                className="font-mono text-sm min-h-32"
-                placeholder='{ "ticks": "R_100" }'
-                value={subscription}
-                onChange={(e) => setSubscription(e.target.value)}
-                rows={8}
-              />
-              <p className="text-xs text-muted-foreground">
-                Enter a JSON object to subscribe to ticks or send custom message
-              </p>
-            </div>
-            
-            <div className="flex justify-end space-x-2">
-              <Button
-                variant="outline"
-                onClick={handleSendCustomMessage}
-              >
-                Send Custom Message
-              </Button>
-              <Button onClick={handleApplySettings}>
-                Apply Subscription
-              </Button>
-            </div>
-            
-            <div className="border rounded-md p-4 bg-muted/10">
-              <p className="text-sm font-medium mb-2">Common Subscriptions</p>
-              <div className="grid grid-cols-2 gap-2">
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => setSubscription(JSON.stringify({ ticks: 'R_10' }, null, 2))}
-                >
-                  Volatility 10
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => setSubscription(JSON.stringify({ ticks: 'R_25' }, null, 2))}
-                >
-                  Volatility 25
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => setSubscription(JSON.stringify({ ticks: 'R_50' }, null, 2))}
-                >
-                  Volatility 50
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => setSubscription(JSON.stringify({ ticks: 'R_75' }, null, 2))}
-                >
-                  Volatility 75
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => setSubscription(JSON.stringify({ ticks: 'R_100' }, null, 2))}
-                >
-                  Volatility 100
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => setSubscription(JSON.stringify({ forget_all: 'ticks' }, null, 2))}
-                >
-                  Unsubscribe All
-                </Button>
-              </div>
-            </div>
-          </TabsContent>
-        </Tabs>
-      </CardContent>
-      
-      <CardFooter className="flex justify-between">
-        <div className="text-xs text-muted-foreground">
-          App ID: 70997 | API Key: 7KKDlK9AUf3WNM3
-        </div>
-        <Button 
-          variant="default" 
-          onClick={() => {
-            persistentWebSocket.disconnect();
-            setTimeout(() => persistentWebSocket.connect(), 1000);
-          }}
-        >
-          Restart Connection
-        </Button>
-      </CardFooter>
-    </Card>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="customMessage">Custom Message</Label>
+                    <div className="flex space-x-2">
+                      <Input 
+                        id="customMessage" 
+                        value={customMessage} 
+                        onChange={e => setCustomMessage(e.target.value)} 
+                        placeholder='{"ping": 1}'
+                      />
+                      <Button onClick={handleSendMessage}>
+                        <Send className="h-4 w-4 mr-1.5" />
+                        Send
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="border rounded-md p-4">
+                  <h3 className="text-sm font-medium mb-2">Connection Statistics</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <div className="text-xs text-muted-foreground">Messages</div>
+                      <div className="font-medium">{messages.length}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">Ticks</div>
+                      <div className="font-medium">{ticks.length}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">Current Subscription</div>
+                      <div className="font-medium">
+                        {JSON.stringify(persistentWebSocket.getSubscription())}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">Last Tick</div>
+                      <div className="font-medium">
+                        {persistentWebSocket.getLatestTick()?.value.toFixed(5) || 'None'}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="messages" className="space-y-2">
+                <div className="flex justify-between mb-2">
+                  <h3 className="text-sm font-medium">WebSocket Messages</h3>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={handleClearMessages}>
+                      <Trash className="h-3.5 w-3.5 mr-1.5" />
+                      Clear
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => handleExportData(messages, `ws-messages-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.json`)}
+                    >
+                      <Download className="h-3.5 w-3.5 mr-1.5" />
+                      Export
+                    </Button>
+                  </div>
+                </div>
+                
+                <div className="border rounded-md overflow-hidden">
+                  <div className="max-h-[400px] overflow-y-auto p-1">
+                    {messages.length === 0 ? (
+                      <div className="text-center py-8 text-sm text-muted-foreground">
+                        No messages yet
+                      </div>
+                    ) : (
+                      <div className="space-y-1">
+                        {messages.map((msg, index) => (
+                          <div 
+                            key={index}
+                            className={`p-2 rounded-md text-xs font-mono overflow-hidden ${
+                              msg.direction === 'in' 
+                                ? 'bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-900' 
+                                : 'bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-900'
+                            }`}
+                          >
+                            <div className="flex justify-between items-center mb-1">
+                              <Badge variant="outline" className="text-[10px]">
+                                {msg.direction === 'in' ? 'RECEIVED' : 'SENT'}
+                              </Badge>
+                              <span className="text-[10px] text-muted-foreground">
+                                {new Date(msg.timestamp).toLocaleTimeString()}
+                              </span>
+                            </div>
+                            <pre className="whitespace-pre-wrap break-all">
+                              {JSON.stringify(msg.data, null, 2)}
+                            </pre>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="ticks" className="space-y-2">
+                <div className="flex justify-between mb-2">
+                  <h3 className="text-sm font-medium">Tick Data</h3>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={handleClearTicks}>
+                      <Trash className="h-3.5 w-3.5 mr-1.5" />
+                      Clear
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => handleExportData(ticks, `ticks-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.json`)}
+                    >
+                      <Download className="h-3.5 w-3.5 mr-1.5" />
+                      Export
+                    </Button>
+                  </div>
+                </div>
+                
+                <div className="border rounded-md overflow-hidden">
+                  <div className="max-h-[400px] overflow-y-auto">
+                    {ticks.length === 0 ? (
+                      <div className="text-center py-8 text-sm text-muted-foreground">
+                        No ticks yet
+                      </div>
+                    ) : (
+                      <table className="w-full border-collapse">
+                        <thead className="bg-muted/50">
+                          <tr>
+                            <th className="px-3 py-2 text-left text-xs">Time</th>
+                            <th className="px-3 py-2 text-left text-xs">Market</th>
+                            <th className="px-3 py-2 text-right text-xs">Value</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {ticks.map((tick, index) => (
+                            <tr key={index} className="border-t hover:bg-muted/30">
+                              <td className="px-3 py-1.5 text-xs">
+                                {new Date(tick.timestamp).toLocaleTimeString()}
+                              </td>
+                              <td className="px-3 py-1.5 text-xs font-mono">
+                                {tick.market}
+                              </td>
+                              <td className="px-3 py-1.5 text-xs font-mono text-right">
+                                {tick.value.toFixed(5)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                </div>
+              </TabsContent>
+            </Tabs>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 
