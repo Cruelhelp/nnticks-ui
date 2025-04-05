@@ -41,6 +41,24 @@ export interface TrainingHistoryItem {
   modelData?: any;
 }
 
+export interface EpochData {
+  id: string;
+  epochNumber: number;
+  batchSize: number;
+  completedAt: string;
+  trainingTime: number | null;
+  loss: number | null;
+  accuracy: number | null;
+  modelState: any | null;
+  sessionId: string | null;
+}
+
+export interface TickCollectionSettings {
+  enabled: boolean;
+  batchSize: number;
+  lastUpdated: string;
+}
+
 class TrainingService {
   private userId: string | null = null;
   
@@ -325,6 +343,208 @@ class TrainingService {
     } catch (error) {
       console.error('Error saving mission result:', error);
       return false;
+    }
+  }
+
+  // New methods for epoch management
+
+  async saveEpoch(epochData: {
+    epochNumber: number;
+    batchSize: number;
+    ticks: any[];
+    trainingTime?: number;
+    loss?: number;
+    accuracy?: number;
+    modelState?: any;
+    sessionId?: string;
+  }): Promise<string | null> {
+    if (!this.userId) return null;
+    
+    try {
+      // First, save the epoch information
+      const { data: epochRecord, error: epochError } = await supabase
+        .from('epochs')
+        .insert({
+          user_id: this.userId,
+          epoch_number: epochData.epochNumber,
+          batch_size: epochData.batchSize,
+          completed_at: new Date().toISOString(),
+          training_time: epochData.trainingTime || null,
+          loss: epochData.loss || null,
+          accuracy: epochData.accuracy || null,
+          model_state: epochData.modelState || null,
+          session_id: epochData.sessionId || null
+        })
+        .select('id')
+        .single();
+      
+      if (epochError) throw epochError;
+      
+      // Next, save the epoch's tick data
+      const { error: ticksError } = await supabase
+        .from('epoch_ticks')
+        .insert({
+          epoch_id: epochRecord.id,
+          ticks: epochData.ticks
+        });
+      
+      if (ticksError) throw ticksError;
+      
+      return epochRecord.id;
+    } catch (error) {
+      console.error('Error saving epoch:', error);
+      return null;
+    }
+  }
+
+  async getEpochs(limit: number = 20): Promise<EpochData[]> {
+    if (!this.userId) return [];
+    
+    try {
+      const { data, error } = await supabase
+        .from('epochs')
+        .select('*')
+        .eq('user_id', this.userId)
+        .order('epoch_number', { ascending: false })
+        .limit(limit);
+      
+      if (error) throw error;
+      
+      return (data || []).map(item => ({
+        id: item.id,
+        epochNumber: item.epoch_number,
+        batchSize: item.batch_size,
+        completedAt: item.completed_at,
+        trainingTime: item.training_time,
+        loss: item.loss,
+        accuracy: item.accuracy,
+        modelState: item.model_state,
+        sessionId: item.session_id
+      }));
+    } catch (error) {
+      console.error('Error getting epochs:', error);
+      return [];
+    }
+  }
+
+  async getEpochTicks(epochId: string): Promise<any[]> {
+    if (!this.userId) return [];
+    
+    try {
+      const { data, error } = await supabase
+        .from('epoch_ticks')
+        .select('ticks')
+        .eq('epoch_id', epochId)
+        .single();
+      
+      if (error) throw error;
+      
+      return data?.ticks || [];
+    } catch (error) {
+      console.error('Error getting epoch ticks:', error);
+      return [];
+    }
+  }
+
+  async getLatestEpoch(): Promise<EpochData | null> {
+    if (!this.userId) return null;
+    
+    try {
+      const { data, error } = await supabase
+        .from('epochs')
+        .select('*')
+        .eq('user_id', this.userId)
+        .order('epoch_number', { ascending: false })
+        .limit(1)
+        .single();
+      
+      if (error) {
+        if (error.code === 'PGRST116') {
+          // No records found
+          return null;
+        }
+        throw error;
+      }
+      
+      return {
+        id: data.id,
+        epochNumber: data.epoch_number,
+        batchSize: data.batch_size,
+        completedAt: data.completed_at,
+        trainingTime: data.training_time,
+        loss: data.loss,
+        accuracy: data.accuracy,
+        modelState: data.model_state,
+        sessionId: data.session_id
+      };
+    } catch (error) {
+      console.error('Error getting latest epoch:', error);
+      return null;
+    }
+  }
+
+  async saveTickCollectionSettings(settings: {
+    enabled: boolean;
+    batchSize: number;
+  }): Promise<boolean> {
+    if (!this.userId) return false;
+    
+    try {
+      const { error } = await supabase
+        .from('tick_collection_settings')
+        .upsert({
+          user_id: this.userId,
+          enabled: settings.enabled,
+          batch_size: settings.batchSize,
+          last_updated: new Date().toISOString()
+        });
+      
+      if (error) throw error;
+      
+      return true;
+    } catch (error) {
+      console.error('Error saving tick collection settings:', error);
+      return false;
+    }
+  }
+
+  async getTickCollectionSettings(): Promise<TickCollectionSettings | null> {
+    if (!this.userId) return null;
+    
+    try {
+      const { data, error } = await supabase
+        .from('tick_collection_settings')
+        .select('*')
+        .eq('user_id', this.userId)
+        .single();
+      
+      if (error) {
+        if (error.code === 'PGRST116') {
+          // No record found, create default settings
+          const defaultSettings = {
+            enabled: true,
+            batchSize: 100,
+            lastUpdated: new Date().toISOString()
+          };
+          
+          await this.saveTickCollectionSettings({
+            enabled: defaultSettings.enabled,
+            batchSize: defaultSettings.batchSize
+          });
+          
+          return defaultSettings;
+        }
+        throw error;
+      }
+      
+      return {
+        enabled: data.enabled,
+        batchSize: data.batch_size,
+        lastUpdated: data.last_updated
+      };
+    } catch (error) {
+      console.error('Error getting tick collection settings:', error);
+      return null;
     }
   }
 }

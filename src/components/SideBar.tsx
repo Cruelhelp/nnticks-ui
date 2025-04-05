@@ -1,6 +1,7 @@
 
-import { useEffect, useState } from 'react';
-import { Bell, Brain, ChartBar, Clock, CreditCard, Home, Users, Settings, BarChart, Gauge, User } from 'lucide-react';
+import React from 'react';
+import { Brain, ChartLine, BarChart, Trophy, Clock, Gavel, Settings, User, LineChart, Database } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface SideBarProps {
@@ -8,114 +9,40 @@ interface SideBarProps {
   onSectionChange: (section: string) => void;
 }
 
-const SideBar = ({ activeSection, onSectionChange }: SideBarProps) => {
-  const { user, userDetails } = useAuth();
-  const [showAdminPanel, setShowAdminPanel] = useState(false);
+const SideBar: React.FC<SideBarProps> = ({ activeSection, onSectionChange }) => {
+  const { userDetails } = useAuth();
+  const isAdmin = userDetails?.isAdmin || false;
   
-  useEffect(() => {
-    // Check if user is admin - fix the property access
-    if (userDetails?.isAdmin) {
-      setShowAdminPanel(true);
-    }
-  }, [userDetails]);
-  
-  const handleClick = (section: string) => {
-    onSectionChange(section);
-    
-    const event = new CustomEvent('navigate-section', { detail: section });
-    document.dispatchEvent(event);
-  };
-  
-  const isActive = (section: string) => activeSection === section;
-  
-  const menuItems = [
-    { id: 'home', label: 'Home', icon: Home },
-    { id: 'charts', label: 'Charts', icon: ChartBar },
-    { id: 'predictions', label: 'Predictions', icon: Gauge },
-    { id: 'training', label: 'Training', icon: Brain },
-    { id: 'history', label: 'History', icon: Clock },
-    { id: 'leaderboard', label: 'Leaderboard', icon: Users },
-    { id: 'neuralnet', label: 'Neural Net', icon: BarChart },
+  const sidebarLinks = [
+    { id: 'home', label: 'Home', icon: <User className="h-5 w-5" /> },
+    { id: 'charts', label: 'Charts', icon: <ChartLine className="h-5 w-5" /> },
+    { id: 'predictions', label: 'Predictions', icon: <BarChart className="h-5 w-5" /> },
+    { id: 'training', label: 'Training', icon: <Brain className="h-5 w-5" /> },
+    { id: 'epochs', label: 'Epochs', icon: <Database className="h-5 w-5" /> },
+    { id: 'history', label: 'History', icon: <Clock className="h-5 w-5" /> },
+    { id: 'leaderboard', label: 'Leaderboard', icon: <Trophy className="h-5 w-5" /> },
+    { id: 'neuralnet', label: 'Neural Net', icon: <LineChart className="h-5 w-5" /> },
+    { id: 'settings', label: 'Settings', icon: <Settings className="h-5 w-5" /> }
   ];
   
+  if (isAdmin) {
+    sidebarLinks.push({ id: 'admin', label: 'Admin', icon: <Gavel className="h-5 w-5" /> });
+  }
+  
   return (
-    <div className="min-h-full border-r bg-card w-64 overflow-hidden flex flex-col">
-      <div className="p-4 border-b">
-        <div className="flex items-center gap-3">
-          <div className="rounded-md bg-primary/10 p-1.5">
-            <Brain className="h-6 w-6 text-primary" />
-          </div>
-          <div>
-            <div className="font-semibold leading-none">NNticks</div>
-            <div className="text-xs text-muted-foreground mt-0.5">Neural Network Trading</div>
-          </div>
-        </div>
-      </div>
-      
-      <div className="py-2 flex-1 overflow-y-auto">
-        <div className="p-2">
-          {menuItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => handleClick(item.id)}
-              className={`w-full flex items-center gap-3 p-2 rounded-md transition-colors ${
-                isActive(item.id)
-                  ? 'bg-primary/10 text-primary hover:bg-primary/15'
-                  : 'hover:bg-muted'
-              }`}
-            >
-              <item.icon className="h-5 w-5" />
-              <span>{item.label}</span>
-            </button>
-          ))}
-        </div>
-        
-        <div className="p-2 pt-4">
-          <div className="text-xs font-medium text-muted-foreground ml-2 mb-2">Preferences</div>
-          <button
-            onClick={() => handleClick('settings')}
-            className={`w-full flex items-center gap-3 p-2 rounded-md transition-colors ${
-              isActive('settings')
-                ? 'bg-primary/10 text-primary hover:bg-primary/15'
-                : 'hover:bg-muted'
-            }`}
+    <div className="h-full w-60 bg-background border-r p-4">
+      <div className="flex flex-col space-y-1">
+        {sidebarLinks.map((link) => (
+          <Button
+            key={link.id}
+            variant={activeSection === link.id ? 'default' : 'ghost'}
+            className={`justify-start ${activeSection === link.id ? '' : 'text-muted-foreground'}`}
+            onClick={() => onSectionChange(link.id)}
           >
-            <Settings className="h-5 w-5" />
-            <span>Settings</span>
-          </button>
-          
-          {showAdminPanel && (
-            <button
-              onClick={() => handleClick('admin')}
-              className={`w-full flex items-center gap-3 p-2 rounded-md transition-colors ${
-                isActive('admin')
-                  ? 'bg-primary/10 text-primary hover:bg-primary/15'
-                  : 'hover:bg-muted'
-              }`}
-            >
-              <CreditCard className="h-5 w-5" />
-              <span>Admin Panel</span>
-            </button>
-          )}
-        </div>
-      </div>
-      
-      <div className="p-4 border-t bg-muted/50">
-        {user ? (
-          <div className="flex items-center gap-3">
-            <div className="flex-shrink-0 rounded-full bg-background p-1">
-              <User className="h-6 w-6" />
-            </div>
-            <div className="truncate">
-              <div className="font-medium truncate">{userDetails?.username || user.email}</div>
-              <div className="text-xs text-muted-foreground">
-                {userDetails?.proStatus ? 'Pro Account' : 'Standard Account'}
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="text-sm text-muted-foreground">Guest Mode</div>
-        )}
+            {link.icon}
+            <span className="ml-2">{link.label}</span>
+          </Button>
+        ))}
       </div>
     </div>
   );

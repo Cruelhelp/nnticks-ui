@@ -9,6 +9,106 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      epoch_ticks: {
+        Row: {
+          created_at: string
+          epoch_id: string
+          id: string
+          ticks: Json
+        }
+        Insert: {
+          created_at?: string
+          epoch_id: string
+          id?: string
+          ticks: Json
+        }
+        Update: {
+          created_at?: string
+          epoch_id?: string
+          id?: string
+          ticks?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "epoch_ticks_epoch_id_fkey"
+            columns: ["epoch_id"]
+            isOneToOne: false
+            referencedRelation: "epochs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      epochs: {
+        Row: {
+          accuracy: number | null
+          batch_size: number
+          completed_at: string
+          created_at: string
+          epoch_number: number
+          id: string
+          loss: number | null
+          model_state: Json | null
+          session_id: string | null
+          training_time: number | null
+          user_id: string
+        }
+        Insert: {
+          accuracy?: number | null
+          batch_size?: number
+          completed_at?: string
+          created_at?: string
+          epoch_number: number
+          id?: string
+          loss?: number | null
+          model_state?: Json | null
+          session_id?: string | null
+          training_time?: number | null
+          user_id: string
+        }
+        Update: {
+          accuracy?: number | null
+          batch_size?: number
+          completed_at?: string
+          created_at?: string
+          epoch_number?: number
+          id?: string
+          loss?: number | null
+          model_state?: Json | null
+          session_id?: string | null
+          training_time?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "epochs_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "training_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tick_collection_settings: {
+        Row: {
+          batch_size: number
+          enabled: boolean
+          last_updated: string
+          user_id: string
+        }
+        Insert: {
+          batch_size?: number
+          enabled?: boolean
+          last_updated?: string
+          user_id: string
+        }
+        Update: {
+          batch_size?: number
+          enabled?: boolean
+          last_updated?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       ticks: {
         Row: {
           created_at: string

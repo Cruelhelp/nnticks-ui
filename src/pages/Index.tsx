@@ -14,6 +14,8 @@ import NeuralNet from '@/components/NeuralNet';
 import DebugTools from '@/components/DebugTools';
 import Account from '@/components/Account';
 import AdminPanel from '@/components/AdminPanel';
+import Epochs from '@/components/Epochs';
+import EpochManager from '@/components/EpochManager';
 import Splash from './Splash';
 import { useSettings } from '@/hooks/useSettings';
 import { useAuth } from '@/contexts/AuthContext';
@@ -153,6 +155,8 @@ const Index = () => {
         return <Predictions />;
       case 'training':
         return <Training />;
+      case 'epochs':
+        return <Epochs />;
       case 'history':
         return <History />;
       case 'leaderboard':
@@ -191,6 +195,12 @@ const Index = () => {
                 activeSection={activeSection} 
                 onSectionChange={handleSectionChange} 
               />
+              
+              {!isMobile && (
+                <div className="mt-4 px-2">
+                  <EpochManager compact showControls showSettings={false} />
+                </div>
+              )}
             </div>
           )}
           
