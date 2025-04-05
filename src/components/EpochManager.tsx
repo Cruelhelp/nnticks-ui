@@ -1,15 +1,15 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Brain, Activity, Pause, Play, RotateCcw, Settings, Save } from 'lucide-react';
+import { Brain, Activity, Pause, Play, RotateCcw, Settings, Save, Wifi } from 'lucide-react';
 import { useEpochCollection } from '@/hooks/useEpochCollection';
 import { neuralNetwork } from '@/lib/neuralNetwork';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
+import ConnectionStatus from './ConnectionStatus';
 import {
   Tooltip,
   TooltipContent,
@@ -97,6 +97,7 @@ const EpochManager: React.FC<EpochManagerProps> = ({
     }
   };
   
+  // Modified compact version to show WebSocket status
   if (compact) {
     return (
       <Card className={`${className} overflow-hidden`}>
@@ -106,9 +107,12 @@ const EpochManager: React.FC<EpochManagerProps> = ({
               <Brain className="h-4 w-4 text-primary" />
               <span className="text-sm font-medium">Epoch Collection</span>
             </div>
-            <span className="text-xs bg-muted px-2 py-0.5 rounded-full">
-              {isActive ? 'Active' : 'Inactive'}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs bg-muted px-2 py-0.5 rounded-full">
+                {isActive ? 'Active' : 'Inactive'}
+              </span>
+              <ConnectionStatus compact showTickInfo />
+            </div>
           </div>
           
           <div className="space-y-2">
@@ -149,14 +153,18 @@ const EpochManager: React.FC<EpochManagerProps> = ({
       </Card>
     );
   }
-  
+
+  // Add WebSocket status to the full version's card header
   return (
     <Card className={className}>
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2">
-          <Brain className="h-5 w-5 text-primary" />
-          Neural Network Epoch Collection
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2">
+            <Brain className="h-5 w-5 text-primary" />
+            Neural Network Epoch Collection
+          </CardTitle>
+          <ConnectionStatus compact showTickInfo />
+        </div>
         <CardDescription>
           Collecting and processing market data for neural network training
         </CardDescription>

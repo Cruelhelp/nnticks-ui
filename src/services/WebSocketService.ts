@@ -1,5 +1,5 @@
-
 import { toast } from 'sonner';
+import { BrowserEventEmitter } from '@/lib/utils';
 
 export interface TickData {
   timestamp: string;
@@ -15,13 +15,13 @@ export interface WSConfig {
 
 // Default connection settings
 const DEFAULT_CONFIG: WSConfig = {
-  url: "wss://ws.binaryws.com/websockets/v3?app_id=1089",
-  apiKey: "nPAKsP8mJBuLkvW",
+  url: "wss://ws.binaryws.com/websockets/v3?app_id=70997",
+  apiKey: "7KKDlK9AUf3WNM3",
   subscription: { ticks: 'R_10' }
 };
 
-// Browser-compatible EventEmitter implementation
-class BrowserEventEmitter {
+// Export BrowserEventEmitter for reuse
+export class BrowserEventEmitter {
   private events: Record<string, Function[]> = {};
 
   on(event: string, listener: Function): void {
@@ -54,11 +54,13 @@ export class WebSocketService {
   private reconnectTimeout: NodeJS.Timeout | null = null;
   private eventEmitter: BrowserEventEmitter = new BrowserEventEmitter();
   private autoReconnect: boolean = true;
-  private maxReconnectAttempts: number = 5;
+  private maxReconnectAttempts: number = 10; // Increased from 5
   private reconnectAttempts: number = 0;
   private lastMessageTime: number = 0;
   private ticks: TickData[] = [];
   private connectionStatus: 'disconnected' | 'connecting' | 'connected' | 'error' = 'disconnected';
+  private heartbeatInterval: NodeJS.Timeout | null = null;
+  private pingTimeout: NodeJS.Timeout | null = null;
   
   constructor(config: Partial<WSConfig> = {}) {
     this._config = { ...DEFAULT_CONFIG, ...config };
@@ -70,10 +72,11 @@ export class WebSocketService {
   }
 
   public updateConfig(config: Partial<WSConfig>): void {
+    const wasConnected = this.isConnected();
     this._config = { ...this._config, ...config };
     
     // Reconnect if already connected to apply new config
-    if (this.isConnected()) {
+    if (wasConnected) {
       this.disconnect();
       setTimeout(() => this.connect(), 100);
     }
@@ -84,11 +87,14 @@ export class WebSocketService {
       return false; // Already connected or connecting
     }
     
+    // Clean up any previous connection
+    this.cleanup();
+    
     this.connectionStatus = 'connecting';
     this.emitEvent('statusChange', this.connectionStatus);
     
     try {
-      console.log(`Connecting to WebSocket: ${this._config.url}`);
+      console.log(`[WebSocketService] Connecting to WebSocket: ${this._config.url}`);
       this.socket = new WebSocket(this._config.url);
       
       this.socket.onopen = this.handleOpen.bind(this);
@@ -96,26 +102,27 @@ export class WebSocketService {
       this.socket.onerror = this.handleError.bind(this);
       this.socket.onclose = this.handleClose.bind(this);
       
+      // Set up connection timeout
+      this.setConnectionTimeout();
+      
       return true;
     } catch (err) {
-      console.error('Error creating WebSocket:', err);
+      console.error('[WebSocketService] Error creating WebSocket:', err);
       this.handleError(err as Event);
       return false;
     }
   }
 
   public disconnect(): void {
-    if (!this.socket) return;
-    
     this.autoReconnect = false; // Prevent auto reconnect on manual disconnect
+    this.cleanup();
     
-    if (this.reconnectTimeout) {
-      clearTimeout(this.reconnectTimeout);
-      this.reconnectTimeout = null;
-    }
-    
-    if (this.socket.readyState === WebSocket.OPEN || this.socket.readyState === WebSocket.CONNECTING) {
-      this.socket.close();
+    if (this.socket && (this.socket.readyState === WebSocket.OPEN || this.socket.readyState === WebSocket.CONNECTING)) {
+      try {
+        this.socket.close();
+      } catch (e) {
+        console.error('[WebSocketService] Error closing socket:', e);
+      }
     }
     
     this.socket = null;
@@ -123,14 +130,82 @@ export class WebSocketService {
     this.emitEvent('statusChange', this.connectionStatus);
   }
 
+  private cleanup(): void {
+    // Clear all timers
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = null;
+    }
+    
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = null;
+    }
+    
+    if (this.pingTimeout) {
+      clearTimeout(this.pingTimeout);
+      this.pingTimeout = null;
+    }
+  }
+  
+  private setConnectionTimeout(): void {
+    // Connection timeout to detect hanging connections
+    const connectionTimeout = setTimeout(() => {
+      if (this.socket && this.socket.readyState === WebSocket.CONNECTING) {
+        console.log('[WebSocketService] Connection timeout, closing socket');
+        this.socket.close();
+        this.handleClose({ code: 4000, reason: 'Connection timeout', wasClean: false } as CloseEvent);
+      }
+    }, 10000); // 10 second timeout
+    
+    // Clear timeout when connected
+    this.once('statusChange', (status: string) => {
+      if (status === 'connected') {
+        clearTimeout(connectionTimeout);
+      }
+    });
+  }
+  
+  private startHeartbeat(): void {
+    // Clear any existing heartbeat
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+    }
+    
+    // Send ping every 30 seconds to keep connection alive
+    this.heartbeatInterval = setInterval(() => {
+      if (this.isConnected()) {
+        this.send({ ping: 1 });
+        
+        // Set a timeout to check if we got a pong
+        if (this.pingTimeout) {
+          clearTimeout(this.pingTimeout);
+        }
+        
+        this.pingTimeout = setTimeout(() => {
+          console.log('[WebSocketService] Ping timeout, reconnecting');
+          this.disconnect();
+          this.autoReconnect = true;
+          this.connect();
+        }, 5000); // Wait 5 seconds for pong
+      }
+    }, 30000);
+  }
+
   public send(message: object | string): boolean {
     if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
+      console.log('[WebSocketService] Cannot send, socket not open');
       return false;
     }
     
-    const messageStr = typeof message === 'string' ? message : JSON.stringify(message);
-    this.socket.send(messageStr);
-    return true;
+    try {
+      const messageStr = typeof message === 'string' ? message : JSON.stringify(message);
+      this.socket.send(messageStr);
+      return true;
+    } catch (err) {
+      console.error('[WebSocketService] Error sending message:', err);
+      return false;
+    }
   }
 
   public setSubscription(subscription: object): void {
@@ -147,6 +222,15 @@ export class WebSocketService {
 
   public off(event: string, callback: Function): void {
     this.eventEmitter.off(event, callback);
+  }
+  
+  public once(event: string, callback: Function): void {
+    const onceWrapper = (...args: any[]) => {
+      this.off(event, onceWrapper);
+      callback(...args);
+    };
+    
+    this.on(event, onceWrapper);
   }
 
   public isConnected(): boolean {
@@ -175,12 +259,15 @@ export class WebSocketService {
   }
   
   private handleOpen(event: Event): void {
-    console.log('WebSocket connected');
+    console.log('[WebSocketService] WebSocket connected');
     this.connectionStatus = 'connected';
     this.emitEvent('statusChange', this.connectionStatus);
     this.emitEvent('open', event);
     this.reconnectAttempts = 0;
     this.lastMessageTime = Date.now();
+    
+    // Start heartbeat
+    this.startHeartbeat();
     
     // Send subscription
     if (this._config.subscription && Object.keys(this._config.subscription).length > 0) {
@@ -193,7 +280,10 @@ export class WebSocketService {
       this.lastMessageTime = Date.now();
       const data = JSON.parse(event.data);
       
-      if (data.ping || data.heartbeat) {
+      // Reset ping timeout if we get a pong
+      if (data.pong || (data.ping && this.pingTimeout)) {
+        clearTimeout(this.pingTimeout);
+        this.pingTimeout = null;
         return;
       }
       
@@ -237,33 +327,45 @@ export class WebSocketService {
       }
       
     } catch (err) {
-      console.error('Error parsing WebSocket message:', err, event.data);
+      console.error('[WebSocketService] Error parsing WebSocket message:', err, event.data);
       this.emitEvent('error', err);
     }
   }
   
   private handleError(event: Event): void {
-    console.error('WebSocket error:', event);
+    console.error('[WebSocketService] WebSocket error:', event);
     this.connectionStatus = 'error';
     this.emitEvent('statusChange', this.connectionStatus);
     this.emitEvent('error', event);
   }
   
   private handleClose(event: CloseEvent): void {
-    console.log('WebSocket closed:', event.code, event.reason);
+    console.log('[WebSocketService] WebSocket closed:', event.code, event.reason);
+    this.cleanup(); // Clear all timers
+    
     this.connectionStatus = 'disconnected';
     this.emitEvent('statusChange', this.connectionStatus);
     this.emitEvent('close', event);
     
     // Attempt to reconnect if auto-reconnect is enabled
-    if (this.autoReconnect && this.reconnectAttempts < this.maxReconnectAttempts) {
-      console.log(`Attempting to reconnect in 5000ms (${this.reconnectAttempts + 1}/${this.maxReconnectAttempts})`);
-      
-      this.reconnectTimeout = setTimeout(() => {
-        this.reconnectAttempts++;
-        this.connect();
-      }, 5000);
+    if (this.autoReconnect) {
+      this.scheduleReconnect();
     }
+  }
+  
+  private scheduleReconnect(): void {
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      console.log('[WebSocketService] Max reconnect attempts reached');
+      return;
+    }
+    
+    const delay = Math.min(30000, 5000 * Math.pow(1.5, this.reconnectAttempts));
+    console.log(`[WebSocketService] Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts + 1}/${this.maxReconnectAttempts})`);
+    
+    this.reconnectTimeout = setTimeout(() => {
+      this.reconnectAttempts++;
+      this.connect();
+    }, delay);
   }
   
   private emitEvent(event: string, data: any): void {
@@ -275,4 +377,6 @@ export class WebSocketService {
 export const webSocketService = new WebSocketService();
 
 // Initialize connection on service creation
-webSocketService.connect();
+window.addEventListener('load', () => {
+  webSocketService.connect();
+});

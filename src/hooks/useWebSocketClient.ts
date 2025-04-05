@@ -1,6 +1,6 @@
-
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { webSocketService, TickData } from '@/services/WebSocketService';
+import { wsManager } from '@/services/WebSocketManager';
+import { TickData } from '@/types/chartTypes';
 
 interface WebSocketHookOptions {
   autoConnect?: boolean;
@@ -21,11 +21,11 @@ export function useWebSocketClient(options: WebSocketHookOptions = {}) {
     onError,
   } = options;
   
-  const [isConnected, setIsConnected] = useState(webSocketService.isConnected());
-  const [ticks, setTicks] = useState<TickData[]>(webSocketService.getTicks());
-  const [latestTick, setLatestTick] = useState<TickData | null>(webSocketService.getLatestTick());
-  const [connectionStatus, setConnectionStatus] = useState(webSocketService.getStatus());
-  const [hasRecentData, setHasRecentData] = useState(webSocketService.hasRecentData());
+  const [isConnected, setIsConnected] = useState(wsManager.isConnected());
+  const [ticks, setTicks] = useState<TickData[]>(wsManager.getTicks());
+  const [latestTick, setLatestTick] = useState<TickData | null>(wsManager.getLatestTick());
+  const [connectionStatus, setConnectionStatus] = useState(wsManager.getStatus());
+  const [hasRecentData, setHasRecentData] = useState(wsManager.hasRecentData());
   
   const callbacksRef = useRef({
     onMessage,
@@ -51,15 +51,15 @@ export function useWebSocketClient(options: WebSocketHookOptions = {}) {
     };
     
     const handleTick = (tick: TickData) => {
-      setTicks(webSocketService.getTicks());
+      setTicks(wsManager.getTicks());
       setLatestTick(tick);
-      setHasRecentData(webSocketService.hasRecentData());
+      setHasRecentData(wsManager.hasRecentData());
       callbacksRef.current.onTick?.(tick);
     };
     
     const handleStatusChange = (status: string) => {
       setConnectionStatus(status);
-      setIsConnected(webSocketService.isConnected());
+      setIsConnected(wsManager.isConnected());
       callbacksRef.current.onStatusChange?.(status);
     };
     
@@ -68,42 +68,45 @@ export function useWebSocketClient(options: WebSocketHookOptions = {}) {
     };
     
     // Add event listeners
-    webSocketService.on('message', handleMessage);
-    webSocketService.on('tick', handleTick);
-    webSocketService.on('statusChange', handleStatusChange);
-    webSocketService.on('error', handleError);
+    wsManager.on('message', handleMessage);
+    wsManager.on('tick', handleTick);
+    wsManager.on('statusChange', handleStatusChange);
+    wsManager.on('error', handleError);
     
     // Handle initial subscription if provided
     if (subscription && Object.keys(subscription).length > 0) {
-      webSocketService.setSubscription(subscription);
+      wsManager.setSubscription(subscription);
     }
     
     // Connect if requested and not already connected
-    if (autoConnect && !webSocketService.isConnected()) {
-      webSocketService.connect();
+    if (autoConnect && !wsManager.isConnected()) {
+      wsManager.connect();
     }
     
     // Check for recent data periodically
     const intervalId = setInterval(() => {
-      setHasRecentData(webSocketService.hasRecentData());
+      setHasRecentData(wsManager.hasRecentData());
     }, 1000);
     
     // Clean up event listeners on unmount
     return () => {
-      webSocketService.off('message', handleMessage);
-      webSocketService.off('tick', handleTick);
-      webSocketService.off('statusChange', handleStatusChange);
-      webSocketService.off('error', handleError);
+      wsManager.off('message', handleMessage);
+      wsManager.off('tick', handleTick);
+      wsManager.off('statusChange', handleStatusChange);
+      wsManager.off('error', handleError);
       clearInterval(intervalId);
     };
   }, [autoConnect, subscription]);
   
   // Memoized API
   const api = useMemo(() => ({
-    connect: () => webSocketService.connect(),
-    disconnect: () => webSocketService.disconnect(),
-    send: (message: object | string) => webSocketService.send(message),
-    setSubscription: (sub: object) => webSocketService.setSubscription(sub),
+    connect: () => wsManager.connect(),
+    disconnect: () => {
+      console.log('[useWebSocketClient] Disconnect called, but connection will be maintained');
+      return true;
+    },
+    send: (message: object | string) => wsManager.send(message),
+    setSubscription: (sub: object) => wsManager.setSubscription(sub),
   }), []);
   
   return {

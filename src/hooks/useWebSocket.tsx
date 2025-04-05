@@ -4,7 +4,8 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useWebSocketClient } from './useWebSocketClient';
-import { webSocketService, TickData } from '@/services/WebSocketService';
+import { wsManager } from '@/services/WebSocketManager';
+import { TickData } from '@/types/chartTypes';
 
 interface WebSocketOptions {
   wsUrl?: string;
@@ -28,7 +29,7 @@ export const subscriptionFormats = {
 };
 
 export function useWebSocket({
-  wsUrl = "wss://ws.binaryws.com/websockets/v3?app_id=1089",
+  wsUrl = "wss://ws.binaryws.com/websockets/v3?app_id=70997",
   subscription = { ticks: 'R_10' },
   autoReconnect = true,
   onMessage,
@@ -44,7 +45,6 @@ export function useWebSocket({
     latestTick,
     hasRecentData,
     connect,
-    disconnect,
     send
   } = useWebSocketClient({
     autoConnect: false, // We'll handle connection manually for compatibility
@@ -60,21 +60,22 @@ export function useWebSocket({
   // Connect if URL is provided (mimicking legacy behavior)
   useEffect(() => {
     if (wsUrl) {
-      // Force reconnect with the new URL by disconnecting first
-      disconnect();
+      // Update WebSocket manager config
+      wsManager.updateConfig({ 
+        url: wsUrl, 
+        subscription
+      });
       
-      // Use setTimeout to ensure disconnect completes
-      setTimeout(() => {
-        // Update WebSocket service config
-        webSocketService.updateConfig({ url: wsUrl, subscription });
-        connect();
-      }, 100);
+      // Connect
+      connect();
     }
     
+    // This is a no-op function in our persistent model
     return () => {
-      disconnect();
+      // Don't disconnect, as we want to maintain the connection
+      console.log('[useWebSocket] Component unmounted, but connection will be maintained');
     };
-  }, [wsUrl, disconnect, connect]);
+  }, [wsUrl, connect, subscription]);
 
   // Maintain legacy API
   const legacyApi = {
@@ -87,7 +88,11 @@ export function useWebSocket({
     reconnectCount: 0, // Not tracked in new implementation
     socketAttempts: 0,  // Not tracked in new implementation
     connect,
-    disconnect,
+    disconnect: () => {
+      // This is now a no-op function that doesn't actually disconnect
+      console.log('[useWebSocket] Disconnect called, but connection will be maintained');
+      return true;
+    },
     send
   };
 
