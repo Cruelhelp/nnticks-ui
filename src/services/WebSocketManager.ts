@@ -32,7 +32,7 @@ class WebSocketManager {
     this.startConnectionMonitor();
     
     // Initial connection
-    this.connect();
+    this.connectToWebSocket();
     
     // Listen for page visibility changes to handle mobile/tab switching
     if (typeof document !== 'undefined') {
@@ -61,7 +61,7 @@ class WebSocketManager {
     if (document.visibilityState === 'visible') {
       console.log('[WebSocketManager] Page visible, checking connection');
       if (!webSocketService.isConnected()) {
-        this.connect();
+        this.connectToWebSocket();
       }
     } else {
       console.log('[WebSocketManager] Page hidden, connection will be maintained');
@@ -71,7 +71,7 @@ class WebSocketManager {
   // Handle browser going online
   private handleOnline = () => {
     console.log('[WebSocketManager] Network online, reconnecting');
-    this.connect();
+    this.connectToWebSocket();
   };
   
   // Handle browser going offline
@@ -99,14 +99,14 @@ class WebSocketManager {
       // Check if connection is lost or if we haven't received data for too long
       if (!webSocketService.isConnected()) {
         console.log('[WebSocketManager] Connection lost, reconnecting...');
-        this.connect();
+        this.connectToWebSocket();
       } else {
         // Check for stale connection (no messages in 30 seconds)
         const now = Date.now();
         if (now - this.lastMessageTime > 30000) {
           console.log('[WebSocketManager] Connection stale, reconnecting...');
           webSocketService.disconnect();
-          this.connect();
+          this.connectToWebSocket();
         }
       }
     }, 10000); // Check every 10 seconds
@@ -179,11 +179,11 @@ class WebSocketManager {
     
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
-      this.connect();
+      this.connectToWebSocket();
     }, delay);
   }
   
-  private connect() {
+  private connectToWebSocket() {
     if (webSocketService.isConnected()) {
       console.log('[WebSocketManager] Already connected');
       return true;
@@ -203,6 +203,10 @@ class WebSocketManager {
     }
     
     return result;
+  }
+  
+  public connect() {
+    return this.connectToWebSocket();
   }
   
   public updateConfig(newConfig: Partial<typeof this.config>) {
