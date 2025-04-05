@@ -20,34 +20,6 @@ const DEFAULT_CONFIG: WSConfig = {
   subscription: { ticks: 'R_10' }
 };
 
-// Export BrowserEventEmitter for reuse
-export class BrowserEventEmitter {
-  private events: Record<string, Function[]> = {};
-
-  on(event: string, listener: Function): void {
-    if (!this.events[event]) {
-      this.events[event] = [];
-    }
-    this.events[event].push(listener);
-  }
-
-  off(event: string, listener: Function): void {
-    if (!this.events[event]) return;
-    this.events[event] = this.events[event].filter(l => l !== listener);
-  }
-
-  emit(event: string, ...args: any[]): void {
-    if (!this.events[event]) return;
-    this.events[event].forEach(listener => {
-      try {
-        listener(...args);
-      } catch (err) {
-        console.error(`Error in event listener for ${event}:`, err);
-      }
-    });
-  }
-}
-
 export class WebSocketService {
   private _config: WSConfig;
   private socket: WebSocket | null = null;
@@ -209,10 +181,15 @@ export class WebSocketService {
   }
 
   public setSubscription(subscription: object): void {
-    this._config.subscription = subscription;
+    // Ensure the subscription has at least a 'ticks' property if empty
+    if (Object.keys(subscription).length === 0) {
+      this._config.subscription = { ticks: 'R_10' };
+    } else {
+      this._config.subscription = subscription;
+    }
     
     if (this.isConnected()) {
-      this.send(subscription);
+      this.send(this._config.subscription);
     }
   }
 

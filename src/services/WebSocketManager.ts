@@ -224,8 +224,13 @@ class WebSocketManager {
   }
   
   public setSubscription(subscription: object) {
-    this.config.subscription = subscription;
-    webSocketService.setSubscription(subscription);
+    // Ensure the subscription has at least a 'ticks' property if empty
+    if (Object.keys(subscription).length === 0) {
+      this.config.subscription = { ticks: 'R_10' };
+    } else {
+      this.config.subscription = subscription;
+    }
+    webSocketService.setSubscription(this.config.subscription);
   }
   
   public getStatus() {
