@@ -1,4 +1,5 @@
-import { EventEmitter } from 'events';
+
+import { BrowserEventEmitter } from '@/lib/utils';
 
 export interface TickData {
   value: number;
@@ -6,7 +7,7 @@ export interface TickData {
   timestamp: number;
 }
 
-export class PersistentWebSocketService extends EventEmitter {
+export class PersistentWebSocketService extends BrowserEventEmitter {
   private socket: WebSocket | null = null;
   private url: string = 'wss://ws.binaryws.com/websockets/v3?app_id=70997';
   private autoReconnect: boolean = true;

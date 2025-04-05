@@ -1,88 +1,75 @@
-
-import { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { epochCollectionService, EpochCollectionStatus } from '@/services/EpochCollectionService';
-import { toast } from 'sonner';
+import { useState, useEffect } from 'react';
+import { epochCollectionService, EpochData } from '@/services/EpochCollectionService';
 
 export function useEpochCollection() {
-  const { user } = useAuth();
-  const [status, setStatus] = useState<EpochCollectionStatus>(epochCollectionService.getStatus());
-  const [batchSize, setBatchSize] = useState<number>(epochCollectionService.getTickBatchSize());
-  const [isInitialized, setIsInitialized] = useState<boolean>(false);
+  const [epochs, setEpochs] = useState<EpochData[]>([]);
+  const [currentEpoch, setCurrentEpoch] = useState<number>(0);
+  const [isCollecting, setIsCollecting] = useState<boolean>(false);
+  const [batchSize, setBatchSize] = useState<number>(100);
   
-  // Set user ID in epoch service
   useEffect(() => {
-    if (user) {
-      epochCollectionService.setUserId(user.id);
-    } else {
-      epochCollectionService.setUserId(null);
-    }
-  }, [user]);
-  
-  // Load the batch size from the epoch service
-  useEffect(() => {
-    setBatchSize(epochCollectionService.getTickBatchSize());
-    setIsInitialized(true);
-  }, [user]);
-  
-  // Subscribe to epoch service updates
-  useEffect(() => {
-    const subscriberId = 'useEpochCollection-' + Math.random().toString(36).substring(7);
+    // Load initial state
+    const loadEpochs = async () => {
+      const loadedEpochs = await epochCollectionService.getEpochs();
+      setEpochs(loadedEpochs);
+      setCurrentEpoch(epochCollectionService.getCurrentEpoch());
+      setIsCollecting(epochCollectionService.isCollecting());
+      setBatchSize(epochCollectionService.getBatchSize());
+    };
     
-    epochCollectionService.subscribe(subscriberId, (newStatus) => {
-      setStatus(newStatus);
-    });
+    loadEpochs();
     
+    // Subscribe to epoch events
+    const handleEpochCompleted = (epoch: EpochData) => {
+      setEpochs(prevEpochs => [...prevEpochs, epoch]);
+      setCurrentEpoch(epochCollectionService.getCurrentEpoch());
+    };
+    
+    const handleStatusChange = (collecting: boolean) => {
+      setIsCollecting(collecting);
+    };
+    
+    // Add event listeners
+    epochCollectionService.on('epochCompleted', handleEpochCompleted);
+    epochCollectionService.on('statusChange', handleStatusChange);
+    
+    // Clean up event listeners
     return () => {
-      epochCollectionService.unsubscribe(subscriberId);
+      epochCollectionService.off('epochCompleted', handleEpochCompleted);
+      epochCollectionService.off('statusChange', handleStatusChange);
     };
   }, []);
   
-  // Start epoch collection
-  const startCollection = useCallback(async () => {
-    if (!user) {
-      toast.error('You must be logged in to start epoch collection');
-      return false;
-    }
-    
-    const success = await epochCollectionService.start(batchSize);
-    return success;
-  }, [user, batchSize]);
+  const startCollection = async (newBatchSize: number) => {
+    await epochCollectionService.startCollection(newBatchSize);
+    setIsCollecting(true);
+    setBatchSize(newBatchSize);
+  };
   
-  // Stop epoch collection
-  const stopCollection = useCallback(() => {
-    epochCollectionService.stop();
-  }, []);
+  const stopCollection = async () => {
+    await epochCollectionService.stopCollection();
+    setIsCollecting(false);
+  };
   
-  // Reset epoch collection
-  const resetCollection = useCallback(() => {
-    epochCollectionService.reset();
-  }, []);
+  const completeEpoch = async (results: { loss: number; accuracy: number; time: number }) => {
+    await epochCollectionService.completeEpoch(currentEpoch, results);
+    setCurrentEpoch(epochCollectionService.getCurrentEpoch());
+  };
   
-  // Update batch size
-  const updateBatchSize = useCallback(async (newBatchSize: number) => {
-    const success = await epochCollectionService.updateTickBatchSize(newBatchSize);
-    
-    if (success) {
-      setBatchSize(newBatchSize);
-      toast.success(`Batch size updated to ${newBatchSize}`);
-    } else {
-      toast.error('Failed to update batch size');
-    }
-    
-    return success;
-  }, []);
+  const clearEpochs = async () => {
+    await epochCollectionService.clearEpochs();
+    setEpochs([]);
+    setCurrentEpoch(0);
+  };
   
   return {
-    status,
+    epochs,
+    currentEpoch,
+    isCollecting,
     batchSize,
-    isInitialized,
-    isActive: status.active,
-    progress: status.progress,
-    epochsCompleted: status.epochsCompleted,
     startCollection,
     stopCollection,
-    resetCollection,
-    updateBatchSize
+    completeEpoch,
+    clearEpochs,
   };
 }

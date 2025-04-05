@@ -1,11 +1,10 @@
-
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { persistentWebSocket, TickData } from '@/services/PersistentWebSocketService';
 
 interface WebSocketHookOptions {
   autoConnect?: boolean;
   subscription?: object;
-  wsUrl?: string; // Added wsUrl property
+  wsUrl?: string;
   onMessage?: (data: any) => void;
   onTick?: (tick: TickData) => void;
   onStatusChange?: (status: string) => void;
@@ -33,7 +32,6 @@ export function usePersistentWebSocket(options: WebSocketHookOptions = {}) {
   const [connectionStatus, setConnectionStatus] = useState(persistentWebSocket.getStatus());
   const [hasRecentData, setHasRecentData] = useState(persistentWebSocket.hasRecentData());
   
-  // Maintain callbacks in a ref to avoid unnecessary re-renders
   const callbacksRef = useRef({
     onMessage,
     onTick,
@@ -43,7 +41,6 @@ export function usePersistentWebSocket(options: WebSocketHookOptions = {}) {
     onClose,
   });
   
-  // Update callbacks ref when props change
   useEffect(() => {
     callbacksRef.current = {
       onMessage,
@@ -55,7 +52,6 @@ export function usePersistentWebSocket(options: WebSocketHookOptions = {}) {
     };
   }, [onMessage, onTick, onStatusChange, onError, onOpen, onClose]);
   
-  // Set up event listeners
   useEffect(() => {
     const handleMessage = (data: any) => {
       callbacksRef.current.onMessage?.(data);
@@ -86,7 +82,6 @@ export function usePersistentWebSocket(options: WebSocketHookOptions = {}) {
       callbacksRef.current.onClose?.();
     };
     
-    // Add event listeners
     persistentWebSocket.on('message', handleMessage);
     persistentWebSocket.on('tick', handleTick);
     persistentWebSocket.on('statusChange', handleStatusChange);
@@ -94,27 +89,22 @@ export function usePersistentWebSocket(options: WebSocketHookOptions = {}) {
     persistentWebSocket.on('open', handleOpen);
     persistentWebSocket.on('close', handleClose);
     
-    // Set custom WebSocket URL if provided
     if (wsUrl) {
       persistentWebSocket.setUrl(wsUrl);
     }
     
-    // Handle initial subscription if provided
     if (subscription && Object.keys(subscription).length > 0) {
       persistentWebSocket.setSubscription(subscription);
     }
     
-    // Connect if requested and not already connected
     if (autoConnect && !persistentWebSocket.isConnected()) {
       persistentWebSocket.connect();
     }
     
-    // Check for recent data periodically
     const intervalId = setInterval(() => {
       setHasRecentData(persistentWebSocket.hasRecentData());
     }, 2000);
     
-    // Clean up event listeners on unmount
     return () => {
       console.log('[usePersistentWebSocket] Component unmounted, but connection will be maintained');
       persistentWebSocket.off('message', handleMessage);
@@ -127,7 +117,6 @@ export function usePersistentWebSocket(options: WebSocketHookOptions = {}) {
     };
   }, [autoConnect, subscription, wsUrl]);
   
-  // Memoized API
   const api = useMemo(() => ({
     connect: () => persistentWebSocket.connect(),
     disconnect: () => {

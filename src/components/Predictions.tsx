@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { neuralNetwork } from '@/lib/neuralNetwork';
 import { supabase } from '@/lib/supabase';
-import { useWebSocket } from '@/hooks/useWebSocket';
+import { useWebSocketClient } from '@/hooks/useWebSocket';
 import { PREDICTION_MODES, PredictionMode, PredictionPhase, PredictionType } from '@/types/chartTypes';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
@@ -38,6 +38,13 @@ interface PendingPrediction {
   tickPeriod: number;       // Number of ticks to wait
   ticksElapsed: number;     // Number of ticks elapsed during counting phase
   predictionType: PredictionType;
+}
+
+interface PredictionModeConfig {
+  timeframe: number;
+  window: number;
+  threshold: number;
+  predictionRate: number;
 }
 
 const NNNode = ({ id, active, x, y, intensity = 1 }: { id: string; active: boolean; x: number; y: number; intensity?: number }) => (
@@ -298,9 +305,9 @@ const Predictions = () => {
   const lastPredictionTimeRef = useRef<number>(0);
   const predictionRateRef = useRef<number>(15000);
   
-  const ws = useWebSocket({
-    autoConnect: true,
-    subscription: { ticks: 'R_10' },
+  const socket = useWebSocketClient({
+    wsUrl: 'wss://ws.binaryws.com/websockets/v3?app_id=70997',
+    subscription: { ticks: currentMarket },
     onMessage: (data) => {
       if (data.tick) {
         setCurrentPrice(data.tick.quote);
@@ -427,7 +434,7 @@ const Predictions = () => {
     
     lastPredictionTimeRef.current = Date.now();
     
-    const tickValues = ws.ticks.map(t => t.value);
+    const tickValues = socket.ticks.map(t => t.value);
     
     if (tickValues.length < 10) {
       return null;
@@ -453,7 +460,7 @@ const Predictions = () => {
         setHasError(true);
         setTimeout(() => setHasError(false), 5000);
       });
-  }, [currentPrice, ws.ticks, isBotRunning, predictionTimePeriod, predictionMode]);
+  }, [currentPrice, socket.ticks, isBotRunning, predictionTimePeriod, predictionMode]);
   
   const toggleBot = () => {
     if (isBotRunning) {
