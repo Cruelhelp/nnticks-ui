@@ -1,3 +1,4 @@
+
 // Add type definition for ModelTrainingResults
 export interface ModelTrainingResults {
   loss: number;
@@ -20,6 +21,7 @@ class EpochCollectionService extends BrowserEventEmitter {
   private isCollectingData: boolean = false;
   private batchSize: number = 100;
   private localStorageKey: string = 'epochCollection';
+  private progress: number = 0;
 
   constructor() {
     super();
@@ -92,6 +94,22 @@ class EpochCollectionService extends BrowserEventEmitter {
 
   public getBatchSize(): number {
     return this.batchSize;
+  }
+
+  public updateProgress(progress: number): void {
+    this.progress = progress;
+    this.emit('progress', progress);
+  }
+
+  public getProgress(): number {
+    return this.progress;
+  }
+
+  public clearEpochs(): void {
+    this.epochs = [];
+    this.currentEpoch = 0;
+    localStorage.removeItem(this.localStorageKey);
+    this.emit('epochsCleared');
   }
 
   private saveEpochs(): void {

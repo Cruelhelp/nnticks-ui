@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { neuralNetwork } from '@/lib/neuralNetwork';
 import { supabase } from '@/lib/supabase';
-import { useWebSocketClient } from '@/hooks/useWebSocket';
+import { useWebSocket } from '@/hooks/useWebSocket';
 import { PREDICTION_MODES, PredictionMode, PredictionPhase, PredictionType } from '@/types/chartTypes';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
@@ -305,7 +305,7 @@ const Predictions = () => {
   const lastPredictionTimeRef = useRef<number>(0);
   const predictionRateRef = useRef<number>(15000);
   
-  const socket = useWebSocketClient({
+  const socket = useWebSocket({
     wsUrl: 'wss://ws.binaryws.com/websockets/v3?app_id=70997',
     subscription: { ticks: currentMarket },
     onMessage: (data) => {
@@ -346,7 +346,7 @@ const Predictions = () => {
         clearInterval(autoIntervalRef.current);
       }
       
-      predictionRateRef.current = PREDICTION_MODES[predictionMode].predictionRate;
+      predictionRateRef.current = PREDICTION_MODES[predictionMode].predictionRate || 15000;
       
       autoIntervalRef.current = setInterval(generatePrediction, predictionRateRef.current);
       
@@ -482,6 +482,8 @@ const Predictions = () => {
             
             setIsBotRunning(true);
             toast.success(`Bot started - ${PREDICTION_MODES[predictionMode].mode} mode activated`);
+            
+            predictionRateRef.current = PREDICTION_MODES[predictionMode].predictionRate || 15000;
             
             autoIntervalRef.current = setInterval(generatePrediction, predictionRateRef.current);
             setTimeout(generatePrediction, 1000);
