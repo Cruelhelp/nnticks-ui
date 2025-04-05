@@ -166,10 +166,10 @@ class TrainingService {
     
     try {
       // Get current epochs count
-      const currentEpochs = await this.getAvailableEpochs();
+      const availableEpochs = await this.getAvailableEpochs();
       
       // Update epochs in user_epochs table
-      const newEpochs = currentEpochs + epochs;
+      const newEpochs = availableEpochs + epochs;
       
       const { error } = await supabase
         .from('user_epochs')
@@ -194,15 +194,15 @@ class TrainingService {
     
     try {
       // Get current epochs count
-      const currentEpochs = await this.getAvailableEpochs();
+      const availableEpochs = await this.getAvailableEpochs();
       
-      if (currentEpochs < epochs) {
-        toast.error(`Not enough epochs available. You have ${currentEpochs} but need ${epochs}.`);
+      if (availableEpochs < epochs) {
+        toast.error(`Not enough epochs available. You have ${availableEpochs} but need ${epochs}.`);
         throw new Error('Not enough epochs available');
       }
       
       // Update epochs in user_epochs table
-      const newEpochs = currentEpochs - epochs;
+      const newEpochs = availableEpochs - epochs;
       
       const { error } = await supabase
         .from('user_epochs')
@@ -218,7 +218,7 @@ class TrainingService {
       return newEpochs;
     } catch (error) {
       console.error('Error using epochs:', error);
-      return currentEpochs;
+      return availableEpochs;
     }
   }
   
