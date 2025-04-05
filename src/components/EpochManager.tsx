@@ -191,11 +191,11 @@ const EpochManager: React.FC<EpochManagerProps> = ({
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
                 <span>Ticks collected</span>
-                <span>{status.currentCount} / {batchSize}</span>
+                <span>{typeof status === 'object' && status.currentCount ? status.currentCount : 0} / {batchSize}</span>
               </div>
               <Progress value={progress} className="h-2" />
               
-              {status.isProcessing && (
+              {typeof status === 'object' && status.isProcessing && (
                 <div className="mt-2 text-xs text-yellow-600 dark:text-yellow-400 animate-pulse">
                   Processing epoch data...
                 </div>

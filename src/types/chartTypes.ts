@@ -1,68 +1,40 @@
 
-export interface TickData {
-  timestamp: string | number;
-  value: number;
-  market: string;
-  symbol?: string;  // Optional symbol property for compatibility
-}
-
-export interface ProcessedTickData {
-  timestamp: number;
-  price: number;
-  volume?: number;
-  symbol: string;
-  epoch?: number;
-  quote?: number;
-  open?: number;
-  high?: number;
-  low?: number;
-  close?: number;
-}
-
-export interface BrokerConfig {
-  broker: string;
-  wsUrl: string;
-  apiKey: string;
-  subscription: object;
-}
-
-// Define valid prediction phases
-export type PredictionPhase = 'warning' | 'counting' | 'completed';
-
-// Define valid prediction types
-export type PredictionType = 'rise' | 'fall' | 'even' | 'odd';
-
-// Define prediction modes
-export type PredictionMode = 'fast' | 'balanced' | 'strict';
+export type PredictionType = "rise" | "fall" | "even" | "odd";
+export type PredictionPhase = "warning" | "counting" | "completed";
+export type PredictionMode = "conservative" | "balanced" | "aggressive";
 
 export interface PredictionModeConfig {
-  mode: PredictionMode;
+  mode: string;
+  timeframe: number;
+  window: number;
+  threshold: number;
   minConfidence: number;
-  description: string;
+  predictionRate: number; // Added this property to fix the errors
 }
 
 export const PREDICTION_MODES: Record<PredictionMode, PredictionModeConfig> = {
-  fast: {
-    mode: 'fast',
-    minConfidence: 0.51, // 51% minimum confidence
-    description: 'More frequent predictions with lower confidence threshold'
+  conservative: {
+    mode: "Conservative",
+    timeframe: 5,
+    window: 20,
+    threshold: 0.7,
+    minConfidence: 0.8,
+    predictionRate: 30000
   },
   balanced: {
-    mode: 'balanced',
-    minConfidence: 0.65, // 65% minimum confidence
-    description: 'Balanced approach between frequency and accuracy'
+    mode: "Balanced",
+    timeframe: 3,
+    window: 15,
+    threshold: 0.6,
+    minConfidence: 0.65,
+    predictionRate: 15000
   },
-  strict: {
-    mode: 'strict',
-    minConfidence: 0.80, // 80% minimum confidence
-    description: 'Fewer but higher confidence predictions'
+  aggressive: {
+    mode: "Aggressive",
+    timeframe: 1,
+    window: 10,
+    threshold: 0.5,
+    minConfidence: 0.55,
+    predictionRate: 7000
   }
-};
-
-export const brokerWebSockets: { [key: string]: string } = {
-  deriv: 'wss://frontend.binaryws.com/websockets/v3',
-  iqOption: 'wss://iqoption.com/api/ws',
-  binance: 'wss://stream.binance.com:9443/ws',
-  metatrader: 'wss://mt4.websocket.api', // Placeholder
-  binary: 'wss://ws.binaryws.com/websockets/v3?app_id=1089'
 };

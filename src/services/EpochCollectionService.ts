@@ -1,4 +1,6 @@
 
+import { BrowserEventEmitter } from '@/lib/utils';
+
 // Add type definition for ModelTrainingResults
 export interface ModelTrainingResults {
   loss: number;
@@ -12,8 +14,6 @@ export interface EpochData {
   endTime?: number;
   results?: ModelTrainingResults;
 }
-
-import { BrowserEventEmitter } from '@/lib/utils';
 
 class EpochCollectionService extends BrowserEventEmitter {
   private epochs: EpochData[] = [];

@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { persistentWebSocket, TickData } from '@/services/PersistentWebSocketService';
 
