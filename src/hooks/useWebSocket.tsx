@@ -63,7 +63,7 @@ export function useWebSocket({
       // Update WebSocket manager config
       wsManager.updateConfig({ 
         url: wsUrl, 
-        subscription
+        subscription: ensureTicksProperty(subscription)
       });
       
       // Connect
@@ -76,6 +76,14 @@ export function useWebSocket({
       console.log('[useWebSocket] Component unmounted, but connection will be maintained');
     };
   }, [wsUrl, connect, subscription]);
+
+  // Helper function to ensure subscription has ticks property
+  const ensureTicksProperty = (sub: object): { ticks: string } & object => {
+    if (!sub || Object.keys(sub).length === 0 || !('ticks' in sub)) {
+      return { ...sub, ticks: 'R_10' };
+    }
+    return sub as { ticks: string } & object;
+  };
 
   // Maintain legacy API
   const legacyApi = {

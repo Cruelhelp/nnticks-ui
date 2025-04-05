@@ -1,4 +1,3 @@
-
 import { toast } from 'sonner';
 import { webSocketService } from './WebSocketService';
 import { TickData } from '@/types/chartTypes';
@@ -184,9 +183,7 @@ class WebSocketManager {
     }, delay);
   }
   
-  // Public API
-  
-  public connect() {
+  private connect() {
     if (webSocketService.isConnected()) {
       console.log('[WebSocketManager] Already connected');
       return true;
@@ -224,13 +221,18 @@ class WebSocketManager {
   }
   
   public setSubscription(subscription: object) {
-    // Ensure the subscription has at least a 'ticks' property if empty
-    if (Object.keys(subscription).length === 0) {
-      this.config.subscription = { ticks: 'R_10' };
-    } else {
-      this.config.subscription = subscription;
+    // Ensure the subscription has a 'ticks' property
+    const ensuredSubscription = this.ensureTicksProperty(subscription);
+    this.config.subscription = ensuredSubscription;
+    webSocketService.setSubscription(ensuredSubscription);
+  }
+  
+  // Helper method to ensure subscription object has ticks property
+  private ensureTicksProperty(subscription: object): { ticks: string } & object {
+    if (!subscription || Object.keys(subscription).length === 0 || !('ticks' in subscription)) {
+      return { ...subscription, ticks: 'R_10' };
     }
-    webSocketService.setSubscription(this.config.subscription);
+    return subscription as { ticks: string } & object;
   }
   
   public getStatus() {
