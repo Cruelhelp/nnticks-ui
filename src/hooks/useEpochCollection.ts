@@ -138,8 +138,12 @@ export function useEpochCollection() {
         const tickValues = ticks.slice(-batchSize).map(t => t.value);
         
         // Train the neural network with this batch
-        // Fix: Cast the return value to TrainingResult
-        const trainingResult = await neuralNetwork.train(tickValues) as TrainingResult;
+        // Fix: Properly convert number to TrainingResult type
+        const accuracy = await neuralNetwork.train(tickValues);
+        const trainingResult: TrainingResult = {
+          loss: neuralNetwork.getLastLoss(),
+          accuracy: accuracy
+        };
         
         const endTime = performance.now();
         const trainingTime = endTime - startTime;
@@ -175,7 +179,6 @@ export function useEpochCollection() {
     
     return () => {
       // Clean up
-      // Fix: Add the second parameter to off() call
       socket.off('tick', ticksProcessor);
     };
   }, [user, socket, batchSize, progress]);
