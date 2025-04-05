@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -293,7 +292,6 @@ const Training = () => {
   const [showTrainingAnimation, setShowTrainingAnimation] = useState(false);
   const [neuralNetworkWeights, setNeuralNetworkWeights] = useState<number[][]>([]);
   
-  // Set up training service user ID
   useEffect(() => {
     if (user) {
       trainingService.setUserId(user.id);
@@ -302,7 +300,6 @@ const Training = () => {
     }
   }, [user]);
   
-  // Define level thresholds
   const levelThresholds = [
     { level: 1, minPoints: 0, maxPoints: 100 },
     { level: 2, minPoints: 101, maxPoints: 250 },
@@ -311,7 +308,6 @@ const Training = () => {
     { level: 5, minPoints: 801, maxPoints: 1200 }
   ];
   
-  // Load user training data from Supabase
   useEffect(() => {
     const fetchEpochs = async () => {
       setIsLoadingEpochs(true);
@@ -322,7 +318,6 @@ const Training = () => {
           setAvailableEpochs(available);
           setTrainingEpochs(total);
         } else {
-          // Default for guests
           setAvailableEpochs(25);
           setTrainingEpochs(25);
         }
@@ -337,15 +332,12 @@ const Training = () => {
     
     fetchEpochs();
     
-    // Also load training history
     const loadTrainingHistory = async () => {
       if (!user) return;
       
       try {
-        // Get completed missions from training history
         const history = await trainingService.getTrainingHistory();
         
-        // Update missions completion status
         if (history.length > 0) {
           const completedMissionTitles = history.map(h => h.mission.replace('Mission ', ''));
           
@@ -354,11 +346,9 @@ const Training = () => {
             completed: completedMissionTitles.includes(mission.id.toString())
           })));
           
-          // Calculate total points
           const points = history.reduce((sum, item) => sum + item.points, 0);
           setTotalPoints(points);
           
-          // Set level based on points
           const currentLevelData = levelThresholds.find(
             lt => points >= lt.minPoints && points <= lt.maxPoints
           ) || levelThresholds[0];
@@ -373,12 +363,10 @@ const Training = () => {
     loadTrainingHistory();
   }, [user, levelThresholds]);
   
-  // Effect for neural network animation
   useEffect(() => {
     let timeout: ReturnType<typeof setTimeout>;
     
     const animateNetwork = () => {
-      // Activate random nodes based on animation intensity
       const numNodesToActivate = Math.min(5, animationIntensity);
       const newActiveNodes = [];
       
@@ -390,21 +378,17 @@ const Training = () => {
       
       setActiveNodes(newActiveNodes);
       
-      // Reset after a delay
       timeout = setTimeout(() => {
         setActiveNodes([]);
-        // Schedule next animation with variable timing based on intensity
         timeout = setTimeout(animateNetwork, 1500 - (animationIntensity * 150));
       }, 800);
     };
     
-    // Start animation
     timeout = setTimeout(animateNetwork, 1000);
     
     return () => clearTimeout(timeout);
   }, [animationIntensity]);
   
-  // Neural network training visualization
   useEffect(() => {
     if (!showTrainingAnimation) return;
     
@@ -417,7 +401,6 @@ const Training = () => {
     
     const animate = () => {
       if (currentFrame % framesPerStep === 0 && currentStep < maxSteps) {
-        // Generate random weights for visualization
         const weights: number[][] = [];
         
         for (let i = 0; i < layerSizes.length - 1; i++) {
@@ -425,9 +408,8 @@ const Training = () => {
           const connections = layerSizes[i] * layerSizes[i + 1];
           
           for (let j = 0; j < connections; j++) {
-            // Weight values converge toward optimum as training progresses
             const randomFactor = Math.max(0.8, 1 - currentStep / maxSteps);
-            const baseWeight = 0.7 + (currentStep / maxSteps) * 0.3; // Weights improve over time
+            const baseWeight = 0.7 + (currentStep / maxSteps) * 0.3;
             layerWeights.push(baseWeight + (Math.random() - 0.5) * randomFactor);
           }
           
@@ -437,7 +419,6 @@ const Training = () => {
         setNeuralNetworkWeights(weights);
         currentStep++;
         
-        // Activate random nodes for visual effect
         const newActiveNodes = [];
         for (let i = 0; i < Math.min(8, 3 + Math.floor(currentStep / 10)); i++) {
           const layerIdx = Math.floor(Math.random() * layerSizes.length);
@@ -447,14 +428,12 @@ const Training = () => {
         
         setActiveNodes(newActiveNodes);
         
-        // Update progress
         setMissionProgress((currentStep / maxSteps) * 100);
       }
       
       currentFrame++;
       
       if (currentStep >= maxSteps) {
-        // Training is complete
         setShowTrainingAnimation(false);
         completeMission(activeMission!);
       } else {
@@ -484,7 +463,6 @@ const Training = () => {
       return;
     }
     
-    // Check if user has enough epochs
     if (mission.epochs && mission.epochs > availableEpochs) {
       toast.error(`Not enough epochs. This mission requires ${mission.epochs} epochs, but you only have ${availableEpochs} available.`);
       return;
@@ -494,26 +472,21 @@ const Training = () => {
     setMissionProgress(0);
     toast.info(`Mission started: ${mission.title}`);
     
-    // Enhance animation intensity during mission
     const prevIntensity = animationIntensity;
     setAnimationIntensity(Math.min(prevIntensity + 2, 5));
     
-    // If epochs are sufficient, attempt to use them
     if (mission.epochs) {
       try {
         const success = await trainingService.useEpochs(mission.epochs);
         
         if (!success) {
-          // Revert state on failure
           setActiveMission(null);
           setAnimationIntensity(prevIntensity);
           return;
         }
         
-        // Update available epochs
         setAvailableEpochs(prev => prev - mission.epochs!);
         
-        // Start training animation
         setShowTrainingAnimation(true);
       } catch (error) {
         console.error('Error using epochs:', error);
@@ -528,27 +501,22 @@ const Training = () => {
     setIsProcessing(true);
     
     try {
-      // Update mission in state
       setMissions(prev => 
         prev.map(m => m.id === mission.id ? { ...m, completed: true } : m)
       );
       
-      // Calculate new total points
       const newTotalPoints = totalPoints + mission.points;
       setTotalPoints(newTotalPoints);
       
-      // Add epochs to total
       const newEpochs = trainingEpochs + (mission.epochs || 0);
       setTrainingEpochs(newEpochs);
       
-      // Determine level based on new points
       const currentLevelData = levelThresholds.find(
         lt => newTotalPoints >= lt.minPoints && newTotalPoints <= lt.maxPoints
       ) || levelThresholds[0];
       
       const newLevelValue = currentLevelData.level;
       
-      // Check if level up occurred
       if (newLevelValue > level) {
         setLevel(newLevelValue);
         toast.success(`Level Up! You are now level ${newLevelValue}`, {
@@ -557,11 +525,9 @@ const Training = () => {
           className: "bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border-yellow-500/50",
         });
         
-        // Increase animation intensity on level up
         setAnimationIntensity(Math.min(newLevelValue, 5));
       }
       
-      // Calculate simulated accuracy (higher with higher level/mission difficulty)
       const baseAccuracy = 70;
       const levelBonus = newLevelValue * 2;
       const difficultyBonus = Math.floor(mission.points / 5);
@@ -569,7 +535,6 @@ const Training = () => {
       
       const accuracy = Math.min(95, baseAccuracy + levelBonus + difficultyBonus + randomVariation);
       
-      // Save to Supabase
       if (user) {
         await trainingService.saveMissionResult({
           missionId: mission.id,
@@ -579,19 +544,13 @@ const Training = () => {
         });
       }
       
-      // Train neural network with new parameters
-      try {
-        // Provide a progress callback for the training process
-        await neuralNetwork.train(
-          ticks.map(t => t.value), 
-          { 
-            maxEpochs: 20,
-            onProgress: (progress) => console.log(`Training progress: ${Math.round(progress * 100)}%`) 
-          }
-        );
-      } catch (err) {
-        console.error('Error training neural network:', err);
-      }
+      await neuralNetwork.train(
+        ticks.map(t => t.value), 
+        { 
+          maxEpochs: 20,
+          onProgress: (progress) => console.log(`Training progress: ${Math.round(progress * 100)}%`) 
+        }
+      );
       
       toast.success(`Mission completed! Trained for ${mission.epochs?.toLocaleString()} epochs with ${accuracy}% accuracy.`, {
         icon: <Trophy className="h-5 w-5 text-yellow-500" />,
@@ -605,7 +564,6 @@ const Training = () => {
     }
   };
   
-  // Calculate level progress
   const calculateLevelProgress = () => {
     const currentLevelData = levelThresholds.find(
       lt => totalPoints >= lt.minPoints && totalPoints <= lt.maxPoints
@@ -620,7 +578,6 @@ const Training = () => {
     return Math.min(Math.max(levelProgress, 0), 100);
   };
   
-  // Mock data for training
   const ticks = Array(100).fill(0).map((_, i) => ({ value: 100 + Math.sin(i / 10) * 20 + Math.random() * 5 }));
   
   return (
@@ -683,7 +640,6 @@ const Training = () => {
                     <div className="relative">
                       <Progress value={missionProgress} className="h-2" />
                       
-                      {/* Animated highlights on the progress bar */}
                       {missionProgress > 0 && missionProgress < 100 && (
                         <>
                           <span className="absolute h-2 w-6 bg-white/20 animate-pulse rounded" 
@@ -720,7 +676,6 @@ const Training = () => {
                       </div>
                     </div>
                     
-                    {/* Neural network training visualization */}
                     <div className="mt-4 p-2 border rounded bg-background/50">
                       <div className="text-xs text-muted-foreground mb-2">Neural Network Training Visualization</div>
                       <NeuralNetworkVisualization 
@@ -830,7 +785,6 @@ const Training = () => {
               </div>
               <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center relative overflow-hidden">
                 <Brain className="h-8 w-8 text-primary relative z-10" />
-                {/* Animated background pulse */}
                 <div className={`absolute inset-0 bg-primary/20 rounded-full animate-ping ${
                   animationIntensity > 2 ? 'opacity-100' : 'opacity-50'
                 }`} style={{ animationDuration: `${3 - animationIntensity * 0.4}s` }} />
@@ -863,7 +817,6 @@ const Training = () => {
                   animationIntensity={animationIntensity} 
                 />
                 
-                {/* Training stats */}
                 <div className="mt-4 pt-4 border-t grid grid-cols-3 gap-2 text-center text-xs">
                   <div>
                     <div className="text-muted-foreground mb-1">Total Epochs</div>
@@ -880,7 +833,6 @@ const Training = () => {
                 </div>
               </div>
               
-              {/* Pro upgrade banner */}
               {!isPro && (
                 <div className="mt-4 p-3 border border-purple-300 bg-purple-50 dark:bg-purple-900/20 rounded-md animate-pulse">
                   <h4 className="font-semibold flex items-center gap-2 text-purple-800 dark:text-purple-300 text-sm">

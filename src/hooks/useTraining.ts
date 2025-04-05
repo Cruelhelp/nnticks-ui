@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { neuralNetwork, NNConfiguration } from '@/lib/neuralNetwork';

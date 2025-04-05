@@ -18,6 +18,7 @@ import { neuralNetwork, NNConfiguration, DEFAULT_NN_CONFIG } from '@/lib/neuralN
 import { PredictionPhase, PredictionType } from '@/types/chartTypes';
 import { useTicks } from '@/hooks/useTicks';
 import { motion } from 'framer-motion';
+import { trainingService } from '@/services/TrainingService';
 
 interface PendingPrediction {
   id: number;

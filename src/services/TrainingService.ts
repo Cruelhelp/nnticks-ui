@@ -12,6 +12,35 @@ export interface TrainingSession {
   model: any | null;
 }
 
+export interface TrainingMission {
+  id: number;
+  title: string;
+  description: string;
+  points: number;
+  completed: boolean;
+  locked: boolean;
+  requiredLevel?: number;
+  proBadge?: boolean;
+  epochs?: number;
+}
+
+export interface TrainingResult {
+  missionId: number;
+  epochs: number;
+  accuracy: number;
+  points: number;
+  modelData?: any;
+}
+
+export interface TrainingHistoryItem {
+  id: string;
+  date: string;
+  accuracy: number;
+  points: number;
+  mission: string;
+  modelData?: any;
+}
+
 class TrainingService {
   private userId: string | null = null;
   
@@ -105,7 +134,7 @@ class TrainingService {
     }
   }
   
-  async getTrainingHistory(limit: number = 10): Promise<any[]> {
+  async getTrainingHistory(limit: number = 10): Promise<TrainingHistoryItem[]> {
     if (!this.userId) return [];
     
     try {
@@ -118,7 +147,14 @@ class TrainingService {
       
       if (error) throw error;
       
-      return data || [];
+      return (data || []).map(item => ({
+        id: item.id,
+        date: item.date,
+        accuracy: item.accuracy,
+        points: item.points,
+        mission: item.mission,
+        modelData: item.model_data
+      }));
     } catch (error) {
       console.error('Error getting training history:', error);
       return [];
@@ -208,6 +244,87 @@ class TrainingService {
     } catch (error) {
       console.error('Error getting available epochs:', error);
       return 0;
+    }
+  }
+
+  async getUserEpochs(): Promise<{ available: number; total: number }> {
+    if (!this.userId) return { available: 0, total: 0 };
+    
+    try {
+      // Get available epochs
+      const available = await this.getAvailableEpochs();
+      
+      // Get total epochs from training history
+      const { data, error } = await supabase
+        .from('training_sessions')
+        .select('epochs')
+        .eq('user_id', this.userId);
+      
+      if (error) throw error;
+      
+      // Sum up all epochs ever used
+      const used = data?.reduce((sum, session) => sum + (session.epochs || 0), 0) || 0;
+      const total = available + used;
+      
+      return { available, total };
+    } catch (error) {
+      console.error('Error getting user epochs:', error);
+      return { available: 0, total: 0 };
+    }
+  }
+
+  async getLevel(): Promise<number> {
+    if (!this.userId) return 1;
+    
+    try {
+      // Get total points from training history
+      const { data, error } = await supabase
+        .from('training_history')
+        .select('points')
+        .eq('user_id', this.userId);
+      
+      if (error) throw error;
+      
+      // Sum up all points earned
+      const totalPoints = data?.reduce((sum, item) => sum + (item.points || 0), 0) || 0;
+      
+      // Define level thresholds
+      const levelThresholds = [
+        { level: 1, minPoints: 0, maxPoints: 100 },
+        { level: 2, minPoints: 101, maxPoints: 250 },
+        { level: 3, minPoints: 251, maxPoints: 500 },
+        { level: 4, minPoints: 501, maxPoints: 800 },
+        { level: 5, minPoints: 801, maxPoints: 1200 }
+      ];
+      
+      // Find current level based on points
+      const currentLevel = levelThresholds.find(
+        lt => totalPoints >= lt.minPoints && totalPoints <= lt.maxPoints
+      ) || levelThresholds[0];
+      
+      return currentLevel.level;
+    } catch (error) {
+      console.error('Error getting user level:', error);
+      return 1;
+    }
+  }
+
+  async saveMissionResult(result: TrainingResult): Promise<boolean> {
+    if (!this.userId) return false;
+    
+    try {
+      // Store in training history
+      await this.addTrainingHistory({
+        accuracy: result.accuracy,
+        points: result.points,
+        modelData: result.modelData,
+        mission: `Mission ${result.missionId}`
+      });
+      
+      return true;
+    } catch (error) {
+      console.error('Error saving mission result:', error);
+      return false;
     }
   }
 }

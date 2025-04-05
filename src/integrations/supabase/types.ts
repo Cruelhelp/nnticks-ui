@@ -99,6 +99,57 @@ export type Database = {
         }
         Relationships: []
       }
+      training_sessions: {
+        Row: {
+          accuracy: number | null
+          completed_at: string | null
+          epochs: number
+          id: string
+          model: Json | null
+          started_at: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          accuracy?: number | null
+          completed_at?: string | null
+          epochs: number
+          id?: string
+          model?: Json | null
+          started_at?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          accuracy?: number | null
+          completed_at?: string | null
+          epochs?: number
+          id?: string
+          model?: Json | null
+          started_at?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_epochs: {
+        Row: {
+          epochs: number
+          last_updated: string
+          user_id: string
+        }
+        Insert: {
+          epochs?: number
+          last_updated?: string
+          user_id: string
+        }
+        Update: {
+          epochs?: number
+          last_updated?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
