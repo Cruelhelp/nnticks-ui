@@ -10,12 +10,13 @@ import Predictions from '@/components/Predictions';
 import Training from '@/components/Training';
 import History from '@/components/History';
 import Leaderboard from '@/components/Leaderboard';
-import NeuralNet from '@/components/NeuralNet';
+import NeuralNet from '@/components/NeuralNetwork';
 import DebugTools from '@/components/DebugTools';
 import Account from '@/components/Account';
 import AdminPanel from '@/components/AdminPanel';
 import Epochs from '@/components/Epochs';
 import EpochManager from '@/components/EpochManager';
+import LegalInfo from '@/components/LegalInfo';
 import Splash from './Splash';
 import { useSettings } from '@/hooks/useSettings';
 import { useAuth } from '@/contexts/AuthContext';
@@ -163,6 +164,8 @@ const Index = () => {
         return <Leaderboard />;
       case 'neuralnet':
         return <NeuralNet />;
+      case 'legal':
+        return <LegalInfo />;
       case 'settings':
         return <Account />;
       case 'admin':

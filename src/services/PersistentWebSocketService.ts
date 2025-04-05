@@ -1,421 +1,395 @@
-
+// Add this file for global persistent WebSocket connection
+import { toast } from 'sonner';
 import { BrowserEventEmitter } from '@/lib/utils';
+import { TickData } from '@/types/chartTypes';
 
-export interface TickData {
-  value: number;
-  market: string;
-  timestamp: number;
-}
-
-export class PersistentWebSocketService extends BrowserEventEmitter {
+class PersistentWebSocketService extends BrowserEventEmitter {
   private socket: WebSocket | null = null;
-  private url: string = 'wss://ws.binaryws.com/websockets/v3?app_id=70997';
+  private reconnectTimeout: NodeJS.Timeout | null = null;
   private autoReconnect: boolean = true;
-  private reconnectDelay: number = 1000;
-  private maxReconnectDelay: number = 30000;
-  private reconnectAttempts: number = 0;
   private maxReconnectAttempts: number = 10;
-  private pingInterval: number = 10000;
-  private pingTimer: NodeJS.Timeout | null = null;
-  private reconnectTimer: NodeJS.Timeout | null = null;
+  private reconnectAttempts: number = 0;
   private lastMessageTime: number = 0;
-  private subscription: Record<string, any> = { ticks: 'R_10' };
+  private ticks: TickData[] = [];
   private tickBuffer: TickData[] = [];
-  private maxBufferSize: number = 100;
-  private status: string = 'disconnected';
-  private recentDataThreshold: number = 10000; // 10 seconds
-  private lastTickTime: number = 0;
+  private maxBufferSize: number = 2000;
+  private isBufferingEnabled: boolean = true;
+  private connectionStatus: 'disconnected' | 'connecting' | 'connected' | 'error' = 'disconnected';
+  private heartbeatInterval: NodeJS.Timeout | null = null;
+  private pingTimeout: NodeJS.Timeout | null = null;
+  private url: string = "wss://ws.binaryws.com/websockets/v3?app_id=70997";
+  private subscription: object = { ticks: 'R_10' };
   
   constructor() {
     super();
-    this.handleVisibilityChange = this.handleVisibilityChange.bind(this);
-    this.handleBeforeUnload = this.handleBeforeUnload.bind(this);
     
-    // Add event listeners for page visibility and unload
-    if (typeof document !== 'undefined') {
+    // Initialize the connection on page load
+    if (typeof window !== 'undefined') {
+      window.addEventListener('load', () => this.connect());
+      
+      // Setup visibility change handlers
       document.addEventListener('visibilitychange', this.handleVisibilityChange);
+      window.addEventListener('online', this.handleOnline);
+      window.addEventListener('offline', this.handleOffline);
       window.addEventListener('beforeunload', this.handleBeforeUnload);
     }
     
-    // Try to restore the connection on initialization
-    this.initialize();
+    // Start connection monitor to ensure connection is maintained
+    this.startConnectionMonitor();
   }
   
-  // Initialize the service
-  private initialize(): void {
-    console.info('[PersistentWebSocketService] Initialized');
-    
-    // Check if there's a saved subscription in localStorage
-    const savedSubscription = localStorage.getItem('ws_subscription');
-    if (savedSubscription) {
-      try {
-        this.subscription = JSON.parse(savedSubscription);
-      } catch (e) {
-        console.error('Failed to parse saved subscription:', e);
-      }
-    }
-    
-    // Auto-connect if we should be connected
-    if (localStorage.getItem('ws_should_connect') === 'true') {
-      this.connect();
-    }
-  }
-  
-  // Set the WebSocket URL
+  // Set WebSocket URL
   public setUrl(url: string): void {
-    if (this.url !== url) {
-      this.url = url;
-      
-      // If we're already connected, reconnect with the new URL
-      if (this.isConnected()) {
-        this.disconnect();
-        this.connect();
-      }
+    if (url === this.url) return;
+    
+    this.url = url;
+    
+    // Reconnect if already connected
+    if (this.isConnected()) {
+      this.disconnect();
+      setTimeout(() => this.connect(), 300);
     }
   }
   
-  // Connect to the WebSocket server
-  public connect(): boolean {
-    if (this.socket && (this.socket.readyState === WebSocket.OPEN || this.socket.readyState === WebSocket.CONNECTING)) {
-      console.info('[PersistentWebSocketService] Already connected or connecting');
-      return false;
-    }
-    
-    // Set the should_connect flag in localStorage
-    localStorage.setItem('ws_should_connect', 'true');
-    
-    try {
-      console.info(`[PersistentWebSocketService] Connecting to ${this.url}`);
-      this.socket = new WebSocket(this.url);
-      
-      this.socket.onopen = this.handleOpen.bind(this);
-      this.socket.onmessage = this.handleMessage.bind(this);
-      this.socket.onclose = this.handleClose.bind(this);
-      this.socket.onerror = this.handleError.bind(this);
-      
-      this.updateStatus('connecting');
-      return true;
-    } catch (error) {
-      console.error('[PersistentWebSocketService] Connection error:', error);
-      this.updateStatus('error');
-      this.scheduleReconnect();
-      return false;
-    }
-  }
-  
-  // Disconnect from the WebSocket server
-  public disconnect(): void {
-    this.stopPingTimer();
-    this.cancelReconnect();
-    
-    localStorage.setItem('ws_should_connect', 'false');
-    
-    if (this.socket) {
-      try {
-        this.socket.close();
-      } catch (e) {
-        console.error('[PersistentWebSocketService] Error closing socket:', e);
-      }
-      this.socket = null;
-    }
-    
-    this.updateStatus('disconnected');
-  }
-  
-  // Send a message to the WebSocket server
-  public send(message: any): boolean {
-    if (!this.isConnected()) {
-      console.warn('[PersistentWebSocketService] Cannot send message: not connected');
-      return false;
-    }
-    
-    try {
-      const messageString = typeof message === 'string' ? message : JSON.stringify(message);
-      this.socket!.send(messageString);
-      return true;
-    } catch (error) {
-      console.error('[PersistentWebSocketService] Error sending message:', error);
-      return false;
-    }
-  }
-  
-  // Set the subscription
-  public setSubscription(subscription: Record<string, any>): void {
-    // Ensure the subscription has the required ticks property
-    if (!subscription.ticks && !subscription.ticks_history) {
-      console.warn('[PersistentWebSocketService] Subscription must include ticks or ticks_history');
-      if (!Object.keys(subscription).length) {
-        // Empty subscription, default to R_10
-        subscription = { ticks: 'R_10' };
-      }
-    }
-    
-    // If we're already subscribed to something, unsubscribe first
-    if (this.isConnected() && this.subscription.ticks) {
-      this.send({ forget_all: 'ticks' });
-    }
+  // Set subscription
+  public setSubscription(subscription: object): void {
+    if (JSON.stringify(subscription) === JSON.stringify(this.subscription)) return;
     
     this.subscription = subscription;
     
-    // Save subscription to localStorage
-    localStorage.setItem('ws_subscription', JSON.stringify(subscription));
-    
-    // If we're connected, send the new subscription
+    // Send subscription if connected
     if (this.isConnected()) {
       this.send(subscription);
     }
   }
   
-  // Check if the WebSocket is connected
+  // Connect to WebSocket
+  public connect(): boolean {
+    if (this.socket && (this.socket.readyState === WebSocket.OPEN || this.socket.readyState === WebSocket.CONNECTING)) {
+      return false; // Already connected or connecting
+    }
+    
+    // Clean up
+    this.cleanup();
+    
+    this.connectionStatus = 'connecting';
+    this.emit('statusChange', this.connectionStatus);
+    
+    try {
+      this.socket = new WebSocket(this.url);
+      
+      this.socket.onopen = this.handleOpen.bind(this);
+      this.socket.onmessage = this.handleMessage.bind(this);
+      this.socket.onerror = this.handleError.bind(this);
+      this.socket.onclose = this.handleClose.bind(this);
+      
+      return true;
+    } catch (err) {
+      console.error('Error creating WebSocket connection:', err);
+      this.handleError(err as Event);
+      return false;
+    }
+  }
+  
+  // Disconnect from WebSocket
+  public disconnect(): boolean {
+    this.autoReconnect = false;
+    this.cleanup();
+    
+    if (this.socket && this.socket.readyState !== WebSocket.CLOSED) {
+      try {
+        this.socket.close();
+      } catch (e) {
+        console.error('Error closing WebSocket:', e);
+      }
+    }
+    
+    this.socket = null;
+    this.connectionStatus = 'disconnected';
+    this.emit('statusChange', this.connectionStatus);
+    
+    return true;
+  }
+  
+  // Send message to WebSocket
+  public send(message: object | string): boolean {
+    if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
+      console.warn('WebSocket not connected, cannot send message');
+      return false;
+    }
+    
+    try {
+      const messageStr = typeof message === 'string' ? message : JSON.stringify(message);
+      this.socket.send(messageStr);
+      return true;
+    } catch (err) {
+      console.error('Error sending message:', err);
+      return false;
+    }
+  }
+  
+  // Get connection status
+  public getStatus(): string {
+    return this.connectionStatus;
+  }
+  
+  // Check if connected
   public isConnected(): boolean {
     return this.socket !== null && this.socket.readyState === WebSocket.OPEN;
   }
   
-  // Get the current status
-  public getStatus(): string {
-    return this.status;
-  }
-  
-  // Get the current subscription
-  public getSubscription(): Record<string, any> {
-    return { ...this.subscription };
-  }
-  
-  // Get the buffered ticks
+  // Get ticks
   public getTicks(): TickData[] {
-    return [...this.tickBuffer];
+    return [...this.ticks];
   }
   
-  // Get the latest tick
+  // Get latest tick
   public getLatestTick(): TickData | null {
-    return this.tickBuffer.length > 0 ? this.tickBuffer[this.tickBuffer.length - 1] : null;
+    return this.ticks.length > 0 ? this.ticks[this.ticks.length - 1] : null;
   }
   
-  // Check if we've received data recently
-  public hasRecentData(): boolean {
-    if (this.lastTickTime === 0) return false;
-    return Date.now() - this.lastTickTime < this.recentDataThreshold;
-  }
-  
-  // Clear the tick buffer
-  public clearBuffer(): void {
-    this.tickBuffer = [];
-  }
-  
-  // Get a copy of the buffered ticks
+  // Get buffered ticks
   public getBufferedTicks(): TickData[] {
     return [...this.tickBuffer];
   }
   
-  // Handle WebSocket open event
-  private handleOpen(): void {
-    console.info('[PersistentWebSocketService] Connected successfully');
-    this.reconnectAttempts = 0;
-    this.updateStatus('connected');
+  // Clear buffer
+  public clearBuffer(): void {
+    this.tickBuffer = [];
+  }
+  
+  // Check if has recent data
+  public hasRecentData(): boolean {
+    const lastTick = this.getLatestTick();
+    if (!lastTick) return false;
     
-    // Subscribe to the configured data
+    const tickTime = typeof lastTick.timestamp === 'string' 
+      ? new Date(lastTick.timestamp).getTime()
+      : Number(lastTick.timestamp);
+      
+    return (Date.now() - tickTime) < 10000; // 10 seconds
+  }
+  
+  // Handle WebSocket open
+  private handleOpen(): void {
+    console.log('WebSocket connected');
+    this.connectionStatus = 'connected';
+    this.emit('statusChange', this.connectionStatus);
+    this.emit('open');
+    
+    this.reconnectAttempts = 0;
+    this.lastMessageTime = Date.now();
+    
+    // Start heartbeat
+    this.startHeartbeat();
+    
+    // Send subscription
     if (Object.keys(this.subscription).length > 0) {
       this.send(this.subscription);
     }
-    
-    // Start ping timer
-    this.startPingTimer();
-    
-    // Emit the open event
-    this.emit('open');
-    this.emit('statusChange', 'connected');
   }
   
-  // Handle WebSocket message event
+  // Handle WebSocket message
   private handleMessage(event: MessageEvent): void {
-    this.lastMessageTime = Date.now();
-    
     try {
+      this.lastMessageTime = Date.now();
       const data = JSON.parse(event.data);
       
-      // Handle ping/pong
-      if (data.ping) {
-        this.send({ pong: data.ping });
+      // Reset ping timeout if we get a pong
+      if (data.pong || (data.ping && this.pingTimeout)) {
+        if (this.pingTimeout) {
+          clearTimeout(this.pingTimeout);
+          this.pingTimeout = null;
+        }
         return;
       }
       
+      this.emit('message', data);
+      
       // Handle tick data
+      let tickData: TickData | null = null;
+      
       if (data.tick) {
-        const tick: TickData = {
-          value: data.tick.quote,
-          market: data.tick.symbol,
-          timestamp: data.tick.epoch * 1000 // Convert to milliseconds
+        tickData = {
+          timestamp: new Date(data.tick.epoch * 1000).toISOString(),
+          value: Number(data.tick.quote.toFixed(5)),
+          market: data.tick.symbol
         };
-        
-        // Add to buffer and emit event
-        this.addTickToBuffer(tick);
-        this.lastTickTime = Date.now();
-        this.emit('tick', tick);
+      }
+      else if (data.s && data.p) {
+        tickData = {
+          timestamp: new Date().toISOString(),
+          value: Number(parseFloat(data.p).toFixed(5)),
+          market: data.s
+        };
+      }
+      else if (data.symbol && data.price) {
+        tickData = {
+          timestamp: new Date().toISOString(),
+          value: Number(data.price.toFixed(5)),
+          market: data.symbol
+        };
+      }
+      else if (data.price !== undefined && data.timestamp !== undefined) {
+        tickData = {
+          timestamp: new Date(data.timestamp).toISOString(),
+          value: Number(data.price.toFixed(5)),
+          market: data.market || 'unknown'
+        };
       }
       
-      // Emit the general message event
-      this.emit('message', data);
-    } catch (error) {
-      console.error('[PersistentWebSocketService] Error parsing message:', error);
+      if (tickData) {
+        // Keep only the last 100 ticks in the main array
+        this.ticks = [...this.ticks.slice(-99), tickData];
+        
+        // Add to buffer if buffering is enabled
+        if (this.isBufferingEnabled) {
+          this.tickBuffer.push(tickData);
+          // Trim buffer if it gets too large
+          if (this.tickBuffer.length > this.maxBufferSize) {
+            this.tickBuffer.shift();
+          }
+        }
+        
+        this.emit('tick', tickData);
+      }
+      
+    } catch (err) {
+      console.error('Error parsing WebSocket message:', err, event.data);
     }
   }
   
-  // Handle WebSocket close event
+  // Handle WebSocket error
+  private handleError(event: Event): void {
+    console.error('WebSocket error:', event);
+    this.connectionStatus = 'error';
+    this.emit('statusChange', this.connectionStatus);
+    this.emit('error', event);
+  }
+  
+  // Handle WebSocket close
   private handleClose(event: CloseEvent): void {
-    console.info('[PersistentWebSocketService] Connection closed:', event.code, event.reason);
-    this.socket = null;
-    this.stopPingTimer();
+    console.log('WebSocket closed:', event.code, event.reason);
+    this.cleanup();
     
-    this.updateStatus('disconnected');
+    this.connectionStatus = 'disconnected';
+    this.emit('statusChange', this.connectionStatus);
     this.emit('close', event);
-    this.emit('statusChange', 'disconnected');
     
-    // Try to reconnect if auto-reconnect is enabled
-    if (this.autoReconnect && localStorage.getItem('ws_should_connect') === 'true') {
+    // Attempt to reconnect if auto-reconnect is enabled
+    if (this.autoReconnect) {
       this.scheduleReconnect();
     }
   }
   
-  // Handle WebSocket error event
-  private handleError(event: Event): void {
-    console.error('[PersistentWebSocketService] WebSocket error:', event);
-    this.updateStatus('error');
-    this.emit('error', event);
-    this.emit('statusChange', 'error');
-  }
-  
-  // Handle page visibility change
-  private handleVisibilityChange(): void {
-    if (document.visibilityState === 'visible') {
-      console.info('[PersistentWebSocketService] Page visible, checking connection');
-      
-      // If we should be connected but aren't, reconnect
-      if (localStorage.getItem('ws_should_connect') === 'true' && !this.isConnected()) {
-        this.connect();
-      }
-    } else {
-      console.info('[PersistentWebSocketService] Page hidden, connection will be maintained');
-    }
-  }
-  
-  // Handle before unload
-  private handleBeforeUnload(): void {
-    console.info('[PersistentWebSocketService] Page unloading');
-    // We don't disconnect here to keep the connection persistent
-    // Just save the current state
-    if (this.isConnected()) {
-      localStorage.setItem('ws_should_connect', 'true');
-    }
-  }
-  
-  // Schedule a reconnection attempt
+  // Schedule reconnect
   private scheduleReconnect(): void {
-    if (this.reconnectTimer !== null || !this.autoReconnect) {
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      console.log('Max reconnect attempts reached');
+      toast.error('Unable to connect to market data. Please refresh the page.');
       return;
     }
     
-    // Calculate delay with exponential backoff
-    const delay = Math.min(
-      this.maxReconnectDelay,
-      this.reconnectDelay * Math.pow(1.5, this.reconnectAttempts)
-    );
+    const delay = Math.min(30000, 5000 * Math.pow(1.5, this.reconnectAttempts));
+    console.log(`Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts + 1}/${this.maxReconnectAttempts})`);
     
-    console.info(`[PersistentWebSocketService] Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts + 1}/${this.maxReconnectAttempts})`);
-    
-    this.reconnectTimer = setTimeout(() => {
-      this.reconnectTimer = null;
-      
-      // Check if we've reached the max number of attempts
-      if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-        console.error('[PersistentWebSocketService] Max reconnect attempts reached');
-        this.updateStatus('disconnected');
-        localStorage.setItem('ws_should_connect', 'false');
-        return;
-      }
-      
+    this.reconnectTimeout = setTimeout(() => {
       this.reconnectAttempts++;
       this.connect();
     }, delay);
   }
   
-  // Cancel any pending reconnection
-  private cancelReconnect(): void {
-    if (this.reconnectTimer !== null) {
-      clearTimeout(this.reconnectTimer);
-      this.reconnectTimer = null;
+  // Clean up timers
+  private cleanup(): void {
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = null;
+    }
+    
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = null;
+    }
+    
+    if (this.pingTimeout) {
+      clearTimeout(this.pingTimeout);
+      this.pingTimeout = null;
     }
   }
   
-  // Start the ping timer
-  private startPingTimer(): void {
-    this.stopPingTimer(); // Clear any existing timer
+  // Start heartbeat
+  private startHeartbeat(): void {
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+    }
     
-    this.pingTimer = setInterval(() => {
+    this.heartbeatInterval = setInterval(() => {
       if (this.isConnected()) {
-        // Send a ping
         this.send({ ping: 1 });
         
-        // Check if we've received a message recently
-        const timeSinceLastMessage = Date.now() - this.lastMessageTime;
-        if (timeSinceLastMessage > this.pingInterval * 3) {
-          console.warn(`[PersistentWebSocketService] No response for ${timeSinceLastMessage}ms, reconnecting`);
-          this.reconnect();
+        if (this.pingTimeout) {
+          clearTimeout(this.pingTimeout);
+        }
+        
+        this.pingTimeout = setTimeout(() => {
+          console.log('Ping timeout, reconnecting');
+          this.disconnect();
+          this.autoReconnect = true;
+          this.connect();
+        }, 5000);
+      }
+    }, 30000);
+  }
+  
+  // Start connection monitor
+  private startConnectionMonitor(): void {
+    setInterval(() => {
+      if (!this.isConnected()) {
+        console.log('Connection lost, reconnecting...');
+        this.connect();
+      } else {
+        // Check for stale connection (no messages in 30 seconds)
+        const now = Date.now();
+        if (now - this.lastMessageTime > 30000) {
+          console.log('Connection stale, reconnecting...');
+          this.disconnect();
+          this.autoReconnect = true;
+          this.connect();
         }
       }
-    }, this.pingInterval);
+    }, 30000);
   }
   
-  // Stop the ping timer
-  private stopPingTimer(): void {
-    if (this.pingTimer !== null) {
-      clearInterval(this.pingTimer);
-      this.pingTimer = null;
-    }
-  }
-  
-  // Force a reconnection
-  private reconnect(): void {
-    if (this.socket) {
-      try {
-        this.socket.close();
-      } catch (e) {
-        console.error('[PersistentWebSocketService] Error closing socket for reconnect:', e);
+  // Visibility change handler
+  private handleVisibilityChange = () => {
+    if (document.visibilityState === 'visible') {
+      console.log('Page visible, checking connection');
+      if (!this.isConnected()) {
+        this.connect();
       }
-      this.socket = null;
+    } else {
+      console.log('Page hidden, connection will be maintained');
     }
-    
+  };
+  
+  // Online handler
+  private handleOnline = () => {
+    console.log('Network online, reconnecting');
     this.connect();
-  }
+  };
   
-  // Update the status and emit an event
-  private updateStatus(status: string): void {
-    if (this.status !== status) {
-      this.status = status;
-      this.emit('statusChange', status);
-    }
-  }
+  // Offline handler
+  private handleOffline = () => {
+    console.log('Network offline, will reconnect when online');
+  };
   
-  // Add a tick to the buffer
-  private addTickToBuffer(tick: TickData): void {
-    this.tickBuffer.push(tick);
-    
-    // Trim the buffer if it exceeds the max size
-    if (this.tickBuffer.length > this.maxBufferSize) {
-      this.tickBuffer = this.tickBuffer.slice(-this.maxBufferSize);
-    }
-  }
-  
-  // Clean up when the service is destroyed
-  public destroy(): void {
-    this.disconnect();
-    
-    // Remove event listeners
-    if (typeof document !== 'undefined') {
-      document.removeEventListener('visibilitychange', this.handleVisibilityChange);
-      window.removeEventListener('beforeunload', this.handleBeforeUnload);
-    }
-  }
+  // Before unload handler
+  private handleBeforeUnload = () => {
+    console.log('Page unloading, clearing timers');
+    this.cleanup();
+  };
 }
 
 // Create a singleton instance
 export const persistentWebSocket = new PersistentWebSocketService();
+export default persistentWebSocket;

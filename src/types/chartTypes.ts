@@ -52,3 +52,12 @@ export interface TrainingResult {
   accuracy: number;
   time?: number;
 }
+
+// Add interface for simulation state
+export interface SimulationState {
+  isActive: boolean;
+  speed: 'slow' | 'normal' | 'fast';
+  tickCount: number;
+  epochCount: number;
+  lastUpdated: number;
+}

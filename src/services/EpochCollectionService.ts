@@ -83,6 +83,10 @@ class EpochCollectionService extends BrowserEventEmitter {
   public getCurrentEpoch(): number {
     return this.currentEpoch;
   }
+  
+  public setCurrentEpoch(epochNumber: number): void {
+    this.currentEpoch = epochNumber;
+  }
 
   public isCollecting(): boolean {
     return this.isCollectingData;
