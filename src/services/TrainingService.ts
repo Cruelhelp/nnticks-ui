@@ -1,4 +1,3 @@
-
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 
@@ -236,7 +235,8 @@ class TrainingService {
       return newEpochs;
     } catch (error) {
       console.error('Error using epochs:', error);
-      return availableEpochs;
+      const currentEpochs = await this.getAvailableEpochs();
+      return currentEpochs;
     }
   }
   
@@ -345,8 +345,6 @@ class TrainingService {
       return false;
     }
   }
-
-  // New methods for epoch management
 
   async saveEpoch(epochData: {
     epochNumber: number;

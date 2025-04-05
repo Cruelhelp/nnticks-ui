@@ -134,6 +134,7 @@ export class NeuralNetwork {
   private lastPrediction: PredictionResult | null = null;
   private trainingProgress: number = 0;
   private modelAccuracy: number = 0;
+  private lastLoss: number = 0; // Added lastLoss property to track the most recent loss value
   private weights: number[][][] = []; // Layer weights
   private biases: number[][] = []; // Layer biases
   private modelVersion: string = "1.0.0";
@@ -300,6 +301,11 @@ export class NeuralNetwork {
     return prediction;
   }
 
+  // Get the last computed loss value
+  getLastLoss(): number {
+    return this.lastLoss;
+  }
+
   // Enhanced train function that supports progress tracking
   async train(
     historicalData: number[], 
@@ -352,11 +358,14 @@ export class NeuralNetwork {
       
       this.modelAccuracy = baseAccuracy + (maxImprovement * diminishingReturns);
       
-      // Add some random fluctuations
+      // Add some random fluctuations to accuracy
       this.modelAccuracy += (Math.random() * 0.04 - 0.02);
       
-      // Clamp to realistic values
+      // Clamp accuracy to realistic values
       this.modelAccuracy = Math.min(0.95, Math.max(0.6, this.modelAccuracy));
+      
+      // Simulate loss calculation and decreasing loss over time
+      this.lastLoss = 0.5 * Math.exp(-epoch / (maxEpochs * 0.3)) + (Math.random() * 0.05);
       
       // Update model version
       this.modelVersion = `1.0.${epoch + 1}`;
