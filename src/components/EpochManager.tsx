@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,7 +10,7 @@ import { useEpochCollection } from '@/hooks/useEpochCollection';
 import { neuralNetwork } from '@/lib/neuralNetwork';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
-import ConnectionStatus from './ConnectionStatus';
+import WebSocketStatus from './WebSocketStatus';
 import {
   Tooltip,
   TooltipContent,

@@ -1,45 +1,40 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { epochService, EpochProgressStatus } from '@/services/EpochService';
+import { epochCollectionService, EpochCollectionStatus } from '@/services/EpochCollectionService';
 import { toast } from 'sonner';
 
 export function useEpochCollection() {
   const { user } = useAuth();
-  const [status, setStatus] = useState<EpochProgressStatus>(epochService.getStatus());
-  const [batchSize, setBatchSize] = useState<number>(100);
+  const [status, setStatus] = useState<EpochCollectionStatus>(epochCollectionService.getStatus());
+  const [batchSize, setBatchSize] = useState<number>(epochCollectionService.getTickBatchSize());
   const [isInitialized, setIsInitialized] = useState<boolean>(false);
   
   // Set user ID in epoch service
   useEffect(() => {
     if (user) {
-      epochService.setUserId(user.id);
+      epochCollectionService.setUserId(user.id);
     } else {
-      epochService.setUserId(null);
+      epochCollectionService.setUserId(null);
     }
   }, [user]);
   
   // Load the batch size from the epoch service
   useEffect(() => {
-    const loadBatchSize = async () => {
-      const size = await epochService.getTickBatchSize();
-      setBatchSize(size);
-      setIsInitialized(true);
-    };
-    
-    loadBatchSize();
+    setBatchSize(epochCollectionService.getTickBatchSize());
+    setIsInitialized(true);
   }, [user]);
   
   // Subscribe to epoch service updates
   useEffect(() => {
     const subscriberId = 'useEpochCollection-' + Math.random().toString(36).substring(7);
     
-    epochService.subscribe(subscriberId, (newStatus) => {
+    epochCollectionService.subscribe(subscriberId, (newStatus) => {
       setStatus(newStatus);
     });
     
     return () => {
-      epochService.unsubscribe(subscriberId);
+      epochCollectionService.unsubscribe(subscriberId);
     };
   }, []);
   
@@ -50,33 +45,23 @@ export function useEpochCollection() {
       return false;
     }
     
-    const success = await epochService.start(batchSize);
+    const success = await epochCollectionService.start(batchSize);
     return success;
   }, [user, batchSize]);
   
   // Stop epoch collection
   const stopCollection = useCallback(() => {
-    epochService.stop();
+    epochCollectionService.stop();
   }, []);
   
   // Reset epoch collection
   const resetCollection = useCallback(() => {
-    epochService.reset();
+    epochCollectionService.reset();
   }, []);
   
   // Update batch size
   const updateBatchSize = useCallback(async (newBatchSize: number) => {
-    if (newBatchSize < 10) {
-      toast.error('Batch size must be at least 10');
-      return false;
-    }
-    
-    if (newBatchSize > 1000) {
-      toast.error('Batch size must be at most 1000');
-      return false;
-    }
-    
-    const success = await epochService.updateTickBatchSize(newBatchSize);
+    const success = await epochCollectionService.updateTickBatchSize(newBatchSize);
     
     if (success) {
       setBatchSize(newBatchSize);
