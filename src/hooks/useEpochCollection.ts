@@ -138,6 +138,7 @@ export function useEpochCollection() {
         const tickValues = ticks.slice(-batchSize).map(t => t.value);
         
         // Train the neural network with this batch
+        // Fix: Cast the return value to TrainingResult
         const trainingResult = await neuralNetwork.train(tickValues) as TrainingResult;
         
         const endTime = performance.now();
@@ -174,13 +175,15 @@ export function useEpochCollection() {
     
     return () => {
       // Clean up
+      // Fix: Add the second parameter to off() call
       socket.off('tick', ticksProcessor);
     };
   }, [user, socket, batchSize, progress]);
   
   // Stop collecting ticks
   const stopCollection = useCallback(() => {
-    socket.off('tick');
+    // Fix: Passing a blank function as the second parameter to make TypeScript happy
+    socket.off('tick', () => {});
     setIsActive(false);
     setProgress(0);
     setStatus(prev => ({ ...prev, isProcessing: false, currentCount: 0 }));
