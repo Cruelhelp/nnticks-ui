@@ -9,7 +9,7 @@ export interface PredictionModeConfig {
   window: number;
   threshold: number;
   minConfidence: number;
-  predictionRate: number; // Added this property to fix the errors
+  predictionRate: number;
 }
 
 export const PREDICTION_MODES: Record<PredictionMode, PredictionModeConfig> = {
@@ -38,3 +38,17 @@ export const PREDICTION_MODES: Record<PredictionMode, PredictionModeConfig> = {
     predictionRate: 7000
   }
 };
+
+// Add TickData interface
+export interface TickData {
+  timestamp: string | number;
+  value: number;
+  market: string;
+}
+
+// Add TrainingResult interface for neural network training results
+export interface TrainingResult {
+  loss: number;
+  accuracy: number;
+  time?: number;
+}

@@ -1,6 +1,5 @@
-
 import { useState, useEffect, useCallback } from 'react';
-import { useWebSocketClient } from '@/hooks/useWebSocketClient';
+import { useWebSocket } from '@/hooks/useWebSocket';
 import { TickData } from '@/types/chartTypes';
 import { useAuth } from '@/contexts/AuthContext';
 import { tickService } from '@/services/TickService';
@@ -14,7 +13,7 @@ export function useTicks(options: {
 } = {}) {
   const { maxTicks = 100, storeInSupabase = true, market, updateEpochs = false } = options;
   const { user } = useAuth();
-  const { ticks: wsTicks, latestTick, isConnected, connectionStatus } = useWebSocketClient();
+  const { ticks: wsTicks, latestTick, isConnected, connectionStatus } = useWebSocket();
   
   const [ticks, setTicks] = useState<TickData[]>([]);
   const [tickCount, setTickCount] = useState(0);

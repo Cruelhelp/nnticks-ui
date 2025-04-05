@@ -6,6 +6,7 @@ import { neuralNetwork } from '@/lib/neuralNetwork';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
+import { TrainingResult } from '@/types/chartTypes';
 
 interface EpochStatus {
   isProcessing: boolean;
@@ -137,7 +138,7 @@ export function useEpochCollection() {
         const tickValues = ticks.slice(-batchSize).map(t => t.value);
         
         // Train the neural network with this batch
-        const trainingResult = await neuralNetwork.train(tickValues);
+        const trainingResult = await neuralNetwork.train(tickValues) as TrainingResult;
         
         const endTime = performance.now();
         const trainingTime = endTime - startTime;

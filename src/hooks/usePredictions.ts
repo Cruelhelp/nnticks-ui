@@ -1,7 +1,6 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useWebSocketClient } from '@/hooks/useWebSocketClient';
+import { useWebSocket } from '@/hooks/useWebSocket';
 import { neuralNetwork, Indicators } from '@/lib/neuralNetwork';
 import { predictionService, PredictionData, PredictionType, PredictionOutcome } from '@/services/PredictionService';
 import { TickData } from '@/types/chartTypes';
@@ -16,7 +15,7 @@ interface PredictionMode {
 
 export function usePredictions() {
   const { user } = useAuth();
-  const { ticks, latestTick, isConnected } = useWebSocketClient({ autoConnect: true });
+  const { ticks, latestTick, isConnected } = useWebSocket({ autoConnect: true });
   
   const [isRunning, setIsRunning] = useState(false);
   const [predictionMode, setPredictionMode] = useState<'strict' | 'normal' | 'fast'>('normal');
@@ -49,7 +48,6 @@ export function usePredictions() {
     }
   };
   
-  // Set the user ID in the prediction service
   useEffect(() => {
     if (user) {
       predictionService.setUserId(user.id);
@@ -58,7 +56,6 @@ export function usePredictions() {
     }
   }, [user]);
   
-  // Load prediction history and stats
   const loadData = useCallback(async () => {
     if (!user) return;
     
@@ -70,7 +67,6 @@ export function usePredictions() {
       setPendingPrediction(pendingPredictions[0]);
       predictionService.setPendingPrediction(pendingPredictions[0]);
       
-      // Restore countdown state if we have a pending prediction
       if (localStorage.getItem('tickCountdown')) {
         const storedCountdown = parseInt(localStorage.getItem('tickCountdown') || '0', 10);
         setTickCountdown(storedCountdown);
@@ -86,12 +82,10 @@ export function usePredictions() {
     loadData();
   }, [loadData]);
   
-  // Determine if a new prediction can be made
   const canMakeNewPrediction = useCallback(() => {
     return predictionService.canMakeNewPrediction();
   }, []);
   
-  // Calculate indicators for the current market state
   const calculateIndicators = useCallback((ticksData: TickData[]) => {
     if (ticksData.length < 20) return null;
     
@@ -108,7 +102,6 @@ export function usePredictions() {
     };
   }, []);
   
-  // Make a prediction based on current market data
   const makePrediction = useCallback(async () => {
     if (!isRunning || !canMakeNewPrediction() || !latestTick || ticks.length < 20) return;
     
@@ -116,11 +109,9 @@ export function usePredictions() {
       const indicators = calculateIndicators(ticks);
       if (!indicators) return;
       
-      // Use neural network to determine the prediction type
       const values = ticks.map(t => t.value);
       const prediction = await neuralNetwork.predict(values);
       
-      // Calculate confidence and apply mode filter
       const confidence = prediction.confidence;
       const minConfidence = predictionModes[predictionMode].minConfidence;
       
@@ -129,23 +120,19 @@ export function usePredictions() {
         return;
       }
       
-      // Use prediction type from neural network
       const predictionType = prediction.type;
       
-      // Create prediction in database
       const predictionData: PredictionData = {
         type: predictionType,
         confidence,
-        timePeriod: 3, // Default to 3 ticks
+        timePeriod: 3,
         market: latestTick.market || 'unknown',
         startPrice: latestTick.value,
         indicators
       };
       
-      // Start 10-second countdown
       setCountdown(10);
       
-      // Create a toast notification
       toast.info(`Preparing ${predictionType.toUpperCase()} prediction (${Math.round(confidence * 100)}% confidence)`, {
         duration: 5000
       });
@@ -154,7 +141,6 @@ export function usePredictions() {
     }
   }, [isRunning, canMakeNewPrediction, latestTick, ticks, calculateIndicators, predictionMode, predictionModes]);
   
-  // Handle the countdown timer
   useEffect(() => {
     if (countdown === null) return;
     
@@ -162,18 +148,16 @@ export function usePredictions() {
       if (countdown > 0) {
         setCountdown(countdown - 1);
       } else {
-        // Countdown complete, create the prediction
         if (latestTick && ticks.length >= 20) {
           const indicators = calculateIndicators(ticks);
           if (!indicators) return;
           
-          // Use neural network for prediction with proper type
           const values = ticks.map(t => t.value);
           neuralNetwork.predict(values).then(async prediction => {
             const predictionData: PredictionData = {
-              type: prediction.type, // Use the neural network's prediction type
+              type: prediction.type,
               confidence: prediction.confidence,
-              timePeriod: 3, // Default to 3 ticks
+              timePeriod: 3,
               market: latestTick.market || 'unknown',
               startPrice: latestTick.value,
               indicators
@@ -193,10 +177,9 @@ export function usePredictions() {
               setPendingPrediction(newPrediction);
               predictionService.setPendingPrediction(newPrediction);
               predictionService.setTickCountdownActive(true);
-              setTickCountdown(3); // Start the 3-tick countdown
+              setTickCountdown(3);
               setPendingTicks([]);
               
-              // Notify user
               toast.success(`${prediction.type.toUpperCase()} prediction started with ${Math.round(prediction.confidence * 100)}% confidence`, {
                 duration: 3000
               });
@@ -211,7 +194,6 @@ export function usePredictions() {
     return () => clearTimeout(timer);
   }, [countdown, latestTick, ticks, calculateIndicators, user]);
   
-  // Persistent storage for predictions - update when pendingPrediction changes
   useEffect(() => {
     if (pendingPrediction) {
       localStorage.setItem('pendingPrediction', JSON.stringify(pendingPrediction));
@@ -226,7 +208,6 @@ export function usePredictions() {
     }
   }, [pendingPrediction, tickCountdown]);
   
-  // Try to restore pending prediction from localStorage on component mount
   useEffect(() => {
     if (!pendingPrediction) {
       const storedPrediction = localStorage.getItem('pendingPrediction');
@@ -236,10 +217,8 @@ export function usePredictions() {
           setPendingPrediction(parsedPrediction);
           predictionService.setPendingPrediction(parsedPrediction);
           
-          // Restore tick countdown if it exists
-          const storedTickCountdown = localStorage.getItem('tickCountdown');
-          if (storedTickCountdown) {
-            const countdown = parseInt(storedTickCountdown, 10);
+          if (localStorage.getItem('tickCountdown')) {
+            const countdown = parseInt(localStorage.getItem('tickCountdown') || '0', 10);
             setTickCountdown(countdown);
             predictionService.setTickCountdownActive(true);
           }
@@ -252,21 +231,16 @@ export function usePredictions() {
     }
   }, [pendingPrediction]);
   
-  // Handle new ticks for pending predictions
   useEffect(() => {
     if (!pendingPrediction || tickCountdown === null || !latestTick) return;
     
-    // Add new tick to pending ticks
     setPendingTicks(prev => [...prev, latestTick]);
     
-    // Decrement tick countdown
     if (pendingTicks.length >= tickCountdown) {
-      // Tick countdown complete, evaluate prediction
       if (pendingPrediction.id && pendingPrediction.startPrice !== undefined) {
         const endPrice = latestTick.value;
         let outcome: PredictionOutcome = 'pending';
         
-        // Determine outcome based on prediction type
         switch (pendingPrediction.type) {
           case 'rise':
             outcome = endPrice > pendingPrediction.startPrice ? 'win' : 'loss';
@@ -282,7 +256,6 @@ export function usePredictions() {
             break;
         }
         
-        // Complete prediction
         predictionService.completePrediction(pendingPrediction.id, endPrice, outcome).then(success => {
           if (success) {
             const completedPrediction = {
@@ -292,26 +265,21 @@ export function usePredictions() {
               completedAt: new Date().toISOString()
             };
             
-            // Update completed predictions
             setCompletedPredictions(prev => [completedPrediction, ...prev]);
             
-            // Clear pending prediction
             setPendingPrediction(null);
             predictionService.setPendingPrediction(null);
             predictionService.setTickCountdownActive(false);
             
-            // Update stats
             setStats(prev => ({
               wins: outcome === 'win' ? prev.wins + 1 : prev.wins,
               losses: outcome === 'loss' ? prev.losses + 1 : prev.losses,
               winRate: (outcome === 'win' ? prev.wins + 1 : prev.wins) / (prev.wins + prev.losses + 1) * 100
             }));
             
-            // Clean up localStorage
             localStorage.removeItem('pendingPrediction');
             localStorage.removeItem('tickCountdown');
             
-            // Notify user
             toast[outcome === 'win' ? 'success' : 'error'](
               `Prediction ${outcome === 'win' ? 'WON' : 'LOST'}: ${pendingPrediction.type.toUpperCase()} (${pendingPrediction.startPrice} → ${endPrice})`,
               { duration: 5000 }
@@ -327,7 +295,6 @@ export function usePredictions() {
     }
   }, [latestTick, pendingTicks.length, pendingPrediction, tickCountdown]);
   
-  // Auto-run the prediction engine when isRunning is true
   useEffect(() => {
     if (!isRunning || !isConnected) return;
     
@@ -335,7 +302,7 @@ export function usePredictions() {
       if (canMakeNewPrediction()) {
         makePrediction();
       }
-    }, 5000); // Check for prediction opportunities every 5 seconds
+    }, 5000);
     
     return () => clearInterval(interval);
   }, [isRunning, isConnected, makePrediction, canMakeNewPrediction]);

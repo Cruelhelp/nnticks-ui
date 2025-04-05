@@ -1,5 +1,7 @@
+
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { persistentWebSocket, TickData } from '@/services/PersistentWebSocketService';
+import { persistentWebSocket } from '@/services/PersistentWebSocketService';
+import { TickData } from '@/types/chartTypes';
 
 interface WebSocketHookOptions {
   autoConnect?: boolean;
@@ -126,7 +128,10 @@ export function usePersistentWebSocket(options: WebSocketHookOptions = {}) {
     send: (message: object | string) => persistentWebSocket.send(message),
     setSubscription: (sub: object) => persistentWebSocket.setSubscription(sub),
     clearBuffer: () => persistentWebSocket.clearBuffer(),
-    getBufferedTicks: () => persistentWebSocket.getBufferedTicks()
+    getBufferedTicks: () => persistentWebSocket.getBufferedTicks(),
+    // Add event methods to the API
+    on: (event: string, callback: Function) => persistentWebSocket.on(event, callback),
+    off: (event: string, callback: Function) => persistentWebSocket.off(event, callback)
   }), []);
   
   return {
