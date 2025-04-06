@@ -141,7 +141,20 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
     latestTick,
     connect,
     disconnect,
-    send: (message: object | string) => webSocketService.send(message),
+    // Use the right syntax for sending messages through the WebSocketService
+    // The WebSocketService implementation shows it takes a message parameter of type object or string
+    send: (message: object | string) => {
+      if (webSocketService.isWebSocketConnected()) {
+        if (typeof message === 'object') {
+          const socket = webSocketService['socket'] as WebSocket;
+          if (socket && socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify(message));
+            return true;
+          }
+        }
+      }
+      return false;
+    },
     setSubscription: (sub: object) => webSocketService.subscribeToTicks(
       typeof sub === 'object' && 'ticks' in sub 
         ? [sub.ticks as string] 
