@@ -1,4 +1,3 @@
-
 import { BrowserEventEmitter } from '@/lib/utils';
 import { persistentWebSocket } from './PersistentWebSocketService';
 import { supabase } from '@/lib/supabase';
@@ -211,7 +210,6 @@ class EpochCollectionService extends BrowserEventEmitter {
       
       const trainingResult = await neuralNetwork.train(tickValues, {
         maxEpochs: 10,
-        learningRate: 0.01,
         onProgress: (progress) => console.log(`Training progress: ${progress * 100}%`)
       });
       
@@ -220,7 +218,7 @@ class EpochCollectionService extends BrowserEventEmitter {
       
       // Prepare result
       const result: TrainingResult = {
-        accuracy: typeof trainingResult === 'object' ? trainingResult.accuracy || 0 : trainingResult || 0,
+        accuracy: typeof trainingResult === 'object' && trainingResult ? trainingResult.accuracy || 0 : 0,
         loss: neuralNetwork.getLastLoss() || 0,
         time: trainingTime
       };
