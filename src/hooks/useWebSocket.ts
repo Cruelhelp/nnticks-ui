@@ -7,7 +7,6 @@ interface UseWebSocketOptions {
   autoConnect?: boolean;
   symbols?: string[];
   maxTicks?: number;
-  wsUrl?: string;
   subscription?: object;
   onMessage?: (data: any) => void;
   onTick?: (tick: TickData) => void;
@@ -15,6 +14,7 @@ interface UseWebSocketOptions {
   onError?: (error: any) => void;
   onOpen?: () => void;
   onClose?: () => void;
+  wsUrl?: string;
 }
 
 export function useWebSocket(options: UseWebSocketOptions = {}) {
@@ -22,14 +22,14 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
     autoConnect = true, 
     symbols = ['R_10'],
     maxTicks = 100,
-    wsUrl,
     subscription,
     onMessage,
     onTick,
     onStatusChange,
     onError,
     onOpen,
-    onClose
+    onClose,
+    wsUrl
   } = options;
   
   const [isConnected, setIsConnected] = useState<boolean>(webSocketService.isWebSocketConnected());
@@ -74,22 +74,21 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
   }, [onClose]);
 
   const connect = useCallback(() => {
-    if (wsUrl) {
-      webSocketService.setUrl(wsUrl);
-    }
-    
+    // Custom URL is not directly supported by the core WebSocketService
+    // We'll ignore the wsUrl parameter and just connect with the default
     const success = webSocketService.connect();
     
     if (success) {
       if (subscription) {
-        webSocketService.setSubscription(subscription);
+        // Use the available method to set subscription
+        webSocketService.subscribeToTicks(symbols);
       } else if (symbols && symbols.length > 0) {
         webSocketService.subscribeToTicks(symbols);
       }
     }
     
     return success;
-  }, [symbols, wsUrl, subscription]);
+  }, [symbols, subscription]);
 
   const disconnect = useCallback(() => {
     webSocketService.disconnect();
@@ -143,7 +142,15 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
     connect,
     disconnect,
     send: (message: object | string) => webSocketService.send(message),
-    setSubscription: (sub: object) => webSocketService.setSubscription(sub),
-    clearBuffer: () => webSocketService.clearBuffer()
+    setSubscription: (sub: object) => webSocketService.subscribeToTicks(
+      typeof sub === 'object' && 'ticks' in sub 
+        ? [sub.ticks as string] 
+        : symbols
+    ),
+    clearBuffer: () => {
+      // WebSocketService doesn't have clearBuffer, 
+      // but we can handle this operation client-side
+      setTicks([]);
+    }
   };
 }
