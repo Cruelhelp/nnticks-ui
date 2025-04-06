@@ -15,7 +15,7 @@ import DebugTools from '@/components/DebugTools';
 import Account from '@/components/Account';
 import AdminPanel from '@/components/AdminPanel';
 import Epochs from '@/components/Epochs';
-import EpochManager from '@/components/EpochManager';
+import EpochCollectionManager from '@/components/EpochCollectionManager';
 import LegalInfo from '@/components/LegalInfo';
 import Splash from './Splash';
 import { useSettings } from '@/hooks/useSettings';
@@ -197,7 +197,7 @@ const Index = () => {
         
         <div className="flex-1 flex overflow-hidden">
           {showSidebar && (
-            <div className={`${isMobile ? 'absolute z-20 h-full' : ''}`}>
+            <div className={`${isMobile ? 'absolute z-20 h-full' : 'h-full'}`}>
               <SideBar 
                 activeSection={activeSection} 
                 onSectionChange={handleSectionChange} 
@@ -205,7 +205,7 @@ const Index = () => {
               
               {!isMobile && (
                 <div className="mt-4 px-2">
-                  <EpochManager compact showControls showSettings={false} />
+                  <EpochCollectionManager compact showControls showSettings={false} />
                 </div>
               )}
             </div>
