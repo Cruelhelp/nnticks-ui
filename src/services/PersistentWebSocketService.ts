@@ -1,4 +1,4 @@
-// Add this file for global persistent WebSocket connection
+
 import { toast } from 'sonner';
 import { BrowserEventEmitter } from '@/lib/utils';
 import { TickData } from '@/types/chartTypes';
@@ -61,6 +61,11 @@ class PersistentWebSocketService extends BrowserEventEmitter {
     if (this.isConnected()) {
       this.send(subscription);
     }
+  }
+  
+  // Get current subscription
+  public getSubscription(): object {
+    return { ...this.subscription };
   }
   
   // Connect to WebSocket
@@ -168,11 +173,6 @@ class PersistentWebSocketService extends BrowserEventEmitter {
       : Number(lastTick.timestamp);
       
     return (Date.now() - tickTime) < 10000; // 10 seconds
-  }
-  
-  // Get subscription
-  public getSubscription(): object {
-    return this.subscription;
   }
   
   // Handle WebSocket open

@@ -1,3 +1,4 @@
+
 export type PredictionType = "rise" | "fall" | "even" | "odd";
 export type PredictionPhase = "warning" | "counting" | "completed";
 export type PredictionMode = "conservative" | "balanced" | "aggressive";
@@ -57,4 +58,26 @@ export interface SimulationState {
   tickCount: number;
   epochCount: number;
   lastUpdated: number;
+}
+
+export interface PredictionResult {
+  prediction: number;
+  confidence: number;
+  direction?: 'up' | 'down' | 'neutral';
+}
+
+export interface EpochData {
+  epochNumber: number;
+  startTime: number;
+  endTime?: number;
+  ticks: TickData[];
+  results?: TrainingResult;
+}
+
+export interface EpochCollectionStatus {
+  isActive: boolean;
+  isProcessing: boolean;
+  currentCount: number;
+  targetCount: number;
+  progress: number;
 }

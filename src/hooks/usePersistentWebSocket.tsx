@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import wsManager from '@/services/WebSocketManager';
+import { persistentWebSocket } from '@/services/PersistentWebSocketService';
 import { TickData } from '@/types/chartTypes';
 
 export function usePersistentWebSocket(options: {
@@ -11,8 +11,8 @@ export function usePersistentWebSocket(options: {
   
   const [ticks, setTicks] = useState<TickData[]>([]);
   const [latestTick, setLatestTick] = useState<TickData | null>(null);
-  const [connectionStatus, setConnectionStatus] = useState<string>(wsManager.getStatus());
-  const [isConnected, setIsConnected] = useState<boolean>(wsManager.isConnected());
+  const [connectionStatus, setConnectionStatus] = useState<string>(persistentWebSocket.getStatus());
+  const [isConnected, setIsConnected] = useState<boolean>(persistentWebSocket.isConnected());
   
   // Use refs to track if component is mounted
   const isMountedRef = useRef(true);
@@ -36,34 +36,34 @@ export function usePersistentWebSocket(options: {
       }
       
       // Debounce setting ticks to avoid excessive re-renders
-      setTicks(ticksAccumulatorRef.current);
+      setTicks([...ticksAccumulatorRef.current]);
     };
     
     const onStatusChange = (status: string) => {
       if (!isMountedRef.current) return;
       
       setConnectionStatus(status);
-      setIsConnected(wsManager.isConnected());
+      setIsConnected(persistentWebSocket.isConnected());
     };
     
     // Subscribe to events
-    wsManager.on('tick', onTick);
-    wsManager.on('statusChange', onStatusChange);
+    persistentWebSocket.on('tick', onTick);
+    persistentWebSocket.on('statusChange', onStatusChange);
     
     // Set initial state
-    setIsConnected(wsManager.isConnected());
-    setConnectionStatus(wsManager.getStatus());
+    setIsConnected(persistentWebSocket.isConnected());
+    setConnectionStatus(persistentWebSocket.getStatus());
     
     // Set up subscription if provided
     if (autoSubscribe && market) {
-      wsManager.setSubscription({ ticks: market });
+      persistentWebSocket.setSubscription({ ticks: market });
     }
     
     // Initialize ticks from buffer if available
-    const bufferedTicks = wsManager.getBufferedTicks();
+    const bufferedTicks = persistentWebSocket.getBufferedTicks();
     if (bufferedTicks.length > 0) {
       ticksAccumulatorRef.current = bufferedTicks.slice(-50);
-      setTicks(ticksAccumulatorRef.current);
+      setTicks([...ticksAccumulatorRef.current]);
       setLatestTick(bufferedTicks[bufferedTicks.length - 1]);
     }
     
@@ -72,29 +72,26 @@ export function usePersistentWebSocket(options: {
       isMountedRef.current = false;
       
       // Remove event listeners
-      wsManager.off('tick', onTick);
-      wsManager.off('statusChange', onStatusChange);
-      
-      // Note: We don't disconnect the WebSocket, as it's managed globally by WebSocketManager
-      // This allows the connection to persist across component unmounts
+      persistentWebSocket.off('tick', onTick);
+      persistentWebSocket.off('statusChange', onStatusChange);
     };
   }, [autoSubscribe, market]);
   
   // Update market subscription if it changes
   useEffect(() => {
-    if (autoSubscribe && market) {
-      wsManager.setSubscription({ ticks: market });
+    if (autoSubscribe && market && persistentWebSocket.isConnected()) {
+      persistentWebSocket.setSubscription({ ticks: market });
     }
   }, [autoSubscribe, market]);
   
   // Function to send messages to the WebSocket
   const send = useCallback((message: object | string) => {
-    return wsManager.send(message);
+    return persistentWebSocket.send(message);
   }, []);
   
   // Connect manually
   const connect = useCallback(() => {
-    return wsManager.connect();
+    return persistentWebSocket.connect();
   }, []);
   
   return {

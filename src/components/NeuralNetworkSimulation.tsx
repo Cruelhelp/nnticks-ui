@@ -7,6 +7,7 @@ import { Brain, Activity, Zap, BarChart2, LineChart, Info, HelpCircle, Layers, S
 import { neuralNetwork } from '@/lib/neuralNetwork';
 import { useTicks } from '@/hooks/useTicks';
 import { useTraining } from '@/hooks/useTraining';
+import { PredictionResult } from '@/types/chartTypes';
 
 interface NeuronConnection {
   sourceId: string;
@@ -115,7 +116,7 @@ const NeuralNetworkSimulation: React.FC = () => {
     try {
       const nnConfig = neuralNetwork.getConfig();
       const loss = neuralNetwork.getLastLoss() || 0;
-      // Since getTrainedEpochs doesn't exist, get epochs from the config
+      // Get epochs from the config since getTrainedEpochs doesn't exist
       const trainedEpochs = nnConfig.epochs || 0;
       
       setNetworkStats({
@@ -141,7 +142,9 @@ const NeuralNetworkSimulation: React.FC = () => {
         const recentValues = ticks.slice(-20).map(t => t.value);
         
         // Get prediction (and await the result since it's a promise)
-        const prediction = await neuralNetwork.predict(recentValues);
+        const prediction: PredictionResult = await neuralNetwork.predict(recentValues);
+        
+        // Set last prediction
         setLastPrediction(prediction.confidence || 0);
         
         // Calculate confidence (just for demo)
@@ -193,8 +196,13 @@ const NeuralNetworkSimulation: React.FC = () => {
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
       
-      // Clear canvas
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      // Enable high quality rendering
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      
+      // Clear canvas with a slight background effect
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
       
       // Update neurons (some random activation changes)
       const updatedNeurons = neurons.map(neuron => {
@@ -257,14 +265,14 @@ const NeuralNetworkSimulation: React.FC = () => {
         
         ctx.lineWidth = lineWidth;
         
-        // Draw line from source to target
+        // Draw line from source to target with a slight curve
         ctx.moveTo(source.x, source.y);
         
         // Add a slight curve to connections
         const midpointX = (source.x + target.x) / 2;
-        const curveOffset = 0;
-        const controlPoint1 = { x: midpointX - curveOffset, y: source.y };
-        const controlPoint2 = { x: midpointX + curveOffset, y: target.y };
+        const curveOffset = (target.y - source.y) * 0.2;
+        const controlPoint1 = { x: midpointX - curveOffset, y: source.y + curveOffset };
+        const controlPoint2 = { x: midpointX + curveOffset, y: target.y - curveOffset };
         
         // Draw the curved line
         ctx.bezierCurveTo(
@@ -402,142 +410,104 @@ const NeuralNetworkSimulation: React.FC = () => {
         
         <TabsContent value="visualization" className="mt-0">
           <CardContent className="p-2">
-            <div className="border rounded-md bg-black/20 backdrop-blur-sm w-full h-[300px] relative overflow-hidden">
+            <div className="border rounded-md bg-gradient-to-br from-black/30 to-black/10 backdrop-blur-sm w-full h-[300px] relative overflow-hidden">
               <canvas ref={canvasRef} className="w-full h-full"></canvas>
               
               {/* Layer labels */}
               <div className="absolute bottom-2 left-0 right-0 flex justify-around pointer-events-none">
-                <div className="text-xs text-muted-foreground bg-background/50 px-2 py-0.5 rounded">Input</div>
-                <div className="text-xs text-muted-foreground bg-background/50 px-2 py-0.5 rounded">Hidden</div>
-                <div className="text-xs text-muted-foreground bg-background/50 px-2 py-0.5 rounded">Hidden</div>
-                <div className="text-xs text-muted-foreground bg-background/50 px-2 py-0.5 rounded">Output</div>
+                <div className="text-xs text-muted-foreground bg-background/70 px-2 py-0.5 rounded">Input</div>
+                <div className="text-xs text-muted-foreground bg-background/70 px-2 py-0.5 rounded">Hidden</div>
+                <div className="text-xs text-muted-foreground bg-background/70 px-2 py-0.5 rounded">Hidden</div>
+                <div className="text-xs text-muted-foreground bg-background/70 px-2 py-0.5 rounded">Output</div>
               </div>
             </div>
             
-            <div className="text-xs text-muted-foreground mt-2 flex items-center">
-              <HelpCircle className="h-3 w-3 mr-1.5 inline-block" /> 
-              This visualization represents your neural network architecture with {networkStats.layers.join('-')} neurons.
-              Green connections indicate positive weights, red connections indicate negative weights.
+            <div className="mt-4 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Network Architecture:</span>
+                <span className="font-mono">{networkStats.layers.join(' → ')}</span>
+              </div>
+              <div className="flex justify-between mt-1">
+                <span className="text-muted-foreground">Input Features:</span>
+                <span className="font-mono">{networkStats.inputFeatures}</span>
+              </div>
+              <div className="flex justify-between mt-1">
+                <span className="text-muted-foreground">Learning Rate:</span>
+                <span className="font-mono">{networkStats.learnRate}</span>
+              </div>
+              <div className="flex justify-between mt-1">
+                <span className="text-muted-foreground">Epochs Trained:</span>
+                <span className="font-mono">{networkStats.epochsTrained}</span>
+              </div>
             </div>
           </CardContent>
         </TabsContent>
         
         <TabsContent value="predictions" className="mt-0">
-          <CardContent className="p-4">
-            <div className="grid grid-cols-2 gap-4">
-              <Card className="shadow-none border-slate-200/40 dark:border-slate-800/40">
-                <CardHeader className="p-3 pb-2">
-                  <CardTitle className="text-sm font-medium">Price Prediction</CardTitle>
-                </CardHeader>
-                <CardContent className="p-3 pt-0">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <div className="space-y-1">
+                  <span className="text-sm text-muted-foreground">Current Prediction</span>
+                  <div className="flex items-center">
+                    <div className={`w-3 h-3 rounded-full mr-2 ${
                       predictionTrend === 'up' 
-                        ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' 
-                        : predictionTrend === 'down'
-                          ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'
-                          : 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
-                    }`}>
-                      {predictionTrend === 'up' ? (
-                        <LineChart className="h-6 w-6" />
-                      ) : predictionTrend === 'down' ? (
-                        <LineChart className="h-6 w-6 transform rotate-180" />
-                      ) : (
-                        <LineChart className="h-6 w-6" />
-                      )}
-                    </div>
-                    
-                    <div>
-                      <div className="text-sm text-muted-foreground">Predicted Direction</div>
-                      <div className={`text-lg font-semibold ${
-                        predictionTrend === 'up' 
-                          ? 'text-green-500' 
-                          : predictionTrend === 'down'
-                            ? 'text-red-500'
-                            : 'text-blue-500'
-                      }`}>
-                        {predictionTrend === 'up' ? 'Uptrend' : predictionTrend === 'down' ? 'Downtrend' : 'Neutral'}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {lastPrediction !== null && (
-                    <div className="mt-3 pt-3 border-t">
-                      <div className="text-xs text-muted-foreground">Predicted Price</div>
-                      <div className="text-lg font-semibold">{lastPrediction.toFixed(5)}</div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-              
-              <Card className="shadow-none border-slate-200/40 dark:border-slate-800/40">
-                <CardHeader className="p-3 pb-2">
-                  <CardTitle className="text-sm font-medium">Confidence Score</CardTitle>
-                </CardHeader>
-                <CardContent className="p-3 pt-0">
-                  <div className="w-full bg-muted/30 h-3 rounded-full overflow-hidden mb-2">
-                    <div 
-                      className={`h-full rounded-full ${
-                        confidenceScore > 0.7 
-                          ? 'bg-green-500' 
-                          : confidenceScore > 0.5 
-                            ? 'bg-amber-500' 
-                            : 'bg-red-500'
-                      }`}
-                      style={{ width: `${confidenceScore * 100}%` }}
-                    ></div>
-                  </div>
-                  
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>Low</span>
-                    <span>{Math.round(confidenceScore * 100)}%</span>
-                    <span>High</span>
-                  </div>
-                  
-                  <div className="mt-3">
-                    <div className="text-sm text-muted-foreground">Signal Strength</div>
-                    <div className="text-lg font-semibold">
-                      {confidenceScore > 0.7 
-                        ? 'Strong' 
-                        : confidenceScore > 0.5 
-                          ? 'Moderate' 
-                          : 'Weak'
-                      }
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-            
-            <div className="mt-4">
-              <div className="text-sm font-medium mb-2">Prediction Requirements</div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <div className="p-3 border rounded-md bg-muted/20">
-                  <div className="flex justify-between">
-                    <span className="text-xs text-muted-foreground">Minimum Ticks</span>
-                    <span className="text-xs font-medium">{ticks.length} / 20</span>
-                  </div>
-                  <div className="w-full bg-muted/30 h-2 rounded-full overflow-hidden mt-1.5">
-                    <div 
-                      className="h-full rounded-full bg-primary"
-                      style={{ width: `${Math.min(100, (ticks.length / 20) * 100)}%` }}
-                    ></div>
-                  </div>
-                </div>
-                
-                <div className="p-3 border rounded-md bg-muted/20">
-                  <div className="flex justify-between">
-                    <span className="text-xs text-muted-foreground">Training Status</span>
-                    <span className="text-xs font-medium">
-                      {networkStats.epochsTrained > 0 ? 'Trained' : 'Not Trained'}
+                        ? 'bg-green-500' 
+                        : predictionTrend === 'down' 
+                          ? 'bg-red-500' 
+                          : 'bg-yellow-500'
+                    }`}></div>
+                    <span className="text-xl font-semibold">
+                      {predictionTrend === 'up' 
+                        ? 'Bullish (Up)' 
+                        : predictionTrend === 'down' 
+                          ? 'Bearish (Down)' 
+                          : 'Neutral'}
                     </span>
                   </div>
-                  <div className="w-full bg-muted/30 h-2 rounded-full overflow-hidden mt-1.5">
-                    <div 
-                      className="h-full rounded-full bg-primary"
-                      style={{ width: networkStats.epochsTrained > 0 ? '100%' : '0%' }}
-                    ></div>
+                </div>
+                <div className="text-center">
+                  <div className="text-sm text-muted-foreground">Confidence</div>
+                  <div className="text-2xl font-bold">{Math.round(confidenceScore * 100)}%</div>
+                </div>
+              </div>
+              
+              <div className="bg-muted/30 p-3 rounded-md border">
+                <div className="text-sm font-medium mb-2">Prediction Status</div>
+                {ticks.length < 20 ? (
+                  <div className="text-sm text-amber-500 flex items-center">
+                    <HelpCircle className="h-4 w-4 mr-1.5" />
+                    Need more tick data (at least 20 ticks required)
                   </div>
+                ) : networkStats.epochsTrained < 3 ? (
+                  <div className="text-sm text-amber-500 flex items-center">
+                    <HelpCircle className="h-4 w-4 mr-1.5" />
+                    Need more training (at least 3 epochs recommended)
+                  </div>
+                ) : (
+                  <div className="text-sm text-green-500 flex items-center">
+                    <Activity className="h-4 w-4 mr-1.5" />
+                    Prediction engine active and working
+                  </div>
+                )}
+              </div>
+              
+              <div className="space-y-2">
+                <div className="text-sm font-medium">Next Action Recommendation</div>
+                <div className={`p-3 rounded-md border ${
+                  predictionTrend === 'up' 
+                    ? 'bg-green-50 border-green-200 text-green-700 dark:bg-green-950 dark:border-green-800 dark:text-green-400' 
+                    : predictionTrend === 'down' 
+                      ? 'bg-red-50 border-red-200 text-red-700 dark:bg-red-950 dark:border-red-800 dark:text-red-400' 
+                      : 'bg-yellow-50 border-yellow-200 text-yellow-700 dark:bg-yellow-950 dark:border-yellow-800 dark:text-yellow-400'
+                }`}>
+                  {predictionTrend === 'up' ? (
+                    <>Consider a "Call" option or "Buy" position</>
+                  ) : predictionTrend === 'down' ? (
+                    <>Consider a "Put" option or "Sell" position</>
+                  ) : (
+                    <>No clear trend detected, consider waiting</>
+                  )}
                 </div>
               </div>
             </div>
@@ -545,73 +515,73 @@ const NeuralNetworkSimulation: React.FC = () => {
         </TabsContent>
         
         <TabsContent value="details" className="mt-0">
-          <CardContent className="p-4">
-            <div className="grid gap-4">
-              <div className="p-3 border rounded-md bg-muted/20">
-                <h4 className="font-medium text-sm flex items-center mb-2">
-                  <Layers className="h-4 w-4 mr-1.5 text-primary" />
-                  Network Architecture
-                </h4>
-                <div className="grid grid-cols-2 gap-y-2 text-sm">
-                  <div className="text-muted-foreground">Network Layers</div>
-                  <div className="font-mono text-right">{networkStats.layers.join(' → ')}</div>
-                  
-                  <div className="text-muted-foreground">Total Neurons</div>
-                  <div className="font-mono text-right">
-                    {networkStats.layers.reduce((a, b) => a + b, 0)}
+          <CardContent>
+            <div className="space-y-4">
+              <div className="text-sm text-muted-foreground">
+                <p>This neural network is trained using real-time market data to predict price movements.</p>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <div className="text-sm font-medium flex items-center">
+                    <Layers className="h-4 w-4 mr-1.5 text-blue-500" />
+                    Training Progress
                   </div>
-                  
-                  <div className="text-muted-foreground">Total Connections</div>
-                  <div className="font-mono text-right">{connections.length}</div>
-                  
-                  <div className="text-muted-foreground">Input Features</div>
-                  <div className="font-mono text-right">{networkStats.inputFeatures}</div>
+                  <div className="bg-muted/30 p-3 rounded-md border space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>Epochs Completed:</span>
+                      <span className="font-medium">{networkStats.epochsTrained}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span>Model Accuracy:</span>
+                      <span className="font-medium">{networkStats.accuracy.toFixed(1)}%</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span>Last Loss:</span>
+                      <span className="font-medium">{networkStats.lastLoss.toFixed(4)}</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <div className="text-sm font-medium flex items-center">
+                    <Server className="h-4 w-4 mr-1.5 text-purple-500" />
+                    Network Architecture
+                  </div>
+                  <div className="bg-muted/30 p-3 rounded-md border space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>Layers:</span>
+                      <span className="font-mono">{networkStats.layers.join('-')}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span>Input Features:</span>
+                      <span className="font-mono">{networkStats.inputFeatures}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span>Learning Rate:</span>
+                      <span className="font-mono">{networkStats.learnRate}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
               
-              <div className="p-3 border rounded-md bg-muted/20">
-                <h4 className="font-medium text-sm flex items-center mb-2">
-                  <Server className="h-4 w-4 mr-1.5 text-amber-500" />
-                  Training Information
-                </h4>
-                <div className="grid grid-cols-2 gap-y-2 text-sm">
-                  <div className="text-muted-foreground">Training Epochs</div>
-                  <div className="font-mono text-right">{networkStats.epochsTrained}</div>
-                  
-                  <div className="text-muted-foreground">Learning Rate</div>
-                  <div className="font-mono text-right">{networkStats.learnRate}</div>
-                  
-                  <div className="text-muted-foreground">Last Loss</div>
-                  <div className="font-mono text-right">{networkStats.lastLoss.toFixed(6)}</div>
-                  
-                  <div className="text-muted-foreground">Accuracy</div>
-                  <div className="font-mono text-right">{networkStats.accuracy.toFixed(2)}%</div>
+              <div className="text-sm space-y-2">
+                <div className="text-sm font-medium flex items-center">
+                  <Info className="h-4 w-4 mr-1.5 text-amber-500" />
+                  How It Works
                 </div>
-              </div>
-              
-              <div className="p-3 border rounded-md bg-muted/20">
-                <h4 className="font-medium text-sm flex items-center">
-                  <Info className="h-4 w-4 mr-1.5 text-blue-500" />
-                  How This Neural Network Works
-                </h4>
-                <p className="text-xs text-muted-foreground mt-1">
-                  This multilayer neural network uses temporal tick data to identify patterns in price movements. 
-                  Input features are processed through multiple hidden layers with ReLU activation functions.
-                  The network outputs predictions about future price movements based on pattern recognition.
-                  Training with more epochs improves pattern recognition capabilities.
+                <p className="text-muted-foreground">
+                  This neural network analyzes patterns in market price movements to forecast future trends. It processes historical tick data, identifies patterns, and generates probabilistic predictions. The model continuously improves as more epochs are completed.
+                </p>
+                <p className="text-muted-foreground">
+                  The neural network architecture consists of multiple layers of interconnected neurons. Each neuron processes input data and passes it forward through weighted connections. During training, these weights are adjusted to minimize prediction error.
                 </p>
               </div>
+              
             </div>
           </CardContent>
         </TabsContent>
       </Tabs>
-      
-      <CardFooter className="px-4 py-3 border-t text-xs text-muted-foreground">
-        <div className="flex justify-between w-full">
-          <span>Neural Network v2.0</span>
-          <span>Last updated: Today at {new Date().toLocaleTimeString()}</span>
-        </div>
-      </CardFooter>
     </Card>
   );
 };

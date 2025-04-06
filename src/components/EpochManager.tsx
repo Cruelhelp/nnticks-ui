@@ -39,6 +39,7 @@ const EpochManager: React.FC<EpochManagerProps> = ({
     isActive,
     progress,
     epochsCompleted,
+    isConnected,
     startCollection,
     stopCollection,
     resetCollection,
@@ -139,6 +140,7 @@ const EpochManager: React.FC<EpochManagerProps> = ({
                       size="icon" 
                       className="h-7 w-7" 
                       onClick={handleStartStop}
+                      disabled={!isConnected}
                     >
                       {isActive ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
                     </Button>
@@ -191,11 +193,11 @@ const EpochManager: React.FC<EpochManagerProps> = ({
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
                 <span>Ticks collected</span>
-                <span>{typeof status === 'object' && status.currentCount ? status.currentCount : 0} / {batchSize}</span>
+                <span>{status.currentCount} / {batchSize}</span>
               </div>
               <Progress value={progress} className="h-2" />
               
-              {typeof status === 'object' && status.isProcessing && (
+              {status.isProcessing && (
                 <div className="mt-2 text-xs text-yellow-600 dark:text-yellow-400 animate-pulse">
                   Processing epoch data...
                 </div>
@@ -273,7 +275,7 @@ const EpochManager: React.FC<EpochManagerProps> = ({
               variant="outline" 
               size="sm" 
               onClick={handleReset}
-              disabled={!user}
+              disabled={!user || !isConnected}
             >
               <RotateCcw className="h-4 w-4 mr-1.5" />
               Reset
@@ -283,7 +285,7 @@ const EpochManager: React.FC<EpochManagerProps> = ({
               variant={isActive ? 'secondary' : 'default'} 
               size="sm" 
               onClick={handleStartStop}
-              disabled={!user}
+              disabled={!user || !isConnected}
             >
               {isActive ? (
                 <>
