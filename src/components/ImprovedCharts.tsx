@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -25,7 +24,6 @@ const ImprovedCharts: React.FC = () => {
   const [chartType, setChartType] = useState('line');
   const { isConnected, connectionStatus, latestTick } = useWebSocket();
   
-  // Update WebSocket subscription when market changes
   const handleMarketChange = (market: string) => {
     setSelectedMarket(market);
   };
@@ -311,7 +309,7 @@ const ImprovedCharts: React.FC = () => {
                     <div>{latestTick.value.toFixed(5)}</div>
                     
                     <div>Symbol:</div>
-                    <div>{latestTick.symbol || selectedMarket}</div>
+                    <div>{selectedMarket}</div>
                   </div>
                 ) : (
                   <p className="text-sm text-muted-foreground">Waiting for tick data...</p>

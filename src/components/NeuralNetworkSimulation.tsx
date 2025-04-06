@@ -115,13 +115,14 @@ const NeuralNetworkSimulation: React.FC = () => {
     try {
       const nnConfig = neuralNetwork.getConfig();
       const loss = neuralNetwork.getLastLoss() || 0;
-      const trainedEpochs = neuralNetwork.getTrainedEpochs();
+      // Since getTrainedEpochs doesn't exist, get epochs from the config
+      const trainedEpochs = nnConfig.epochs || 0;
       
       setNetworkStats({
         accuracy: Math.min(95, 65 + (trainedEpochs / 100)),
         layers: nnConfig.layers || [4, 8, 8, 4],
         lastLoss: loss,
-        inputFeatures: nnConfig.inputFeatures || 10,
+        inputFeatures: 10, // Use a fixed value since it's not in the config
         learnRate: nnConfig.learningRate || 0.01,
         epochsTrained: trainedEpochs
       });
@@ -132,16 +133,16 @@ const NeuralNetworkSimulation: React.FC = () => {
   
   // Update network predictions
   useEffect(() => {
-    const updatePredictions = () => {
+    const updatePredictions = async () => {
       if (ticks.length < 20) return; // Need enough data
       
       try {
         // Get recent tick values
         const recentValues = ticks.slice(-20).map(t => t.value);
         
-        // Get prediction
-        const prediction = neuralNetwork.predict(recentValues);
-        setLastPrediction(prediction);
+        // Get prediction (and await the result since it's a promise)
+        const prediction = await neuralNetwork.predict(recentValues);
+        setLastPrediction(prediction.confidence || 0);
         
         // Calculate confidence (just for demo)
         const confidence = 0.5 + (Math.random() * 0.4); // 50-90% confidence
@@ -149,9 +150,11 @@ const NeuralNetworkSimulation: React.FC = () => {
         
         // Determine trend
         const currentPrice = ticks[ticks.length - 1]?.value || 0;
-        if (prediction > currentPrice) {
+        const predictionValue = prediction.confidence || 0;
+        
+        if (predictionValue > currentPrice) {
           setPredictionTrend('up');
-        } else if (prediction < currentPrice) {
+        } else if (predictionValue < currentPrice) {
           setPredictionTrend('down');
         } else {
           setPredictionTrend('neutral');

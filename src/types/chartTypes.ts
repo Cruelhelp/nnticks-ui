@@ -1,4 +1,3 @@
-
 export type PredictionType = "rise" | "fall" | "even" | "odd";
 export type PredictionPhase = "warning" | "counting" | "completed";
 export type PredictionMode = "conservative" | "balanced" | "aggressive";
@@ -39,21 +38,19 @@ export const PREDICTION_MODES: Record<PredictionMode, PredictionModeConfig> = {
   }
 };
 
-// Add TickData interface
 export interface TickData {
   timestamp: string | number;
   value: number;
   market: string;
+  symbol?: string;
 }
 
-// Add TrainingResult interface for neural network training results
 export interface TrainingResult {
   loss: number;
   accuracy: number;
   time?: number;
 }
 
-// Add interface for simulation state
 export interface SimulationState {
   isActive: boolean;
   speed: 'slow' | 'normal' | 'fast';
