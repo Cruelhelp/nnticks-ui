@@ -1,93 +1,133 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { epochCollectionService } from '@/services/EpochCollectionService';
-import { EpochCollectionStatus, EpochData } from '@/types/chartTypes';
-import { persistentWebSocket } from '@/services/PersistentWebSocketService';
+import { epochService } from '@/services/core/EpochService';
+import { webSocketService } from '@/services/core/WebSocketService';
+import { EpochCollectionStatus, EpochData, EpochServiceState } from '@/types/epochTypes';
 
 export function useEpochCollection() {
   const { user } = useAuth();
-  const [isInitialized, setIsInitialized] = useState(false);
-  const [status, setStatus] = useState<EpochCollectionStatus>(epochCollectionService.getStatus());
-  const [batchSize, setBatchSize] = useState(epochCollectionService.getBatchSize());
-  const [epochsCompleted, setEpochsCompleted] = useState(epochCollectionService.getCurrentEpochCount());
-  const [epochs, setEpochs] = useState<EpochData[]>(epochCollectionService.getEpochs());
-  const [isConnected, setIsConnected] = useState(persistentWebSocket.isConnected());
+  const [state, setState] = useState<EpochServiceState>({
+    status: epochService.getStatus(),
+    batchSize: epochService.getBatchSize(),
+    isInitialized: false,
+    isActive: epochService.getStatus().isActive,
+    progress: epochService.getStatus().progress,
+    epochsCompleted: epochService.getCurrentEpochCount(),
+    epochs: epochService.getEpochs(),
+    isConnected: webSocketService.isWebSocketConnected()
+  });
   
   // Initialize service when user is available
   useEffect(() => {
-    epochCollectionService.init(user?.id || null);
-    setIsInitialized(true);
+    epochService.init(user?.id || null);
     
-    // Update state with current values
-    setBatchSize(epochCollectionService.getBatchSize());
-    setEpochsCompleted(epochCollectionService.getCurrentEpochCount());
-    setStatus(epochCollectionService.getStatus());
-    setEpochs(epochCollectionService.getEpochs());
-    
-    // Initial connection status
-    setIsConnected(persistentWebSocket.isConnected());
+    setState(prev => ({
+      ...prev,
+      isInitialized: true,
+      status: epochService.getStatus(),
+      batchSize: epochService.getBatchSize(),
+      isActive: epochService.getStatus().isActive,
+      progress: epochService.getStatus().progress,
+      epochsCompleted: epochService.getCurrentEpochCount(),
+      epochs: epochService.getEpochs(),
+      isConnected: webSocketService.isWebSocketConnected()
+    }));
   }, [user]);
   
   // Set up listeners
   useEffect(() => {
-    if (!isInitialized) return;
+    if (!state.isInitialized) return;
     
     const handleStatusUpdate = (newStatus: EpochCollectionStatus) => {
-      setStatus(newStatus);
+      setState(prev => ({
+        ...prev,
+        status: newStatus,
+        isActive: newStatus.isActive,
+        progress: newStatus.progress
+      }));
     };
     
     const handleEpochCompleted = (epoch: EpochData) => {
-      setEpochsCompleted(prev => prev + 1);
-      setEpochs(prev => [...prev, epoch]);
+      setState(prev => ({
+        ...prev,
+        epochsCompleted: prev.epochsCompleted + 1,
+        epochs: [...prev.epochs, epoch]
+      }));
     };
     
-    const handleConnectionChange = () => {
-      setIsConnected(persistentWebSocket.isConnected());
+    const handleConnectionChange = ({ connected }: { connected: boolean }) => {
+      setState(prev => ({
+        ...prev,
+        isConnected: connected
+      }));
     };
     
     // Add event listeners
-    epochCollectionService.on('statusUpdate', handleStatusUpdate);
-    epochCollectionService.on('epochCompleted', handleEpochCompleted);
-    persistentWebSocket.on('statusChange', handleConnectionChange);
+    epochService.on('statusUpdate', handleStatusUpdate);
+    epochService.on('epochCompleted', handleEpochCompleted);
+    webSocketService.on('statusChange', handleConnectionChange);
     
     // Clean up on unmount
     return () => {
-      epochCollectionService.off('statusUpdate', handleStatusUpdate);
-      epochCollectionService.off('epochCompleted', handleEpochCompleted);
-      persistentWebSocket.off('statusChange', handleConnectionChange);
+      epochService.off('statusUpdate', handleStatusUpdate);
+      epochService.off('epochCompleted', handleEpochCompleted);
+      webSocketService.off('statusChange', handleConnectionChange);
     };
-  }, [isInitialized]);
+  }, [state.isInitialized]);
   
   // Start collection
   const startCollection = useCallback(() => {
-    return epochCollectionService.startCollection();
+    const result = epochService.startCollection();
+    if (result) {
+      setState(prev => ({
+        ...prev,
+        isActive: true
+      }));
+    }
+    return result;
   }, []);
   
   // Stop collection
   const stopCollection = useCallback(() => {
-    epochCollectionService.stopCollection();
+    epochService.stopCollection();
+    setState(prev => ({
+      ...prev,
+      isActive: false
+    }));
   }, []);
   
   // Reset collection
   const resetCollection = useCallback(() => {
-    epochCollectionService.resetCollection();
+    epochService.resetCollection();
+    setState(prev => ({
+      ...prev,
+      status: {
+        ...prev.status,
+        currentCount: 0,
+        progress: 0
+      }
+    }));
   }, []);
   
   // Update batch size
   const updateBatchSize = useCallback((newSize: number) => {
-    return epochCollectionService.updateBatchSize(newSize);
+    const result = epochService.updateBatchSize(newSize);
+    if (result) {
+      setState(prev => ({
+        ...prev,
+        batchSize: newSize,
+        status: {
+          ...prev.status,
+          targetCount: newSize
+        }
+      }));
+    }
+    return result;
   }, []);
   
   return {
-    status,
-    batchSize,
-    isInitialized,
-    isActive: status.isActive,
-    progress: status.progress,
-    epochsCompleted,
-    epochs,
-    isConnected,
+    ...state,
     startCollection,
     stopCollection,
     resetCollection,

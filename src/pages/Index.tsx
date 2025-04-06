@@ -4,19 +4,13 @@ import { useNavigate } from 'react-router-dom';
 import TopBar from '@/components/TopBar';
 import SideBar from '@/components/SideBar';
 import Terminal from '@/components/Terminal';
-import Home from '@/components/Home';
+import Dashboard from '@/components/Dashboard';
 import Charts from '@/components/Charts';
 import Predictions from '@/components/Predictions';
 import Training from '@/components/Training';
 import History from '@/components/History';
-import Leaderboard from '@/components/Leaderboard';
 import NeuralNet from '@/components/NeuralNetwork';
-import DebugTools from '@/components/DebugTools';
 import Account from '@/components/Account';
-import AdminPanel from '@/components/AdminPanel';
-import Epochs from '@/components/Epochs';
-import EpochManager from '@/components/EpochManager';
-import LegalInfo from '@/components/LegalInfo';
 import Splash from './Splash';
 import { useSettings } from '@/hooks/useSettings';
 import { useAuth } from '@/contexts/AuthContext';
@@ -26,7 +20,7 @@ import { Toaster } from '@/components/ui/sonner';
 
 const Index = () => {
   const [showSplash, setShowSplash] = useState(true);
-  const [activeSection, setActiveSection] = useState('home');
+  const [activeSection, setActiveSection] = useState('dashboard');
   const [showSidebar, setShowSidebar] = useState(true);
   const [showTerminal, setShowTerminal] = useState(false);
   const { settings } = useSettings();
@@ -103,131 +97,58 @@ const Index = () => {
     setShowTerminal(prev => !prev);
   };
   
-  const resetLayout = () => {
-    setShowSidebar(true);
-    setShowTerminal(false);
-  };
-  
-  useEffect(() => {
-    const body = document.body;
-    body.classList.remove('theme-blue', 'theme-purple', 'theme-red');
-    
-    if (settings?.accent !== 'green') {
-      body.classList.add(`theme-${settings?.accent}`);
-    }
-    
-    if (settings?.font) {
-      document.documentElement.style.fontFamily = settings.font;
-    }
-    
-    document.body.style.backgroundColor = '#000000';
-    document.documentElement.style.backgroundColor = '#000000';
-    
-    document.documentElement.style.setProperty('--background', '0 0% 0%');
-    document.documentElement.style.setProperty('--card', '0 0% 3%');
-    document.documentElement.style.setProperty('--muted', '0 0% 9%');
-  }, [settings?.accent, settings?.font]);
-  
-  useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth < 768 && showSidebar) {
-        setShowSidebar(false);
-      }
-    };
-    
-    window.addEventListener('resize', handleResize);
-    
-    return () => {
-      window.removeEventListener('resize', handleResize);
-    };
-  }, [showSidebar]);
-  
   if (showSplash) {
     return <Splash />;
   }
   
-  const renderActiveSection = () => {
+  const renderSection = () => {
     switch (activeSection) {
-      case 'home':
-        return <Home onSectionChange={handleSectionChange} />;
+      case 'dashboard':
+        return <Dashboard />;
       case 'charts':
         return <Charts />;
       case 'predictions':
         return <Predictions />;
       case 'training':
         return <Training />;
-      case 'epochs':
-        return <Epochs />;
       case 'history':
         return <History />;
-      case 'leaderboard':
-        return <Leaderboard />;
       case 'neuralnet':
         return <NeuralNet />;
-      case 'settings':
-        // Include Account component with LegalInfo
-        return (
-          <div className="space-y-8">
-            <Account />
-            <LegalInfo />
-          </div>
-        );
-      case 'admin':
-        return <AdminPanel />;
+      case 'account':
+        return <Account />;
       default:
-        return <Home onSectionChange={handleSectionChange} />;
+        return <Dashboard />;
     }
   };
   
-  // Get username from user details or localStorage
-  const username = userDetails?.username || 
-                    user?.email?.split('@')[0] || 
-                    localStorage.getItem('guestUsername') || 
-                    'Guest';
-  
   return (
-    <>
-      <div className="h-screen flex flex-col overflow-hidden">
-        <TopBar 
-          toggleSidebar={toggleSidebar} 
-          toggleTerminal={toggleTerminal}
-          onReset={resetLayout}
-          username={username}
-        />
+    <div className="flex flex-col h-screen overflow-hidden bg-background">
+      <TopBar 
+        toggleSidebar={toggleSidebar} 
+        toggleTerminal={toggleTerminal} 
+        showTerminal={showTerminal}
+      />
+      
+      <div className="flex flex-1 overflow-hidden">
+        {showSidebar && (
+          <SideBar 
+            activeSection={activeSection} 
+            onSectionChange={handleSectionChange}
+          />
+        )}
         
-        <div className="flex-1 flex overflow-hidden">
-          {showSidebar && (
-            <div className={`${isMobile ? 'absolute z-20 h-full' : ''}`}>
-              <SideBar 
-                activeSection={activeSection} 
-                onSectionChange={handleSectionChange} 
-              />
-              
-              {!isMobile && (
-                <div className="mt-4 px-2">
-                  <EpochManager compact showControls showSettings={false} />
-                </div>
-              )}
-            </div>
-          )}
-          
-          <div className="flex-1 flex flex-col overflow-hidden">
-            <main className="flex-1 p-4 overflow-auto">
-              {renderActiveSection()}
-            </main>
-            
-            {showTerminal && (
-              <Terminal 
-                onClose={() => setShowTerminal(false)}
-                onMinimize={() => setShowTerminal(false)}
-                onMaximize={() => {}}
-              />
-            )}
-          </div>
-        </div>
+        <main className="flex-1 overflow-auto p-4 md:p-6">
+          {renderSection()}
+        </main>
       </div>
+      
+      {showTerminal && (
+        <Terminal onClose={toggleTerminal} />
+      )}
+      
       <Toaster />
-    </>
+    </div>
   );
 };
 
