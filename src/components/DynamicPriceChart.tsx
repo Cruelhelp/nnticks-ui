@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -5,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Slider } from '@/components/ui/slider';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { TickData } from '@/types/chartTypes';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Area } from 'recharts';
 
 interface CustomTooltipProps {
   active?: boolean;
@@ -37,6 +38,7 @@ interface DynamicPriceChartProps {
   showControls?: boolean;
   showTimeframeSelector?: boolean;
   responsiveHeight?: boolean;
+  chartType?: 'line' | 'area' | 'candlestick';
 }
 
 const DynamicPriceChart: React.FC<DynamicPriceChartProps> = ({
@@ -46,17 +48,25 @@ const DynamicPriceChart: React.FC<DynamicPriceChartProps> = ({
   showControls = true,
   showTimeframeSelector = true,
   responsiveHeight = false,
+  chartType = 'line',
 }) => {
   const { ticks, latestTick, isConnected } = useWebSocket();
   const [chartData, setChartData] = useState<any[]>([]);
   const [timeframe, setTimeframe] = useState(defaultTimeframe);
-  const [chartType, setChartType] = useState<'area' | 'line' | 'candlestick'>('line');
-  const [smoothingFactor, setSmoothingFactor] = useState(0);
+  const [localChartType, setLocalChartType] = useState<'line' | 'area'>(chartType as 'line' | 'area');
+  const [smoothingFactor, setSmoothingFactor] = useState(2);
   const [autoScale, setAutoScale] = useState(true);
   const [yDomain, setYDomain] = useState<[number, number] | undefined>(undefined);
   
   const previousValueRef = useRef<number | null>(null);
   const accumulatedTicksRef = useRef<TickData[]>([]);
+  
+  // Update local chart type when prop changes
+  useEffect(() => {
+    if (chartType === 'line' || chartType === 'area') {
+      setLocalChartType(chartType);
+    }
+  }, [chartType]);
   
   // Process ticks and create chart data
   useEffect(() => {
@@ -157,10 +167,10 @@ const DynamicPriceChart: React.FC<DynamicPriceChartProps> = ({
       : '#6366f1'; // Default blue
   
   return (
-    <Card className="overflow-hidden">
-      <CardHeader className="pb-2">
+    <Card className="overflow-hidden shadow-none border-0">
+      <CardHeader className="px-4 py-3 pb-0">
         <div className="flex justify-between items-center">
-          <CardTitle className="text-lg font-semibold">
+          <CardTitle className="text-base font-semibold">
             Price Chart
             {latestTick && (
               <span className={`ml-2 text-base font-normal ${
@@ -195,10 +205,10 @@ const DynamicPriceChart: React.FC<DynamicPriceChartProps> = ({
         </div>
       </CardHeader>
       
-      <CardContent className="p-1 pt-2">
+      <CardContent className="p-1 pt-0">
         {showControls && (
-          <div className="px-3 mb-3 flex flex-wrap gap-4 items-center">
-            <Tabs value={chartType} onValueChange={(v) => setChartType(v as any)} className="w-auto">
+          <div className="px-3 my-2 flex flex-wrap gap-4 items-center">
+            <Tabs value={localChartType} onValueChange={(v) => setLocalChartType(v as 'line' | 'area')} className="w-auto">
               <TabsList className="h-8">
                 <TabsTrigger value="line" className="text-xs px-2 h-6">Line</TabsTrigger>
                 <TabsTrigger value="area" className="text-xs px-2 h-6">Area</TabsTrigger>
@@ -254,15 +264,15 @@ const DynamicPriceChart: React.FC<DynamicPriceChartProps> = ({
                 </linearGradient>
               </defs>
               
-              {chartType === 'area' ? (
-                <Line 
+              {localChartType === 'area' ? (
+                <Area
                   type="monotone" 
                   dataKey="value" 
                   stroke={lineColor}
                   strokeWidth={2}
-                  dot={false}
-                  activeDot={{ r: 4 }}
+                  fillOpacity={1}
                   fill="url(#colorGradient)"
+                  activeDot={{ r: 4 }}
                   isAnimationActive={false}
                 />
               ) : (

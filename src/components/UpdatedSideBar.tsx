@@ -37,7 +37,6 @@ const UpdatedSideBar: React.FC<SideBarProps> = ({
     { id: 'history', name: 'History', icon: History, requiresAuth: true },
     { id: 'leaderboard', name: 'Leaderboard', icon: Trophy, requiresAuth: false },
     { id: 'neuralnet', name: 'Neural Net', icon: Brain, requiresAuth: false },
-    { id: 'legal', name: 'Legal', icon: Shield, requiresAuth: false },
     { id: 'settings', name: 'Settings', icon: Settings, requiresAuth: false },
   ];
 

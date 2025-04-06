@@ -164,10 +164,14 @@ const Index = () => {
         return <Leaderboard />;
       case 'neuralnet':
         return <NeuralNet />;
-      case 'legal':
-        return <LegalInfo />;
       case 'settings':
-        return <Account />;
+        // Include Account component with LegalInfo
+        return (
+          <div className="space-y-8">
+            <Account />
+            <LegalInfo />
+          </div>
+        );
       case 'admin':
         return <AdminPanel />;
       default:
