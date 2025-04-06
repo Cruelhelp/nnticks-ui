@@ -1,34 +1,23 @@
-import React from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { useEpochCollection } from '@/hooks/useEpochCollection';
 import { Progress } from '@/components/ui/progress';
 import { CircleCheck, Clock, Database, BarChart } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 
-interface EpochCollectionStatsProps {
-  showControls?: boolean;
-  className?: string;
-}
-
-const EpochCollectionStats: React.FC<EpochCollectionStatsProps> = ({ 
-  showControls = true,
-  className = '' 
-}) => {
-  const { 
-    status, 
-    batchSize, 
-    epochsCompleted, 
-    isActive,
-    startCollection,
-    stopCollection,
-    resetCollection,
-    isConnected
-  } = useEpochCollection();
+const EpochCollectionStats: React.FC = () => {
+  const { status, batchSize, epochsCompleted, isActive } = useEpochCollection();
+  const [totalTicksCollected, setTotalTicksCollected] = useState<number>(0);
   
   // Calculate total ticks collected (completed epochs * batch size + current progress)
-  const totalTicksCollected = (epochsCompleted * batchSize) + status.currentCount;
+  useEffect(() => {
+    const completedTicks = epochsCompleted * batchSize;
+    const currentProgress = status.currentCount || 0;
+    
+    setTotalTicksCollected(completedTicks + currentProgress);
+  }, [epochsCompleted, batchSize, status.currentCount]);
   
   return (
-    <div className={`space-y-4 ${className}`}>
+    <div className="space-y-4">
       <div className="grid grid-cols-2 gap-2">
         <div className="bg-muted/30 p-3 rounded-md border flex flex-col">
           <span className="text-xs text-muted-foreground mb-1">Total Ticks</span>
@@ -65,40 +54,6 @@ const EpochCollectionStats: React.FC<EpochCollectionStatsProps> = ({
           <span>{Math.round(status.progress)}% complete</span>
         </div>
       </div>
-      
-      {showControls && (
-        <div className="flex items-center justify-between space-x-2 pt-2">
-          {isActive ? (
-            <Button
-              size="sm"
-              variant="outline"
-              className="flex-1"
-              onClick={() => stopCollection()}
-            >
-              Pause Collection
-            </Button>
-          ) : (
-            <Button
-              size="sm"
-              variant="default"
-              className="flex-1"
-              onClick={() => startCollection()}
-              disabled={!isConnected}
-            >
-              Start Collection
-            </Button>
-          )}
-          
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => resetCollection()}
-            disabled={!isConnected || status.currentCount === 0}
-          >
-            Reset
-          </Button>
-        </div>
-      )}
       
       <div className="flex items-center justify-between border-t pt-3">
         <div className="flex items-center">
