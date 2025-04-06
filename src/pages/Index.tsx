@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TopBar from '@/components/TopBar';
@@ -144,7 +143,11 @@ const Index = () => {
       </div>
       
       {showTerminal && (
-        <Terminal onClose={toggleTerminal} />
+        <Terminal 
+          onClose={toggleTerminal} 
+          onMinimize={() => {}} 
+          onMaximize={() => {}}
+        />
       )}
       
       <Toaster />

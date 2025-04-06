@@ -7,13 +7,29 @@ interface UseWebSocketOptions {
   autoConnect?: boolean;
   symbols?: string[];
   maxTicks?: number;
+  wsUrl?: string;
+  subscription?: object;
+  onMessage?: (data: any) => void;
+  onTick?: (tick: TickData) => void;
+  onStatusChange?: (status: string) => void;
+  onError?: (error: any) => void;
+  onOpen?: () => void;
+  onClose?: () => void;
 }
 
 export function useWebSocket(options: UseWebSocketOptions = {}) {
   const { 
     autoConnect = true, 
     symbols = ['R_10'],
-    maxTicks = 100 
+    maxTicks = 100,
+    wsUrl,
+    subscription,
+    onMessage,
+    onTick,
+    onStatusChange,
+    onError,
+    onOpen,
+    onClose
   } = options;
   
   const [isConnected, setIsConnected] = useState<boolean>(webSocketService.isWebSocketConnected());
@@ -26,7 +42,8 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
   const handleStatusChange = useCallback(({ connected }: { connected: boolean }) => {
     setIsConnected(connected);
     setConnectionStatus(connected ? 'connected' : 'disconnected');
-  }, []);
+    onStatusChange?.(connected ? 'connected' : 'disconnected');
+  }, [onStatusChange]);
 
   const handleNewTick = useCallback((tick: TickData) => {
     setLatestTick(tick);
@@ -37,15 +54,42 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
       }
       return newTicks;
     });
-  }, [maxTicks]);
+    onTick?.(tick);
+  }, [maxTicks, onTick]);
+
+  const handleMessage = useCallback((data: any) => {
+    onMessage?.(data);
+  }, [onMessage]);
+
+  const handleError = useCallback((error: any) => {
+    onError?.(error);
+  }, [onError]);
+
+  const handleOpen = useCallback(() => {
+    onOpen?.();
+  }, [onOpen]);
+
+  const handleClose = useCallback(() => {
+    onClose?.();
+  }, [onClose]);
 
   const connect = useCallback(() => {
-    const success = webSocketService.connect();
-    if (success) {
-      webSocketService.subscribeToTicks(symbols);
+    if (wsUrl) {
+      webSocketService.setUrl(wsUrl);
     }
+    
+    const success = webSocketService.connect();
+    
+    if (success) {
+      if (subscription) {
+        webSocketService.setSubscription(subscription);
+      } else if (symbols && symbols.length > 0) {
+        webSocketService.subscribeToTicks(symbols);
+      }
+    }
+    
     return success;
-  }, [symbols]);
+  }, [symbols, wsUrl, subscription]);
 
   const disconnect = useCallback(() => {
     webSocketService.disconnect();
@@ -55,6 +99,10 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
   useEffect(() => {
     webSocketService.on('statusChange', handleStatusChange);
     webSocketService.on('tick', handleNewTick);
+    webSocketService.on('message', handleMessage);
+    webSocketService.on('error', handleError);
+    webSocketService.on('open', handleOpen);
+    webSocketService.on('close', handleClose);
     
     // Connect on mount if autoConnect is true
     if (autoConnect && !webSocketService.isWebSocketConnected()) {
@@ -70,8 +118,22 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
     return () => {
       webSocketService.off('statusChange', handleStatusChange);
       webSocketService.off('tick', handleNewTick);
+      webSocketService.off('message', handleMessage);
+      webSocketService.off('error', handleError);
+      webSocketService.off('open', handleOpen);
+      webSocketService.off('close', handleClose);
     };
-  }, [autoConnect, connect, handleNewTick, handleStatusChange, maxTicks]);
+  }, [
+    autoConnect, 
+    connect, 
+    handleNewTick, 
+    handleStatusChange, 
+    handleMessage,
+    handleError,
+    handleOpen,
+    handleClose,
+    maxTicks
+  ]);
 
   return {
     isConnected,
@@ -79,6 +141,9 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
     ticks,
     latestTick,
     connect,
-    disconnect
+    disconnect,
+    send: (message: object | string) => webSocketService.send(message),
+    setSubscription: (sub: object) => webSocketService.setSubscription(sub),
+    clearBuffer: () => webSocketService.clearBuffer()
   };
 }

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useEpochCollection } from '@/hooks/useEpochCollection';
 import { Progress } from '@/components/ui/progress';
@@ -26,7 +25,7 @@ const EpochCollectionStats: React.FC<EpochCollectionStatsProps> = ({
   } = useEpochCollection();
   
   // Calculate total ticks collected (completed epochs * batch size + current progress)
-  const totalTicksCollected = (epochsComplected * batchSize) + status.currentCount;
+  const totalTicksCollected = (epochsCompleted * batchSize) + status.currentCount;
   
   return (
     <div className={`space-y-4 ${className}`}>
