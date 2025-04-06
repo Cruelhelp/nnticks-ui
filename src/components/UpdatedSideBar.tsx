@@ -6,7 +6,6 @@ import {
   LineChart,
   Brain,
   History,
-  Trophy,
   Settings,
   Terminal,
   Clock,
@@ -35,7 +34,6 @@ const UpdatedSideBar: React.FC<SideBarProps> = ({
     { id: 'training', name: 'Training', icon: Clock, requiresAuth: false },
     { id: 'epochs', name: 'Epochs', icon: Brain, requiresAuth: true },
     { id: 'history', name: 'History', icon: History, requiresAuth: true },
-    { id: 'leaderboard', name: 'Leaderboard', icon: Trophy, requiresAuth: false },
     { id: 'neuralnet', name: 'Neural Net', icon: Brain, requiresAuth: false },
     { id: 'settings', name: 'Settings', icon: Settings, requiresAuth: false },
   ];

@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { useTicks } from '@/hooks/useTicks';
-import { LineChart, BarChart, Brain, AreaChart, ChevronDown, ChevronUp, HelpCircle, Info } from 'lucide-react';
+import { LineChart, AreaChart, ChevronDown, ChevronUp, HelpCircle, Info } from 'lucide-react';
 import DynamicPriceChart from './DynamicPriceChart';
 import EpochCollectionStats from './EpochCollectionStats';
 import EpochManager from './EpochManager';
@@ -63,7 +63,7 @@ const ImprovedCharts: React.FC = () => {
     darkMode: true,
   });
   
-  const { ticks, latestTick, isConnected, connectionStatus, tickCount } = useTicks({
+  const { ticks, latestTick, isConnected, connectionStatus } = useTicks({
     maxTicks: 100,
     storeInSupabase: true,
     market: selectedMarket,
@@ -82,7 +82,7 @@ const ImprovedCharts: React.FC = () => {
   };
   
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-semibold">Market Data Analysis</h2>
@@ -105,12 +105,12 @@ const ImprovedCharts: React.FC = () => {
             </SelectContent>
           </Select>
           
-          <WebSocketStatus compact showTickInfo />
+          <WebSocketStatus compact showTickInfo showControls />
         </div>
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2">
+        <Card className="lg:col-span-2 overflow-hidden">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle>
@@ -171,7 +171,7 @@ const ImprovedCharts: React.FC = () => {
             </CardDescription>
           </CardHeader>
           
-          <Tabs defaultValue="line" className="w-full">
+          <Tabs defaultValue="area" className="w-full">
             <div className="px-4 border-b">
               <TabsList className="h-9">
                 <TabsTrigger value="line" className="text-xs">
@@ -181,10 +181,6 @@ const ImprovedCharts: React.FC = () => {
                 <TabsTrigger value="area" className="text-xs">
                   <AreaChart className="h-3.5 w-3.5 mr-1.5" />
                   Area
-                </TabsTrigger>
-                <TabsTrigger value="bar" className="text-xs">
-                  <BarChart className="h-3.5 w-3.5 mr-1.5" />
-                  Bar
                 </TabsTrigger>
               </TabsList>
             </div>
@@ -220,33 +216,17 @@ const ImprovedCharts: React.FC = () => {
                 />
               </CardContent>
             </TabsContent>
-            
-            <TabsContent value="bar" className="mt-0">
-              <CardContent className="p-0">
-                <DynamicPriceChart
-                  ticks={ticks}
-                  type="bar"
-                  height={350}
-                  showArea={false}
-                  showGridLines={chartOptions.showGridlines}
-                  showDataPoints={true}
-                  smoothCurve={false}
-                  darkTheme={chartOptions.darkMode}
-                  symbol={selectedMarket}
-                />
-              </CardContent>
-            </TabsContent>
           </Tabs>
         </Card>
         
         <div className="space-y-6">
           <EpochManager showControls showSettings={false} compact />
           
-          <Card>
+          <Card className="overflow-hidden">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
-                  <Brain className="h-5 w-5 text-primary" />
+                  <Info className="h-5 w-5 text-primary" />
                   Data Collection
                 </CardTitle>
               </div>

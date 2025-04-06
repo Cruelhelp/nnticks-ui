@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -9,21 +8,24 @@ import {
   LineChart, 
   FileText, 
   Network, 
-  BarChart3, 
   BrainCircuit, 
   TrendingUp, 
   Workflow, 
   Zap,
   Lightbulb,
   Link,
-  PieChart,
   Binary,
   Laptop,
   Smartphone,
   PlugZap,
-  Settings2
+  Settings2,
+  Clock,
+  Database
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import EpochCollectionManager from "./EpochCollectionManager";
+import { useTraining } from "@/hooks/useTraining";
+import { Progress } from "@/components/ui/progress";
 
 interface HomeProps {
   onSectionChange: (section: string) => void;
@@ -32,9 +34,10 @@ interface HomeProps {
 const Home = ({ onSectionChange }: HomeProps) => {
   const { user, userDetails } = useAuth();
   const [activeTab, setActiveTab] = useState("welcome");
+  const { availableEpochs, totalEpochs, level } = useTraining();
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col animate-fade-in">
       <Card className="flex-1">
         <CardHeader className="text-center border-b pb-6 mb-6">
           <div className="flex justify-center mb-4">
@@ -47,6 +50,75 @@ const Home = ({ onSectionChange }: HomeProps) => {
         </CardHeader>
         
         <CardContent>
+          <div className="mb-6 max-w-3xl mx-auto">
+            <Card className="bg-primary/5 border-primary/20">
+              <CardContent className="p-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-card p-3 rounded-md border">
+                    <div className="flex justify-between items-center mb-1">
+                      <h3 className="text-sm font-medium flex items-center">
+                        <Clock className="h-4 w-4 mr-1.5 text-primary" /> 
+                        Epoch Status
+                      </h3>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-6 w-6"
+                        onClick={() => onSectionChange('epochs')}
+                      >
+                        <TrendingUp className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                    <div className="text-2xl font-bold">{availableEpochs.toLocaleString()}</div>
+                    <div className="text-xs text-muted-foreground">Available epochs</div>
+                  </div>
+                  
+                  <div className="bg-card p-3 rounded-md border">
+                    <div className="flex justify-between items-center mb-1">
+                      <h3 className="text-sm font-medium flex items-center">
+                        <Database className="h-4 w-4 mr-1.5 text-primary" /> 
+                        Collection
+                      </h3>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-6 w-6"
+                        onClick={() => onSectionChange('charts')}
+                      >
+                        <TrendingUp className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                    <div className="text-2xl font-bold">{totalEpochs.toLocaleString()}</div>
+                    <div className="text-xs text-muted-foreground">Total epochs collected</div>
+                  </div>
+                  
+                  <div className="bg-card p-3 rounded-md border">
+                    <div className="flex justify-between items-center mb-1">
+                      <h3 className="text-sm font-medium flex items-center">
+                        <BrainCircuit className="h-4 w-4 mr-1.5 text-primary" /> 
+                        Neural Net
+                      </h3>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-6 w-6"
+                        onClick={() => onSectionChange('neuralnet')}
+                      >
+                        <TrendingUp className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                    <div className="text-2xl font-bold">Level {level}</div>
+                    <Progress value={level * 20} className="h-1.5 mt-1" />
+                  </div>
+                </div>
+                
+                <div className="mt-4">
+                  <EpochCollectionManager compact showControls showSettings={true} />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+          
           <Tabs 
             defaultValue="welcome" 
             value={activeTab}
@@ -60,7 +132,7 @@ const Home = ({ onSectionChange }: HomeProps) => {
               <TabsTrigger value="trading">Trading</TabsTrigger>
             </TabsList>
             
-            <TabsContent value="welcome" className="space-y-4">
+            <TabsContent value="welcome" className="space-y-4 animate-fade-in">
               <div className="text-center space-y-4">
                 <h3 className="text-xl font-semibold">
                   Predict Financial Markets with Neural Networks
@@ -126,7 +198,7 @@ const Home = ({ onSectionChange }: HomeProps) => {
               </div>
             </TabsContent>
             
-            <TabsContent value="setup" className="space-y-4">
+            <TabsContent value="setup" className="space-y-4 animate-fade-in">
               <div className="space-y-4">
                 <h3 className="text-xl font-semibold text-center flex justify-center items-center gap-2">
                   <PlugZap className="h-6 w-6 text-primary" />
@@ -228,7 +300,7 @@ const Home = ({ onSectionChange }: HomeProps) => {
               </div>
             </TabsContent>
             
-            <TabsContent value="training" className="space-y-4">
+            <TabsContent value="training" className="space-y-4 animate-fade-in">
               <div className="space-y-4">
                 <h3 className="text-xl font-semibold text-center flex justify-center items-center gap-2">
                   <Workflow className="h-6 w-6 text-primary" />
@@ -338,7 +410,7 @@ const Home = ({ onSectionChange }: HomeProps) => {
               </div>
             </TabsContent>
             
-            <TabsContent value="trading" className="space-y-4">
+            <TabsContent value="trading" className="space-y-4 animate-fade-in">
               <div className="space-y-4">
                 <h3 className="text-xl font-semibold text-center flex justify-center items-center gap-2">
                   <TrendingUp className="h-6 w-6 text-primary" />

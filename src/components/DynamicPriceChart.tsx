@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -70,7 +71,7 @@ const DynamicPriceChart: React.FC<DynamicPriceChartProps> = ({
   
   const [chartData, setChartData] = useState<any[]>([]);
   const [timeframe, setTimeframe] = useState(defaultTimeframe);
-  const [localChartType, setLocalChartType] = useState<'line' | 'area'>(chartType as 'line' | 'area');
+  const [localChartType, setLocalChartType] = useState<'line' | 'area'>(type === 'area' ? 'area' : 'line');
   const [smoothingFactor, setSmoothingFactor] = useState(2);
   const [autoScale, setAutoScale] = useState(true);
   const [yDomain, setYDomain] = useState<[number, number] | undefined>(undefined);
@@ -79,10 +80,10 @@ const DynamicPriceChart: React.FC<DynamicPriceChartProps> = ({
   const accumulatedTicksRef = useRef<TickData[]>([]);
   
   useEffect(() => {
-    if (chartType === 'line' || chartType === 'area') {
-      setLocalChartType(chartType);
+    if (type === 'line' || type === 'area') {
+      setLocalChartType(type as 'line' | 'area');
     }
-  }, [chartType]);
+  }, [type]);
   
   useEffect(() => {
     if (!latestTick) return;
@@ -238,7 +239,9 @@ const DynamicPriceChart: React.FC<DynamicPriceChartProps> = ({
               data={chartData}
               margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
             >
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+              {showGridLines && (
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+              )}
               <XAxis 
                 dataKey="time" 
                 tick={{ fontSize: 10 }} 
@@ -260,31 +263,40 @@ const DynamicPriceChart: React.FC<DynamicPriceChartProps> = ({
               />
               
               <defs>
+                {/* Enhanced gradient for area charts with glow effect */}
                 <linearGradient id="colorGradient" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor={lineColor} stopOpacity={0.8}/>
-                  <stop offset="95%" stopColor={lineColor} stopOpacity={0.2}/>
+                  <stop offset="95%" stopColor={lineColor} stopOpacity={0.1}/>
                 </linearGradient>
+                
+                {/* Add a subtle glow effect with a filter */}
+                <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+                  <feGaussianBlur stdDeviation="3" result="blur" />
+                  <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                </filter>
               </defs>
               
-              {localChartType === 'area' ? (
+              {(localChartType === 'area' || showArea) ? (
                 <Area
-                  type="monotone" 
+                  type={smoothCurve ? "monotone" : "linear"} 
                   dataKey="value" 
                   stroke={lineColor}
                   strokeWidth={2}
                   fillOpacity={1}
                   fill="url(#colorGradient)"
-                  activeDot={{ r: 4 }}
+                  activeDot={{ r: 4, stroke: "white", strokeWidth: 2 }}
                   isAnimationActive={false}
+                  filter="url(#glow)"
+                  dot={showDataPoints}
                 />
               ) : (
                 <Line 
-                  type="monotone" 
+                  type={smoothCurve ? "monotone" : "linear"} 
                   dataKey="value" 
                   stroke={lineColor}
                   strokeWidth={2}
-                  dot={false}
-                  activeDot={{ r: 4 }}
+                  dot={showDataPoints}
+                  activeDot={{ r: 4, stroke: "white", strokeWidth: 2 }}
                   isAnimationActive={false}
                 />
               )}

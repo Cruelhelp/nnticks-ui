@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TopBar from '@/components/TopBar';
@@ -9,7 +8,6 @@ import Charts from '@/components/Charts';
 import Predictions from '@/components/Predictions';
 import Training from '@/components/Training';
 import History from '@/components/History';
-import Leaderboard from '@/components/Leaderboard';
 import NeuralNet from '@/components/NeuralNetwork';
 import DebugTools from '@/components/DebugTools';
 import Account from '@/components/Account';
@@ -160,12 +158,9 @@ const Index = () => {
         return <Epochs />;
       case 'history':
         return <History />;
-      case 'leaderboard':
-        return <Leaderboard />;
       case 'neuralnet':
         return <NeuralNet />;
       case 'settings':
-        // Include Account component with LegalInfo
         return (
           <div className="space-y-8">
             <Account />
@@ -179,7 +174,6 @@ const Index = () => {
     }
   };
   
-  // Get username from user details or localStorage
   const username = userDetails?.username || 
                     user?.email?.split('@')[0] || 
                     localStorage.getItem('guestUsername') || 
@@ -212,7 +206,7 @@ const Index = () => {
           )}
           
           <div className="flex-1 flex flex-col overflow-hidden">
-            <main className="flex-1 p-4 overflow-auto">
+            <main className="flex-1 p-4 overflow-auto max-w-7xl mx-auto w-full">
               {renderActiveSection()}
             </main>
             
