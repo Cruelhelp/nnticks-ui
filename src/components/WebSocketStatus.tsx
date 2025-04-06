@@ -8,17 +8,35 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Button } from './ui/button';
 
 interface WebSocketStatusProps {
   compact?: boolean;
   showTickInfo?: boolean;
+  showControls?: boolean;
 }
 
 const WebSocketStatus: React.FC<WebSocketStatusProps> = ({ 
   compact = false,
-  showTickInfo = false
+  showTickInfo = false,
+  showControls = false
 }) => {
-  const { isConnected, connectionStatus, latestTick, tickCount } = useWebSocket();
+  const { isConnected, connectionStatus, latestTick } = useWebSocket();
+  
+  // Calculate tickCount from the hook's data
+  // Since tickCount is not directly available, we'll just show the latest tick info
+  
+  const handleConnect = () => {
+    if (window.persistentWebSocket) {
+      window.persistentWebSocket.connect();
+    }
+  };
+  
+  const handleDisconnect = () => {
+    if (window.persistentWebSocket) {
+      window.persistentWebSocket.disconnect();
+    }
+  };
   
   if (compact) {
     return (
@@ -44,8 +62,13 @@ const WebSocketStatus: React.FC<WebSocketStatusProps> = ({
               {showTickInfo && latestTick && (
                 <>
                   <p className="mt-1">Latest Tick: {latestTick.value.toFixed(5)}</p>
-                  <p>Total Ticks: {tickCount}</p>
                 </>
+              )}
+              {showControls && (
+                <div className="flex gap-1 mt-2 pt-1 border-t">
+                  <Button size="sm" variant="outline" className="h-6 text-xs" onClick={handleConnect}>Connect</Button>
+                  <Button size="sm" variant="outline" className="h-6 text-xs" onClick={handleDisconnect}>Disconnect</Button>
+                </div>
               )}
             </div>
           </TooltipContent>
@@ -72,6 +95,12 @@ const WebSocketStatus: React.FC<WebSocketStatusProps> = ({
         <span className="ml-2">
           Latest: {latestTick.value.toFixed(5)}
         </span>
+      )}
+      {showControls && (
+        <div className="flex gap-1 ml-2">
+          <Button size="sm" variant="outline" className="h-6 px-2 text-xs" onClick={handleConnect}>Connect</Button>
+          <Button size="sm" variant="outline" className="h-6 px-2 text-xs" onClick={handleDisconnect}>Disconnect</Button>
+        </div>
       )}
     </div>
   );
