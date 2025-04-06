@@ -9,7 +9,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from '@/components/ui/button';
-import { InfoCircle, Brain, Zap, Circle, BarChartHorizontal, Activity } from 'lucide-react';
+import { Info, Brain, Zap, Circle, BarChartHorizontal, Activity } from 'lucide-react';
 
 interface EpochExplainerProps {
   trigger?: React.ReactNode;
@@ -29,7 +29,7 @@ const EpochExplainer: React.FC<EpochExplainerProps> = ({
             size={compact ? "sm" : "default"} 
             className={compact ? "h-8 px-2" : ""}
           >
-            <InfoCircle className={`${compact ? "h-4 w-4" : "h-5 w-5"} mr-1.5`} />
+            <Info className={`${compact ? "h-4 w-4" : "h-5 w-5"} mr-1.5`} />
             {compact ? "Guide" : "What are Epochs & Ticks?"}
           </Button>
         )}
@@ -135,7 +135,7 @@ const EpochExplainer: React.FC<EpochExplainerProps> = ({
           
           <section className="space-y-2">
             <h3 className="text-lg font-medium flex items-center">
-              <InfoCircle className="h-4 w-4 mr-2 text-blue-500" />
+              <Info className="h-4 w-4 mr-2 text-blue-500" />
               Tips for Effective Training
             </h3>
             <ul className="text-sm space-y-2">

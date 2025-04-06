@@ -31,7 +31,7 @@ const EpochCollectionStats: React.FC = () => {
           <span className="text-xs text-muted-foreground mb-1">Epochs Completed</span>
           <div className="flex items-center">
             <CircleCheck className="h-3.5 w-3.5 mr-1.5 text-green-500" />
-            <span className="text-xl font-semibold">{epochsComplected}</span>
+            <span className="text-xl font-semibold">{epochsCompleted}</span>
           </div>
         </div>
       </div>
