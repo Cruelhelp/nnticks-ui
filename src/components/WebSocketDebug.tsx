@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { persistentWebSocket, TickData } from '@/services/PersistentWebSocketService';
+import { persistentWebSocket } from '@/services/PersistentWebSocketService';
+import { TickData } from '@/types/chartTypes'; // Import TickData from chartTypes
 import { Badge } from '@/components/ui/badge';
 import { RefreshCw, Send, Trash, Download, PlayCircle, StopCircle } from 'lucide-react';
 import WebSocketStatus from './WebSocketStatus';

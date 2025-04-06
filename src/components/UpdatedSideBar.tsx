@@ -25,7 +25,8 @@ const UpdatedSideBar: React.FC<SideBarProps> = ({
   activeSection,
   onSectionChange,
 }) => {
-  const { user, isAdmin } = useAuth();
+  const { user, userDetails } = useAuth();
+  const isAdmin = userDetails?.isAdmin || false; // Get isAdmin from userDetails
 
   const menuItems = [
     { id: 'home', name: 'Home', icon: Home, requiresAuth: false },

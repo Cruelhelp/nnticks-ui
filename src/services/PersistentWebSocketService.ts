@@ -170,6 +170,11 @@ class PersistentWebSocketService extends BrowserEventEmitter {
     return (Date.now() - tickTime) < 10000; // 10 seconds
   }
   
+  // Get subscription
+  public getSubscription(): object {
+    return this.subscription;
+  }
+  
   // Handle WebSocket open
   private handleOpen(): void {
     console.log('WebSocket connected');

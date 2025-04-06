@@ -11,7 +11,7 @@ import { supabase } from '@/lib/supabase';
 import WebSocketDebug from '@/components/WebSocketDebug';
 import WebSocketStatus from '@/components/WebSocketStatus';
 import { Badge } from '@/components/ui/badge';
-import { TickData } from '@/services/PersistentWebSocketService';
+import { TickData } from '@/types/chartTypes'; // Import TickData from chartTypes
 import { persistentWebSocket } from '@/services/PersistentWebSocketService';
 
 interface UserData {
