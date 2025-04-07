@@ -15,24 +15,18 @@ import {
 } from 'lucide-react';
 import UpdatedSideBar from './UpdatedSideBar';
 
-function App() {
-  const navigate = useNavigate();
+interface SideBarProps {
+  activeSection: string;
+  onSectionChange: (section: string) => void;
+}
 
+function SideBar({ activeSection, onSectionChange }: SideBarProps) {
   return (
     <div className="flex">
-      <UpdatedSideBar />
-      <div className="p-4 w-full">
-        <div className="space-y-4">
-          <Button 
-            variant="ghost" 
-            className="w-full justify-start" 
-            onClick={() => navigate('/charts')}
-          >
-            <LineChart className="mr-2 h-4 w-4" />
-            Charts
-          </Button>
-        </div>
-      </div>
+      <UpdatedSideBar 
+        activeSection={activeSection} 
+        onSectionChange={onSectionChange} 
+      />
     </div>
   );
 }
