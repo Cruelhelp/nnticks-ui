@@ -219,7 +219,7 @@ class EpochCollectionService extends BrowserEventEmitter {
       // Prepare result
       const result: TrainingResult = {
         accuracy: typeof trainingResult === 'object' && trainingResult ? trainingResult.accuracy || 0 : 0,
-        loss: neuralNetwork.getLastLoss() || 0,
+        loss: trainingResult && typeof trainingResult === 'object' ? trainingResult.loss || 0 : 0,
         time: trainingTime
       };
       
