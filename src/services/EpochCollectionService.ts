@@ -208,7 +208,7 @@ class EpochCollectionService extends BrowserEventEmitter {
       console.log(`Training neural network with ${tickValues.length} ticks`);
       const startTime = Date.now();
       
-      const trainingResult = await neuralNetwork.train(tickValues, {
+      const loss = await neuralNetwork.train(tickValues, {
         maxEpochs: 10,
         onProgress: (progress) => console.log(`Training progress: ${progress * 100}%`)
       });
@@ -218,8 +218,8 @@ class EpochCollectionService extends BrowserEventEmitter {
       
       // Prepare result
       const result: TrainingResult = {
-        accuracy: typeof trainingResult === 'object' && trainingResult ? trainingResult.accuracy || 0 : 0,
-        loss: trainingResult && typeof trainingResult === 'object' ? trainingResult.loss || 0 : 0,
+        accuracy: Math.max(0, 1 - (loss || 0)), // Convert loss to accuracy
+        loss: loss || 0,
         time: trainingTime
       };
       
