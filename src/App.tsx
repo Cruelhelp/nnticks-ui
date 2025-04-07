@@ -31,10 +31,27 @@ const MemoizedAdminPanel = memo(AdminPanel);
 const App = () => {
   // Apply Roboto Mono font to entire app
   useEffect(() => {
-    document.documentElement.style.fontFamily = "'Roboto Mono', monospace";
+    let mounted = true;
+    
+    const loadFont = async () => {
+      try {
+        await document.fonts.load("1em 'Roboto Mono'");
+        if (mounted) {
+          document.documentElement.style.fontFamily = "'Roboto Mono', monospace";
+        }
+      } catch (err) {
+        console.error('Font loading failed:', err);
+        if (mounted) {
+          document.documentElement.style.fontFamily = "monospace";
+        }
+      }
+    };
 
-    // Ensure the font is loaded
-    const linkEl = document.createElement('link');
+    loadFont();
+    
+    return () => {
+      mounted = false;
+    };
     linkEl.rel = 'stylesheet';
     linkEl.href = 'https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;700&display=swap';
     document.head.appendChild(linkEl);

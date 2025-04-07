@@ -31,9 +31,14 @@ async def train_network(data: Dict[str, List[float]]):
 
         if not data["ticks"]:
             raise HTTPException(status_code=400, detail="Empty ticks data")
+            
+        if not all(isinstance(x, (int, float)) for x in data["ticks"]):
+            raise HTTPException(status_code=400, detail="Invalid tick data types")
 
-        result = nn.train(data["ticks"])
+        result = await asyncio.wait_for(nn.train(data["ticks"]), timeout=30.0)
         return {"success": True, "result": result}
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=408, detail="Training timeout")
     except ValueError as e:
         return {"success": False, "error": str(e)}
     except Exception as e:
