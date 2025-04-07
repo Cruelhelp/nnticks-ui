@@ -19,8 +19,18 @@ app.add_middleware(
 @app.post("/api/train")
 async def train_network(data: Dict[str, List[float]]):
     try:
+        session_id = data.get("sessionId")
+        if not session_id:
+            nn.initialize_network()  # Reset network for new session
+            
         result = nn.train(data["ticks"])
-        return {"success": True, "result": result}
+        return {
+            "success": True, 
+            "result": {
+                **result,
+                "model": nn.export_model() if session_id else None
+            }
+        }
     except Exception as e:
         return {"success": False, "error": str(e)}
 
