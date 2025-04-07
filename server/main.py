@@ -1,11 +1,12 @@
-
 from fastapi import FastAPI, WebSocket, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from typing import List, Dict
+from typing import List, Dict, Optional
 import json
-from neural_network import NeuralNetwork
-import uvicorn
 import socket
+import uvicorn
+from neural_network import NeuralNetwork
+import numpy as np
+from contextlib import contextmanager
 
 app = FastAPI()
 nn = NeuralNetwork([10, 16, 1])
@@ -18,37 +19,40 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.get("/api/health")
+async def health_check():
+    return {"status": "healthy"}
+
 @app.post("/api/train")
 async def train_network(data: Dict[str, List[float]]):
     try:
         if "ticks" not in data:
             raise HTTPException(status_code=400, detail="Missing ticks data")
-            
-        session_id = data.get("sessionId")
-        if not session_id:
-            nn.initialize_network()  # Reset network for new session
-            
+
+        if not data["ticks"]:
+            raise HTTPException(status_code=400, detail="Empty ticks data")
+
         result = nn.train(data["ticks"])
-        return {
-            "success": True, 
-            "result": {
-                **result,
-                "model": nn.export_model() if session_id else None
-            }
-        }
-    except Exception as e:
+        return {"success": True, "result": result}
+    except ValueError as e:
         return {"success": False, "error": str(e)}
+    except Exception as e:
+        print(f"Training error: {str(e)}")
+        return {"success": False, "error": "Internal server error during training"}
 
 @app.post("/api/predict")
 async def predict(data: Dict[str, List[float]]):
     try:
         if "input" not in data:
             raise HTTPException(status_code=400, detail="Missing input data")
-            
+
         prediction = nn.predict(data["input"])
         return {"success": True, "prediction": prediction}
-    except Exception as e:
+    except ValueError as e:
         return {"success": False, "error": str(e)}
+    except Exception as e:
+        print(f"Prediction error: {str(e)}")
+        return {"success": False, "error": "Internal server error during prediction"}
 
 @app.get("/api/model")
 async def get_model():
@@ -56,35 +60,18 @@ async def get_model():
         model_data = nn.export_model()
         return {"success": True, "model": model_data}
     except Exception as e:
-        return {"success": False, "error": str(e)}
+        print(f"Model export error: {str(e)}")
+        return {"success": False, "error": "Failed to export model"}
 
 def find_free_port(start_port: int = 5000, max_attempts: int = 10) -> int:
     for port in range(start_port, start_port + max_attempts):
         try:
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.bind(('0.0.0.0', port))
-            sock.close()
-            return port
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                sock.bind(('0.0.0.0', port))
+                return port
         except OSError:
-            if port == start_port:
-                print(f"Port {port} is in use, trying alternative ports...")
             continue
     raise RuntimeError(f"Could not find a free port in range {start_port}-{start_port + max_attempts}")
-
-if __name__ == "__main__":
-    try:
-        port = find_free_port()
-        print(f"Starting server on port {port}")
-        uvicorn.run(app, host="0.0.0.0", port=port)
-    except Exception as e:
-        print(f"Failed to start server: {e}")
-        # Try one more time with a different port range
-        try:
-            port = find_free_port(8000, 10)
-            print(f"Retrying with port {port}")
-            uvicorn.run(app, host="0.0.0.0", port=port)
-        except Exception as e:
-            print(f"Failed to start server: {e}")
 
 if __name__ == "__main__":
     try:
