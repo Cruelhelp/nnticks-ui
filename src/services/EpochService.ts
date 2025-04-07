@@ -191,7 +191,7 @@ class EpochService {
       console.log(`Training neural network with ${tickValues.length} ticks`);
       const startTime = Date.now();
 
-      const response = await fetch('http://localhost:5000/api/train', {
+      const response = await fetch('/api/train', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
