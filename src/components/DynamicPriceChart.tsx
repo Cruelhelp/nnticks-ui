@@ -49,7 +49,36 @@ const DynamicPriceChart: React.FC<ChartProps> = ({
               <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.8}/>
               <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
             </linearGradient>
+            <filter id="glow">
+              <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+              <feMerge>
+                <feMergeNode in="coloredBlur"/>
+                <feMergeNode in="SourceGraphic"/>
+              </feMerge>
+            </filter>
           </defs>
+          <Line
+            type="monotone"
+            dataKey="upperBand"
+            stroke="hsl(var(--primary))"
+            strokeOpacity={0.4}
+            dot={false}
+          />
+          <Line
+            type="monotone"
+            dataKey="lowerBand"
+            stroke="hsl(var(--primary))"
+            strokeOpacity={0.4}
+            dot={false}
+          />
+          <Area
+            type="monotone"
+            dataKey="price"
+            stroke="hsl(var(--primary))"
+            fillOpacity={0.3}
+            fill="url(#colorPrice)"
+            filter="url(#glow)"
+          />
           {showGridLines && <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />}
           <XAxis 
             dataKey="time" 

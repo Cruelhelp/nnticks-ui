@@ -165,6 +165,10 @@ export class NeuralNetwork {
     return this.forwardPass(normalizedInput);
   }
 
+  public getConfig() {
+    return this.config;
+  }
+
   public getModelStats() {
     return {
       layers: this.config.layers,
