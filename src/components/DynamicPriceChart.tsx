@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -32,6 +31,7 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, label })
 };
 
 interface DynamicPriceChartProps {
+  ticks?: TickData[];
   timeframes?: number[];
   defaultTimeframe?: number;
   height?: number;
@@ -39,9 +39,17 @@ interface DynamicPriceChartProps {
   showTimeframeSelector?: boolean;
   responsiveHeight?: boolean;
   chartType?: 'line' | 'area' | 'candlestick';
+  showArea?: boolean;
+  showGridLines?: boolean;
+  showDataPoints?: boolean;
+  smoothCurve?: boolean;
+  darkTheme?: boolean;
+  symbol?: string;
+  type?: string;
 }
 
 const DynamicPriceChart: React.FC<DynamicPriceChartProps> = ({
+  ticks: propTicks,
   timeframes = [1, 5, 15, 30, 60],
   defaultTimeframe = 5,
   height = 300,
@@ -49,8 +57,17 @@ const DynamicPriceChart: React.FC<DynamicPriceChartProps> = ({
   showTimeframeSelector = true,
   responsiveHeight = false,
   chartType = 'line',
+  showArea = false,
+  showGridLines = true,
+  showDataPoints = false,
+  smoothCurve = true,
+  darkTheme = true,
+  symbol = 'R_10',
+  type = 'line',
 }) => {
-  const { ticks, latestTick, isConnected } = useWebSocket();
+  const { ticks: wsTicks, latestTick, isConnected } = useWebSocket();
+  const ticks = propTicks || wsTicks;
+  
   const [chartData, setChartData] = useState<any[]>([]);
   const [timeframe, setTimeframe] = useState(defaultTimeframe);
   const [localChartType, setLocalChartType] = useState<'line' | 'area'>(chartType as 'line' | 'area');
@@ -61,21 +78,17 @@ const DynamicPriceChart: React.FC<DynamicPriceChartProps> = ({
   const previousValueRef = useRef<number | null>(null);
   const accumulatedTicksRef = useRef<TickData[]>([]);
   
-  // Update local chart type when prop changes
   useEffect(() => {
     if (chartType === 'line' || chartType === 'area') {
       setLocalChartType(chartType);
     }
   }, [chartType]);
   
-  // Process ticks and create chart data
   useEffect(() => {
     if (!latestTick) return;
     
-    // Add to accumulated ticks
     accumulatedTicksRef.current = [...accumulatedTicksRef.current, latestTick];
     
-    // Keep only the last X minutes of data
     const cutoffTime = Date.now() - (timeframe * 60 * 1000);
     accumulatedTicksRef.current = accumulatedTicksRef.current.filter(tick => {
       const tickTime = typeof tick.timestamp === 'string' 
@@ -84,12 +97,10 @@ const DynamicPriceChart: React.FC<DynamicPriceChartProps> = ({
       return tickTime > cutoffTime;
     });
     
-    // Process the ticks into chart data
     const processedData = accumulatedTicksRef.current.map((tick, index) => {
       const prevTick = index > 0 ? accumulatedTicksRef.current[index - 1] : null;
       const change = prevTick ? tick.value - prevTick.value : 0;
       
-      // Format timestamp
       const tickTime = typeof tick.timestamp === 'string' 
         ? new Date(tick.timestamp) 
         : new Date(Number(tick.timestamp));
@@ -109,14 +120,12 @@ const DynamicPriceChart: React.FC<DynamicPriceChartProps> = ({
       };
     });
     
-    // Calculate price movement direction for coloring
     let smoothedData;
     if (smoothingFactor > 0) {
-      // Apply exponential moving average smoothing
       smoothedData = processedData.map((point, index) => {
         if (index === 0) return point;
         
-        const alpha = smoothingFactor / 10; // Convert 1-10 scale to 0.1-1.0
+        const alpha = smoothingFactor / 10;
         const smoothedValue = alpha * point.rawValue + (1 - alpha) * processedData[index - 1].value;
         
         return {
@@ -128,17 +137,13 @@ const DynamicPriceChart: React.FC<DynamicPriceChartProps> = ({
       smoothedData = processedData;
     }
     
-    // Set the chart data
     setChartData(smoothedData);
     
-    // Calculate y-axis domain if auto-scale is enabled
     if (autoScale && smoothedData.length > 0) {
-      // Find min and max values
       const values = smoothedData.map(d => d.value);
       const min = Math.min(...values);
       const max = Math.max(...values);
       
-      // Add margin (10% of range)
       const range = max - min;
       const margin = range * 0.1;
       
@@ -147,11 +152,9 @@ const DynamicPriceChart: React.FC<DynamicPriceChartProps> = ({
       setYDomain(undefined);
     }
     
-    // Save the latest value for comparison
     previousValueRef.current = latestTick.value;
   }, [latestTick, timeframe, smoothingFactor, autoScale]);
   
-  // Extract price movement indicators
   const priceMovement = chartData.length >= 2 
     ? chartData[chartData.length - 1].value - chartData[chartData.length - 2].value 
     : 0;
@@ -159,12 +162,11 @@ const DynamicPriceChart: React.FC<DynamicPriceChartProps> = ({
   const isPriceRising = priceMovement > 0;
   const isPriceFalling = priceMovement < 0;
   
-  // Generate dynamic chart line color based on price movement
   const lineColor = isPriceRising 
-    ? '#10b981' // Green
+    ? '#10b981' 
     : isPriceFalling 
-      ? '#ef4444' // Red
-      : '#6366f1'; // Default blue
+      ? '#ef4444' 
+      : '#6366f1';
   
   return (
     <Card className="overflow-hidden shadow-none border-0">

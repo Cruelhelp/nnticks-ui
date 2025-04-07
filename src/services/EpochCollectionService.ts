@@ -1,4 +1,3 @@
-
 import { BrowserEventEmitter } from '@/lib/utils';
 import { persistentWebSocket } from './PersistentWebSocketService';
 import { supabase } from '@/lib/supabase';
@@ -34,7 +33,6 @@ class EpochCollectionService extends BrowserEventEmitter {
     }
   }
 
-  // Initialize with user ID
   public init(userId: string | null): void {
     this.userId = userId;
     this.loadSettings();
@@ -211,7 +209,6 @@ class EpochCollectionService extends BrowserEventEmitter {
       
       const trainingResult = await neuralNetwork.train(tickValues, {
         maxEpochs: 10,
-        learningRate: 0.01,
         onProgress: (progress) => console.log(`Training progress: ${progress * 100}%`)
       });
       
@@ -220,7 +217,9 @@ class EpochCollectionService extends BrowserEventEmitter {
       
       // Prepare result
       const result: TrainingResult = {
-        accuracy: typeof trainingResult === 'object' ? trainingResult.accuracy || 0 : trainingResult || 0,
+        accuracy: typeof trainingResult === 'object' && trainingResult !== null 
+          ? (trainingResult as any).accuracy || 0 
+          : 0,
         loss: neuralNetwork.getLastLoss() || 0,
         time: trainingTime
       };
@@ -306,7 +305,6 @@ class EpochCollectionService extends BrowserEventEmitter {
     }
   }
 
-  // Public methods
   public startCollection(): boolean {
     if (!persistentWebSocket.isConnected()) {
       toast.error('WebSocket not connected. Cannot collect ticks.');
@@ -384,6 +382,5 @@ class EpochCollectionService extends BrowserEventEmitter {
   }
 }
 
-// Create singleton instance
 export const epochCollectionService = new EpochCollectionService();
 export default epochCollectionService;

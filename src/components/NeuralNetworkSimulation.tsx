@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -142,10 +141,10 @@ const NeuralNetworkSimulation: React.FC = () => {
         const recentValues = ticks.slice(-20).map(t => t.value);
         
         // Get prediction (and await the result since it's a promise)
-        const prediction: PredictionResult = await neuralNetwork.predict(recentValues);
+        const predictionResult = await neuralNetwork.predict(recentValues);
         
-        // Set last prediction
-        setLastPrediction(prediction.confidence || 0);
+        // Set last prediction and confidence
+        setLastPrediction(predictionResult.confidence || 0);
         
         // Calculate confidence (just for demo)
         const confidence = 0.5 + (Math.random() * 0.4); // 50-90% confidence
@@ -153,7 +152,7 @@ const NeuralNetworkSimulation: React.FC = () => {
         
         // Determine trend
         const currentPrice = ticks[ticks.length - 1]?.value || 0;
-        const predictionValue = prediction.confidence || 0;
+        const predictionValue = predictionResult.confidence || 0;
         
         if (predictionValue > currentPrice) {
           setPredictionTrend('up');
