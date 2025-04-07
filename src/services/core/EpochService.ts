@@ -1,11 +1,13 @@
+
 import { BrowserEventEmitter } from '@/lib/utils';
-import { persistentWebSocket } from './PersistentWebSocketService';
 import { supabase } from '@/lib/supabase';
+import { webSocketService } from './WebSocketService';
 import { neuralNetwork } from '@/lib/neuralNetwork';
-import { EpochData, TickData, TrainingResult, EpochCollectionStatus } from '@/types/chartTypes';
+import { EpochData, EpochCollectionStatus, TrainingResult } from '@/types/epochTypes';
+import { TickData } from '@/types/tickTypes';
 import { toast } from 'sonner';
 
-class EpochCollectionService extends BrowserEventEmitter {
+export class EpochService extends BrowserEventEmitter {
   private userId: string | null = null;
   private epochs: EpochData[] = [];
   private currentEpoch: number = 0;
@@ -22,6 +24,7 @@ class EpochCollectionService extends BrowserEventEmitter {
   };
   private tickHandler: ((tick: TickData) => void) | null = null;
   private syncInterval: NodeJS.Timeout | null = null;
+  private sessionId: string | null = null;
 
   constructor() {
     super();
@@ -106,6 +109,7 @@ class EpochCollectionService extends BrowserEventEmitter {
         this.batchSize = state.batchSize || 100;
         this.currentEpoch = state.currentEpoch || 0;
         this.currentTicks = state.currentTicks || [];
+        this.sessionId = state.sessionId || null;
         
         this.status = {
           isActive: this.isCollectingData,
@@ -128,7 +132,8 @@ class EpochCollectionService extends BrowserEventEmitter {
         isActive: this.isCollectingData,
         batchSize: this.batchSize,
         currentEpoch: this.currentEpoch,
-        currentTicks: this.currentTicks
+        currentTicks: this.currentTicks,
+        sessionId: this.sessionId
       };
       
       localStorage.setItem('epochCollectionState', JSON.stringify(state));
@@ -140,7 +145,7 @@ class EpochCollectionService extends BrowserEventEmitter {
   private setupTickHandler(): void {
     // Remove any existing tick handler
     if (this.tickHandler) {
-      persistentWebSocket.off('tick', this.tickHandler);
+      webSocketService.off('tick', this.tickHandler);
       this.tickHandler = null;
     }
 
@@ -170,7 +175,7 @@ class EpochCollectionService extends BrowserEventEmitter {
     };
 
     // Add tick handler to WebSocket
-    persistentWebSocket.on('tick', this.tickHandler);
+    webSocketService.on('tick', this.tickHandler);
     
     // Start synchronization interval
     this.startSyncInterval();
@@ -280,7 +285,8 @@ class EpochCollectionService extends BrowserEventEmitter {
           loss: epoch.results?.loss || null,
           training_time: epoch.results?.time || null,
           model_state: modelState,
-          completed_at: new Date(epoch.endTime || Date.now()).toISOString()
+          completed_at: new Date(epoch.endTime || Date.now()).toISOString(),
+          session_id: this.sessionId
         });
       
       if (error) {
@@ -306,7 +312,7 @@ class EpochCollectionService extends BrowserEventEmitter {
   }
 
   public startCollection(): boolean {
-    if (!persistentWebSocket.isConnected()) {
+    if (!webSocketService.isWebSocketConnected()) {
       toast.error('WebSocket not connected. Cannot collect ticks.');
       return false;
     }
@@ -371,7 +377,7 @@ class EpochCollectionService extends BrowserEventEmitter {
 
   public cleanup(): void {
     if (this.tickHandler) {
-      persistentWebSocket.off('tick', this.tickHandler);
+      webSocketService.off('tick', this.tickHandler);
     }
     
     if (this.syncInterval) {
@@ -382,5 +388,5 @@ class EpochCollectionService extends BrowserEventEmitter {
   }
 }
 
-export const epochCollectionService = new EpochCollectionService();
-export default epochCollectionService;
+export const epochService = new EpochService();
+export default epochService;

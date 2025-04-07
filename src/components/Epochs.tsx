@@ -10,7 +10,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { trainingService, EpochData } from '@/services/TrainingService';
 import { toast } from 'sonner';
 import { neuralNetwork } from '@/lib/neuralNetwork';
-import EpochCollectionManager from './EpochCollectionManager';
+import EpochManager from './EpochManager';
 
 const Epochs: React.FC = () => {
   const { user } = useAuth();
@@ -354,7 +354,7 @@ const Epochs: React.FC = () => {
         </div>
         
         <div>
-          <EpochCollectionManager />
+          <EpochManager />
           
           <Card className="mt-6">
             <CardHeader>

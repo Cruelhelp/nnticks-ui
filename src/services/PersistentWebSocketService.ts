@@ -401,8 +401,3 @@ class PersistentWebSocketService extends BrowserEventEmitter {
 // Create a singleton instance
 export const persistentWebSocket = new PersistentWebSocketService();
 export default persistentWebSocket;
-
-// Make the service available globally for debugging
-if (typeof window !== 'undefined') {
-  window.persistentWebSocket = persistentWebSocket;
-}

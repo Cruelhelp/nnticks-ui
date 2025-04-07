@@ -1,26 +1,28 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useWebSocket } from '@/hooks/useWebSocket';
-import { TickData } from '@/types/chartTypes';
+import { TickData } from '@/types/tickTypes';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Area } from 'recharts';
+import { ArrowUp, ArrowDown, ChevronRight } from 'lucide-react';
 
-interface CustomTooltipProps {
+interface ChartTooltipProps {
   active?: boolean;
   payload?: any[];
   label?: string;
 }
 
-const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, label }) => {
+const ChartTooltip: React.FC<ChartTooltipProps> = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
     return (
       <div className="bg-background/95 border rounded p-2 shadow-md text-xs">
         <p className="text-muted-foreground mb-1">{label}</p>
         <p className="font-medium">{`Price: ${payload[0].value.toFixed(5)}`}</p>
         {payload[0].payload.change !== undefined && (
-          <p className={`text-xs ${payload[0].payload.change > 0 ? 'text-green-400' : payload[0].payload.change < 0 ? 'text-red-400' : 'text-gray-400'}`}>
+          <p className={`text-xs ${payload[0].payload.change > 0 ? 'text-green-500' : payload[0].payload.change < 0 ? 'text-red-500' : 'text-gray-500'}`}>
             Change: {payload[0].payload.change > 0 ? '+' : ''}{payload[0].payload.change.toFixed(5)}
           </p>
         )}
@@ -30,7 +32,7 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, label })
   return null;
 };
 
-interface DynamicPriceChartProps {
+interface PriceChartProps {
   ticks?: TickData[];
   timeframes?: number[];
   defaultTimeframe?: number;
@@ -38,17 +40,16 @@ interface DynamicPriceChartProps {
   showControls?: boolean;
   showTimeframeSelector?: boolean;
   responsiveHeight?: boolean;
-  chartType?: 'line' | 'area' | 'candlestick';
-  showArea?: boolean;
+  chartType?: 'line' | 'area';
   showGridLines?: boolean;
   showDataPoints?: boolean;
   smoothCurve?: boolean;
   darkTheme?: boolean;
   symbol?: string;
-  type?: string;
+  className?: string;
 }
 
-const DynamicPriceChart: React.FC<DynamicPriceChartProps> = ({
+const PriceChart: React.FC<PriceChartProps> = ({
   ticks: propTicks,
   timeframes = [1, 5, 15, 30, 60],
   defaultTimeframe = 5,
@@ -57,20 +58,19 @@ const DynamicPriceChart: React.FC<DynamicPriceChartProps> = ({
   showTimeframeSelector = true,
   responsiveHeight = false,
   chartType = 'line',
-  showArea = false,
   showGridLines = true,
   showDataPoints = false,
   smoothCurve = true,
   darkTheme = true,
   symbol = 'R_10',
-  type = 'line',
+  className = '',
 }) => {
-  const { ticks: wsTicks, latestTick, isConnected } = useWebSocket();
+  const { ticks: wsTicks, latestTick, isConnected } = useWebSocket({ symbols: [symbol] });
   const ticks = propTicks || wsTicks;
   
   const [chartData, setChartData] = useState<any[]>([]);
   const [timeframe, setTimeframe] = useState(defaultTimeframe);
-  const [localChartType, setLocalChartType] = useState<'line' | 'area'>(chartType as 'line' | 'area');
+  const [localChartType, setLocalChartType] = useState<'line' | 'area'>(chartType);
   const [smoothingFactor, setSmoothingFactor] = useState(2);
   const [autoScale, setAutoScale] = useState(true);
   const [yDomain, setYDomain] = useState<[number, number] | undefined>(undefined);
@@ -169,19 +169,30 @@ const DynamicPriceChart: React.FC<DynamicPriceChartProps> = ({
       : '#6366f1';
   
   return (
-    <Card className="overflow-hidden shadow-none border-0">
+    <Card className={`overflow-hidden shadow-none border-0 ${className}`}>
       <CardHeader className="px-4 py-3 pb-0">
         <div className="flex justify-between items-center">
-          <CardTitle className="text-base font-semibold">
+          <CardTitle className="text-base font-semibold flex items-center">
             Price Chart
             {latestTick && (
               <span className={`ml-2 text-base font-normal ${
-                isPriceRising ? 'text-green-400' : isPriceFalling ? 'text-red-400' : 'text-gray-400'
-              }`}>
+                isPriceRising ? 'text-green-500' : isPriceFalling ? 'text-red-500' : 'text-gray-500'
+              } flex items-center`}>
                 {latestTick.value.toFixed(5)}
-                <span className="text-xs ml-1">
-                  {priceMovement > 0 && '+'}
-                  {priceMovement.toFixed(5)}
+                <span className={`flex items-center ml-1 ${
+                  isPriceRising ? 'text-green-500' : isPriceFalling ? 'text-red-500' : 'text-gray-500'
+                }`}>
+                  {isPriceRising ? (
+                    <ArrowUp className="h-3 w-3" />
+                  ) : isPriceFalling ? (
+                    <ArrowDown className="h-3 w-3" />
+                  ) : (
+                    <ChevronRight className="h-3 w-3" />
+                  )}
+                  <span className="text-xs ml-1">
+                    {priceMovement > 0 && '+'}
+                    {Math.abs(priceMovement).toFixed(5)}
+                  </span>
                 </span>
               </span>
             )}
@@ -232,13 +243,15 @@ const DynamicPriceChart: React.FC<DynamicPriceChartProps> = ({
           </div>
         )}
         
-        <div className={responsiveHeight ? "w-full h-full min-h-[200px]" : `w-full h-[${height}px]`} style={{ height: responsiveHeight ? '100%' : height }}>
+        <div style={{ height: responsiveHeight ? '100%' : height }} className={responsiveHeight ? "w-full h-full min-h-[200px]" : "w-full"}>
           <ResponsiveContainer width="100%" height="100%">
             <LineChart
               data={chartData}
               margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
             >
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+              {showGridLines && (
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+              )}
               <XAxis 
                 dataKey="time" 
                 tick={{ fontSize: 10 }} 
@@ -251,7 +264,7 @@ const DynamicPriceChart: React.FC<DynamicPriceChartProps> = ({
                 stroke="rgba(255,255,255,0.3)"
                 tickFormatter={(value) => value.toFixed(5)}
               />
-              <Tooltip content={<CustomTooltip />} />
+              <Tooltip content={<ChartTooltip />} />
               
               <ReferenceLine 
                 y={latestTick?.value || 0} 
@@ -268,22 +281,23 @@ const DynamicPriceChart: React.FC<DynamicPriceChartProps> = ({
               
               {localChartType === 'area' ? (
                 <Area
-                  type="monotone" 
+                  type={smoothCurve ? "monotone" : "linear"} 
                   dataKey="value" 
                   stroke={lineColor}
                   strokeWidth={2}
                   fillOpacity={1}
                   fill="url(#colorGradient)"
+                  dot={showDataPoints}
                   activeDot={{ r: 4 }}
                   isAnimationActive={false}
                 />
               ) : (
                 <Line 
-                  type="monotone" 
+                  type={smoothCurve ? "monotone" : "linear"} 
                   dataKey="value" 
                   stroke={lineColor}
                   strokeWidth={2}
-                  dot={false}
+                  dot={showDataPoints}
                   activeDot={{ r: 4 }}
                   isAnimationActive={false}
                 />
@@ -296,4 +310,4 @@ const DynamicPriceChart: React.FC<DynamicPriceChartProps> = ({
   );
 };
 
-export default DynamicPriceChart;
+export default PriceChart;
