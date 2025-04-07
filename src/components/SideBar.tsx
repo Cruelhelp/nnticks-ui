@@ -1,8 +1,19 @@
-
 import UpdatedSideBar from './UpdatedSideBar';
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { LineChart } from 'lucide-react';
+import {
+  Home,
+  LineChart,
+  Brain,
+  History,
+  Trophy,
+  Settings,
+  Terminal,
+  Clock,
+  Info,
+  Shield
+} from 'lucide-react';
+import ImprovedCharts from '@/components/ImprovedCharts';
 
 function App() {
   const navigate = useNavigate();
