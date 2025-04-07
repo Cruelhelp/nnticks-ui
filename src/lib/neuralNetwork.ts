@@ -1,106 +1,54 @@
-// Neural Network Implementation for NNticks
 import { Indicators } from './indicators';
 
 export interface NNConfiguration {
   learningRate: number;
   epochs: number;
   layers: number[];
-  activationFunction: 'relu' | 'sigmoid' | 'tanh';
-  batchSize: number;
-  momentum: number;
-  batchNormalization: boolean;
-  dropout: number;
-  optimizerType: string;
 }
 
 export const DEFAULT_NN_CONFIG: NNConfiguration = {
   learningRate: 0.001,
   epochs: 100,
-  layers: [10, 32, 16, 1],
-  activationFunction: 'relu',
-  batchSize: 32,
-  momentum: 0.9,
-  batchNormalization: true,
-  dropout: 0.2,
-  optimizerType: 'adam'
+  layers: [10, 16, 1]
 };
 
 export class NeuralNetwork {
   private weights: number[][][] = [];
   private biases: number[][] = [];
   private config: NNConfiguration;
-  private lastLoss: number = 0;
-  private modelAccuracy: number = 0;
-  private weightMomentum: number[][][] = [];
-  private biasMomentum: number[][] = [];
-  private isTraining: boolean = false;
-  private inputSize: number = 10;
-
-  public updateConfig(config: NNConfiguration) {
-    this.config = config;
-    this.initializeNetwork();
-  }
-
-  public getModelStats() {
-    return {
-      accuracy: this.modelAccuracy * 100,
-      lastLoss: this.lastLoss,
-      config: this.config,
-      weightsShape: this.weights.map(w => w.length)
-    };
-  }
-
-  public exportModel() {
-    return {
-      weights: this.weights,
-      biases: this.biases,
-      config: this.config
-    };
-  }
 
   constructor(config: NNConfiguration = DEFAULT_NN_CONFIG) {
     this.config = config;
     this.initializeNetwork();
   }
 
-  private normalizeInput(input: number[]): number[] {
-    if (!input || input.length === 0) {
-      throw new Error('Invalid input for normalization');
-    }
-    
-    try {
-      const mean = input.reduce((a, b) => a + (b || 0), 0) / input.length;
-      const variance = input.reduce((a, b) => a + Math.pow((b || 0) - mean, 2), 0) / input.length;
-      const std = Math.sqrt(variance + 1e-8);
-      return input.map(x => ((x || 0) - mean) / std);
-    } catch (error) {
-      console.error('Error normalizing input:', error);
-      throw error;
-    }
-  }
-
   private initializeNetwork(): void {
     const { layers } = this.config;
 
+    // Initialize weights and biases between layers
     for (let i = 0; i < layers.length - 1; i++) {
-      const layerWeights: number[][] = [];
-      const limit = Math.sqrt(6 / (layers[i] + layers[i + 1]));
+      const currentLayer: number[][] = [];
+      const layerBiases: number[] = [];
+
+      // Xavier/Glorot initialization
+      const limit = Math.sqrt(2.0 / (layers[i] + layers[i + 1]));
 
       for (let j = 0; j < layers[i]; j++) {
         const neuronWeights: number[] = [];
         for (let k = 0; k < layers[i + 1]; k++) {
           neuronWeights.push((Math.random() * 2 - 1) * limit);
         }
-        layerWeights.push(neuronWeights);
+        currentLayer.push(neuronWeights);
       }
-      this.weights.push(layerWeights);
-      this.biases.push(new Array(layers[i + 1]).fill(0));
-    }
-  }
 
-  private dropout(activation: number[], rate: number = 0.2): number[] {
-    if (!this.isTraining) return activation;
-    return activation.map(a => Math.random() > rate ? a / (1 - rate) : 0);
+      // Initialize biases for the next layer
+      for (let j = 0; j < layers[i + 1]; j++) {
+        layerBiases.push(0);
+      }
+
+      this.weights.push(currentLayer);
+      this.biases.push(layerBiases);
+    }
   }
 
   private relu(x: number): number {
@@ -109,6 +57,17 @@ export class NeuralNetwork {
 
   private reluDerivative(x: number): number {
     return x > 0 ? 1 : 0;
+  }
+
+  private normalize(data: number[]): number[] {
+    if (!data || data.length === 0) return [];
+
+    const mean = data.reduce((a, b) => a + b, 0) / data.length;
+    const std = Math.sqrt(
+      data.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / data.length
+    ) || 1;
+
+    return data.map(x => (x - mean) / std);
   }
 
   private forwardPass(input: number[]): number[] {
@@ -131,147 +90,86 @@ export class NeuralNetwork {
     return activation;
   }
 
-  private backpropagate(input: number[], target: number[], learningRate: number): void {
-    // Store activations and weighted inputs for each layer
-    const activations: number[][] = [input];
-    const weightedInputs: number[][] = [];
-
-    // Forward pass storing intermediate values
-    let activation = input;
-    for (let i = 0; i < this.weights.length; i++) {
-      const weighedInput: number[] = new Array(this.weights[i][0].length).fill(0);
-      const newActivation: number[] = new Array(this.weights[i][0].length).fill(0);
-
-      for (let j = 0; j < this.weights[i][0].length; j++) {
-        let sum = this.biases[i][j];
-        for (let k = 0; k < this.weights[i].length; k++) {
-          sum += activation[k] * this.weights[i][k][j];
-        }
-        weighedInput[j] = sum;
-        newActivation[j] = this.relu(sum);
-      }
-
-      weightedInputs.push(weighedInput);
-      activations.push(newActivation);
-      activation = newActivation;
-    }
-
-    // Backward pass
-    let delta = activations[activations.length - 1].map((a, i) => {
-      const error = a - target[i];
-      return error * this.reluDerivative(weightedInputs[weightedInputs.length - 1][i]);
-    });
-
-    // Update weights and biases for output layer
-    for (let i = this.weights.length - 1; i >= 0; i--) {
-      // Update weights
-      for (let j = 0; j < this.weights[i].length; j++) {
-        for (let k = 0; k < this.weights[i][j].length; k++) {
-          this.weights[i][j][k] -= learningRate * delta[k] * activations[i][j];
-        }
-      }
-
-      // Update biases
-      for (let j = 0; j < this.biases[i].length; j++) {
-        this.biases[i][j] -= learningRate * delta[j];
-      }
-
-      // Calculate delta for next layer
-      if (i > 0) {
-        const newDelta: number[] = new Array(this.weights[i - 1].length).fill(0);
-        for (let j = 0; j < this.weights[i - 1].length; j++) {
-          let sum = 0;
-          for (let k = 0; k < delta.length; k++) {
-            sum += delta[k] * this.weights[i][j][k];
-          }
-          newDelta[j] = sum * this.reluDerivative(weightedInputs[i - 1][j]);
-        }
-        delta = newDelta;
-      }
-    }
-  }
-
-  
-
   public async train(data: number[], options?: { maxEpochs?: number; onProgress?: (progress: number) => void }): Promise<number> {
-    if (!Array.isArray(data) || data.length < this.inputSize) {
-      throw new Error(`Invalid input data. Need at least ${this.inputSize} numeric values`);
+    if (!Array.isArray(data) || data.length < this.config.layers[0]) {
+      throw new Error('Invalid input data');
     }
 
-    if (data.some(x => typeof x !== 'number' || isNaN(x))) {
-      throw new Error('Input data contains invalid numeric values');
-    }
-
-    const { learningRate, batchSize } = this.config;
+    const normalizedData = this.normalize(data);
+    const batchSize = 32;
+    const { learningRate } = this.config;
     const maxEpochs = options?.maxEpochs || this.config.epochs;
     let totalLoss = 0;
-    this.isTraining = true;
 
     try {
       // Prepare training data
       const inputs: number[][] = [];
       const targets: number[][] = [];
-      
-      // Normalize the input data
-      const normalizedData = this.normalizeInput(data);
-      
-      // Create training pairs
-      for (let i = 0; i < normalizedData.length - this.inputSize; i++) {
-        const input = normalizedData.slice(i, i + this.inputSize);
-        const target = [normalizedData[i + this.inputSize]];
-        inputs.push(input);
-        targets.push(target);
+
+      for (let i = 0; i < normalizedData.length - this.config.layers[0]; i++) {
+        inputs.push(normalizedData.slice(i, i + this.config.layers[0]));
+        targets.push([normalizedData[i + this.config.layers[0]]]);
       }
 
       // Training loop
       for (let epoch = 0; epoch < maxEpochs; epoch++) {
         let epochLoss = 0;
-        
-        // Process each sample in the training data
-        for (let i = 0; i < inputs.length; i++) {
-          const input = inputs[i];
-          const target = targets[i];
-          
-          // Forward pass
-          const prediction = this.forwardPass(input);
-          
-          // Backpropagate and update weights
-          this.backpropagate(input, target, learningRate);
-          
-          // Calculate loss
-          epochLoss += Math.pow(prediction[0] - target[0], 2);
+
+        for (let i = 0; i < inputs.length; i += batchSize) {
+          const batchInputs = inputs.slice(i, i + batchSize);
+          const batchTargets = targets.slice(i, i + batchSize);
+
+          let batchLoss = 0;
+          for (let j = 0; j < batchInputs.length; j++) {
+            const prediction = this.forwardPass(batchInputs[j]);
+            batchLoss += Math.pow(prediction[0] - batchTargets[j][0], 2);
+
+            // Update weights and biases
+            let delta = prediction[0] - batchTargets[j][0];
+            for (let k = this.weights.length - 1; k >= 0; k--) {
+              for (let l = 0; l < this.weights[k].length; l++) {
+                for (let m = 0; m < this.weights[k][l].length; m++) {
+                  this.weights[k][l][m] -= learningRate * delta * batchInputs[j][l];
+                }
+              }
+              for (let l = 0; l < this.biases[k].length; l++) {
+                this.biases[k][l] -= learningRate * delta;
+              }
+            }
+          }
+
+          epochLoss += batchLoss / batchInputs.length;
         }
-        
-        // Average loss for this epoch
-        epochLoss /= inputs.length;
+
+        epochLoss /= Math.ceil(inputs.length / batchSize);
         totalLoss = epochLoss;
-        
-        // Update progress
+
         if (options?.onProgress) {
           options.onProgress((epoch + 1) / maxEpochs);
         }
       }
-    } finally {
-      this.isTraining = false;
+    } catch (error) {
+      console.error('Training error:', error);
+      throw error;
     }
 
     return totalLoss;
   }
 
-  public predict(marketData: number[]): number[] {
-    if (marketData.length !== this.config.layers[0]) {
-      throw new Error(`Input size must be ${this.config.layers[0]}`);
+  public predict(input: number[]): number[] {
+    if (!Array.isArray(input) || input.length !== this.config.layers[0]) {
+      throw new Error(`Input must be an array of length ${this.config.layers[0]}`);
     }
 
-    return this.forwardPass(marketData);
+    const normalizedInput = this.normalize(input);
+    return this.forwardPass(normalizedInput);
   }
 
   public getModelStats() {
     return {
-      accuracy: this.modelAccuracy,
-      lastLoss: this.lastLoss,
-      config: this.config,
-      weightsShape: this.weights.map(w => w.length)
+      layers: this.config.layers,
+      weightsShape: this.weights.map(w => w.length),
+      learningRate: this.config.learningRate
     };
   }
 }
