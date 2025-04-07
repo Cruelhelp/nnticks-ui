@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -62,25 +61,25 @@ const ImprovedCharts: React.FC = () => {
     smoothCurve: true,
     darkMode: true,
   });
-  
+
   const { ticks, latestTick, isConnected, connectionStatus, tickCount } = useTicks({
     maxTicks: 100,
     storeInSupabase: true,
     market: selectedMarket,
     updateEpochs: true
   });
-  
+
   const handleMarketChange = (value: string) => {
     setSelectedMarket(value);
   };
-  
+
   const toggleChartOption = (option: keyof ChartOptions) => {
     setChartOptions(prev => ({
       ...prev,
       [option]: !prev[option]
     }));
   };
-  
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -88,10 +87,10 @@ const ImprovedCharts: React.FC = () => {
           <h2 className="text-2xl font-semibold">Market Data Analysis</h2>
           <p className="text-muted-foreground">Monitor real-time market data and neural network training</p>
         </div>
-        
+
         <div className="flex items-center gap-3">
           <EpochExplainer compact />
-          
+
           <Select value={selectedMarket} onValueChange={handleMarketChange}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Select market" />
@@ -104,13 +103,13 @@ const ImprovedCharts: React.FC = () => {
               ))}
             </SelectContent>
           </Select>
-          
+
           <WebSocketStatus compact showTickInfo />
         </div>
       </div>
-      
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2 backdrop-blur-sm bg-opacity-50 shadow-xl">
+        <Card className="lg:col-span-2">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle>
@@ -170,7 +169,7 @@ const ImprovedCharts: React.FC = () => {
               Real-time price chart with the latest market movements
             </CardDescription>
           </CardHeader>
-          
+
           <Tabs defaultValue="line" className="w-full">
             <div className="px-4 border-b">
               <TabsList className="h-9">
@@ -188,7 +187,7 @@ const ImprovedCharts: React.FC = () => {
                 </TabsTrigger>
               </TabsList>
             </div>
-            
+
             <TabsContent value="line" className="mt-0">
               <CardContent className="p-0">
                 <DynamicPriceChart
@@ -201,10 +200,11 @@ const ImprovedCharts: React.FC = () => {
                   smoothCurve={chartOptions.smoothCurve}
                   darkTheme={chartOptions.darkMode}
                   symbol={selectedMarket}
+                  showPredictions={true}
                 />
               </CardContent>
             </TabsContent>
-            
+
             <TabsContent value="area" className="mt-0">
               <CardContent className="p-0">
                 <DynamicPriceChart
@@ -220,7 +220,7 @@ const ImprovedCharts: React.FC = () => {
                 />
               </CardContent>
             </TabsContent>
-            
+
             <TabsContent value="bar" className="mt-0">
               <CardContent className="p-0">
                 <DynamicPriceChart
@@ -238,10 +238,10 @@ const ImprovedCharts: React.FC = () => {
             </TabsContent>
           </Tabs>
         </Card>
-        
+
         <div className="space-y-6">
           <EpochManager showControls showSettings={false} compact />
-          
+
           <Card>
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
@@ -256,7 +256,7 @@ const ImprovedCharts: React.FC = () => {
             </CardHeader>
             <CardContent className="space-y-4 pt-0">
               <EpochCollectionStats />
-              
+
               <div className="bg-muted/30 p-3 rounded-md border space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium flex items-center">
@@ -276,7 +276,7 @@ const ImprovedCharts: React.FC = () => {
                     </Tooltip>
                   </TooltipProvider>
                 </div>
-                
+
                 <div className="text-sm text-muted-foreground">
                   <p className="mb-2">
                     <strong>Ticks</strong> are individual price updates from the market. Each tick represents a single data point of the current price at a specific moment in time.
@@ -285,7 +285,7 @@ const ImprovedCharts: React.FC = () => {
                     <strong>Epochs</strong> are batches of ticks used to train the neural network. When enough ticks are collected, they form an epoch that's processed to improve the prediction model.
                   </p>
                 </div>
-                
+
                 <EpochExplainer 
                   trigger={
                     <Button variant="outline" size="sm" className="w-full">
