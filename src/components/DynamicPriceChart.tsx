@@ -13,7 +13,7 @@ interface ChartProps {
 const DynamicPriceChart: React.FC<ChartProps> = ({ 
   data, 
   type = 'line',
-  height = 350,
+  height = 400, // Increased default height
   className 
 }) => {
   const ChartComponent = type === 'line' ? LineChart : AreaChart;
@@ -22,7 +22,7 @@ const DynamicPriceChart: React.FC<ChartProps> = ({
   return (
     <Card className={cn("p-4", className)}>
       <ResponsiveContainer width="100%" height={height}>
-        <ChartComponent data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+        <ChartComponent data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }} className="w-full h-full" style={{ backgroundColor: 'transparent', borderRadius: '8px', padding: '12px' }}>
           <defs>
             <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
               <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.8}/>
