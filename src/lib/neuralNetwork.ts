@@ -181,71 +181,7 @@ export class NeuralNetwork {
     }
   }
 
-  public async train(data: number[], options?: { maxEpochs?: number; onProgress?: (progress: number) => void }): Promise<number> {
-    if (data.length < this.inputSize) {
-      throw new Error(`Not enough data points. Need at least ${this.inputSize}`);
-    }
-
-    const { learningRate, batchSize } = this.config;
-    const maxEpochs = options?.maxEpochs || this.config.epochs;
-    let totalLoss = 0;
-    this.isTraining = true;
-
-    try {
-      // Prepare training data
-      const inputs: number[][] = [];
-      const targets: number[][] = [];
-      
-      for (let i = 0; i < data.length - this.inputSize; i++) {
-        inputs.push(data.slice(i, i + this.inputSize));
-        targets.push([data[i + this.inputSize]]);
-      }
-
-    for (let epoch = 0; epoch < epochs; epoch++) {
-      let epochLoss = 0;
-
-      // Shuffle data
-      const shuffledData = [...data].sort(() => Math.random() - 0.5);
-
-      // Process in batches
-      for (let i = 0; i < shuffledData.length; i += batchSize) {
-        const batch = shuffledData.slice(i, i + batchSize);
-
-        for (const sample of batch) {
-          // Forward pass
-          const prediction = this.forwardPass(sample.input);
-
-          // Calculate loss
-          const loss = prediction.reduce((sum, p, j) => {
-            return sum + Math.pow(p - sample.target[j], 2);
-          }, 0) / prediction.length;
-
-          epochLoss += loss;
-
-          // Backpropagate
-          this.backpropagate(sample.input, sample.target, learningRate);
-        }
-      }
-
-      epochLoss /= data.length;
-      this.lastLoss = epochLoss;
-
-      // Calculate accuracy based on validation set (using 20% of data)
-      const validationData = data.slice(-Math.floor(data.length * 0.2));
-      let correct = 0;
-
-      for (const sample of validationData) {
-        const prediction = this.forwardPass(sample.input);
-        if (Math.abs(prediction[0] - sample.target[0]) < 0.1) {
-          correct++;
-        }
-      }
-
-      this.modelAccuracy = correct / validationData.length;
-    }
-
-    return this.modelAccuracy;
-  }
+  
 
   public async train(data: number[], options?: { maxEpochs?: number; onProgress?: (progress: number) => void }): Promise<number> {
     if (data.length < this.inputSize) {
