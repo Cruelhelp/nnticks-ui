@@ -1,0 +1,52 @@
+The above error occurred in the <App> component:
+
+    at App (https://29d8cc0e-28e3-4e68-8b37-36911514dc30-00-j8o3cgklm5nz.janeway.replit.dev/src/components/SideBar.tsx:17:22)
+    at div
+    at div
+    at div
+    at Index (https://29d8cc0e-28e3-4e68-8b37-36911514dc30-00-j8o3cgklm5nz.janeway.replit.dev/src/pages/Index.tsx:36:41)
+    at RenderedRoute (https://29d8cc0e-28e3-4e68-8b37-36911514dc30-00-j8o3cgklm5nz.janeway.replit.dev/node_modules/.vite/deps/react-router-dom.js?v=f5a6843b:4069:5)
+    at Routes (https://29d8cc0e-28e3-4e68-8b37-36911514dc30-00-j8o3cgklm5nz.janeway.replit.dev/node_modules/.vite/deps/react-router-dom.js?v=f5a6843b:4508:5)
+    at div
+    at Router (https://29d8cc0e-28e3-4e68-8b37-36911514dc30-00-j8o3cgklm5nz.janeway.replit.dev/node_modules/.vite/deps/react-router-dom.js?v=f5a6843b:4451:15)
+    at BrowserRouter (https://29d8cc0e-28e3-4e68-8b37-36911514dc30-00-j8o3cgklm5nz.janeway.replit.dev/node_modules/.vite/deps/react-router-dom.js?v=f5a6843b:5196:5)
+    at Provider (https://29d8cc0e-28e3-4e68-8b37-36911514dc30-00-j8o3cgklm5nz.janeway.replit.dev/node_modules/.vite/deps/chunk-KF7TDO2V.js?v=f5a6843b:38:15)
+    at TooltipProvider (https://29d8cc0e-28e3-4e68-8b37-36911514dc30-00-j8o3cgklm5nz.janeway.replit.dev/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=f5a6843b:61:5)
+    at O (https://29d8cc0e-28e3-4e68-8b37-36911514dc30-00-j8o3cgklm5nz.janeway.replit.dev/node_modules/.vite/deps/next-themes.js?v=f5a6843b:23:25)
+    at z (https://29d8cc0e-28e3-4e68-8b37-36911514dc30-00-j8o3cgklm5nz.janeway.replit.dev/node_modules/.vite/deps/next-themes.js?v=f5a6843b:21:18)
+    at ThemeProvider (https://29d8cc0e-28e3-4e68-8b37-36911514dc30-00-j8o3cgklm5nz.janeway.replit.dev/src/components/ui/theme-provider.tsx:13:33)
+    at SettingsProvider (https://29d8cc0e-28e3-4e68-8b37-36911514dc30-00-j8o3cgklm5nz.janeway.replit.dev/src/hooks/useSettings.tsx:45:36)
+    at AuthProvider (https://29d8cc0e-28e3-4e68-8b37-36911514dc30-00-j8o3cgklm5nz.janeway.replit.dev/src/contexts/AuthContext.tsx:14:32)
+    at QueryClientProvider (https://29d8cc0e-28e3-4e68-8b37-36911514dc30-00-j8o3cgklm5nz.janeway.replit.dev/node_modules/.vite/deps/@tanstack_react-query.js?v=f5a6843b:2794:3)
+    at App (https://29d8cc0e-28e3-4e68-8b37-36911514dc30-00-j8o3cgklm5nz.janeway.replit.dev/src/App.tsx:42:5)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+
+at App (https://29d8cc0e-28e3-4e68-8b37-36911514dc30-00-j8o3cgklm5nz.janeway.replit.dev/src/components/SideBar.tsx:17:22)
+at div
+at div
+at div
+at Index (https://29d8cc0e-28e3-4e68-8b37-36911514dc30-00-j8o3cgklm5nz.janeway.replit.dev/src/pages/Index.tsx:36:41)
+at RenderedRoute (https://29d8cc0e-28e3-4e68-8b37-36911514dc30-00-j8o3cgklm5nz.janeway.replit.dev/node_modules/.vite/deps/react-router-dom.js?v=f5a6843b:4069:5)
+at Routes (https://29d8cc0e-28e3-4e68-8b37-36911514dc30-00-j8o3cgklm5nz.janeway.replit.dev/node_modules/.vite/deps/react-router-dom.js?v=f5a6843b:4508:5)
+at div
+at Router (https://29d8cc0e-28e3-4e68-8b37-36911514dc30-00-j8o3cgklm5nz.janeway.replit.dev/node_modules/.vite/deps/react-router-dom.js?v=f5a6843b:4451:15)
+at BrowserRouter (https://29d8cc0e-28e3-4e68-8b37-36911514dc30-00-j8o3cgklm5nz.janeway.replit.dev/node_modules/.vite/deps/react-router-dom.js?v=f5a6843b:5196:5)
+at Provider (https://29d8cc0e-28e3-4e68-8b37-36911514dc30-00-j8o3cgklm5nz.janeway.replit.dev/node_modules/.vite/deps/chunk-KF7TDO2V.js?v=f5a6843b:38:15)
+at TooltipProvider (https://29d8cc0e-28e3-4e68-8b37-36911514dc30-00-j8o3cgklm5nz.janeway.replit.dev/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=f5a6843b:61:5)
+at O (https://29d8cc0e-28e3-4e68-8b37-36911514dc30-00-j8o3cgklm5nz.janeway.replit.dev/node_modules/.vite/deps/next-themes.js?v=f5a6843b:23:25)
+at z (https://29d8cc0e-28e3-4e68-8b37-36911514dc30-00-j8o3cgklm5nz.janeway.replit.dev/node_modules/.vite/deps/next-themes.js?v=f5a6843b:21:18)
+at ThemeProvider (https://29d8cc0e-28e3-4e68-8b37-36911514dc30-00-j8o3cgklm5nz.janeway.replit.dev/src/components/ui/theme-provider.tsx:13:33)
+at SettingsProvider (https://29d8cc0e-28e3-4e68-8b37-36911514dc30-00-j8o3cgklm5nz.janeway.replit.dev/src/hooks/useSettings.tsx:45:36)
+at AuthProvider (https://29d8cc0e-28e3-4e68-8b37-36911514dc30-00-j8o3cgklm5nz.janeway.replit.dev/src/contexts/AuthContext.tsx:14:32)
+at QueryClientProvider (https://29d8cc0e-28e3-4e68-8b37-36911514dc30-00-j8o3cgklm5nz.janeway.replit.dev/node_modules/.vite/deps/@tanstack_react-query.js?v=f5a6843b:2794:3)
+at App (https://29d8cc0e-28e3-4e68-8b37-36911514dc30-00-j8o3cgklm5nz.janeway.replit.dev/src/App.tsx:42:5)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+at t.value (https://29d8cc0e-28e3-4e68-8b37-36911514dc30-00-j8o3cgklm5nz.janeway.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:17465)
+at new t (https://29d8cc0e-28e3-4e68-8b37-36911514dc30-00-j8o3cgklm5nz.janeway.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:12630)
+at t.value (https://29d8cc0e-28e3-4e68-8b37-36911514dc30-00-j8o3cgklm5nz.janeway.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:32766)
+at https://29d8cc0e-28e3-4e68-8b37-36911514dc30-00-j8o3cgklm5nz.janeway.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:34400
+ImprovedCharts is not defined
