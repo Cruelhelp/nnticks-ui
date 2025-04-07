@@ -31,4 +31,4 @@ function SideBar({ activeSection, onSectionChange }: SideBarProps) {
   );
 }
 
-export default App;
+export default SideBar;
