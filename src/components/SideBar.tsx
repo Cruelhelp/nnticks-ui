@@ -1,7 +1,8 @@
+
 import UpdatedSideBar from './UpdatedSideBar';
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
-import { Button } from '@chakra-ui/react'; // Assuming Chakra UI is used
-import { LineChart } from 'chart.js'; // Assuming chart.js is used
+import { Button } from '@/components/ui/button';
+import { LineChart } from 'lucide-react';
 
 function App() {
   const navigate = useNavigate();
@@ -20,11 +21,9 @@ function App() {
               <LineChart className="mr-2 h-4 w-4" />
               Charts
             </Button>
-            {/* Other navigation items would go here */}
           </div>
           <Routes>
-            <Route path="/charts" element={<ImprovedCharts />} /> {/* Assuming ImprovedCharts.tsx exists */}
-            {/* Other routes would go here */}
+            <Route path="/charts" element={<ImprovedCharts />} />
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
         </div>
@@ -33,10 +32,4 @@ function App() {
   );
 }
 
-// Re-export the updated sidebar component
 export default App;
-
-// Placeholder for ImprovedCharts.tsx - needs to be defined in a separate file.
-const ImprovedCharts = () => {
-  return <h1>Charts Screen</h1>
-}
