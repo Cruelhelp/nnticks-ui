@@ -64,9 +64,19 @@ export class NeuralNetwork {
   }
 
   private normalizeInput(input: number[]): number[] {
-    const mean = input.reduce((a, b) => a + b) / input.length;
-    const std = Math.sqrt(input.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / input.length);
-    return input.map(x => (x - mean) / (std + 1e-8));
+    if (!input || input.length === 0) {
+      throw new Error('Invalid input for normalization');
+    }
+    
+    try {
+      const mean = input.reduce((a, b) => a + (b || 0), 0) / input.length;
+      const variance = input.reduce((a, b) => a + Math.pow((b || 0) - mean, 2), 0) / input.length;
+      const std = Math.sqrt(variance + 1e-8);
+      return input.map(x => ((x || 0) - mean) / std);
+    } catch (error) {
+      console.error('Error normalizing input:', error);
+      throw error;
+    }
   }
 
   private initializeNetwork(): void {
@@ -184,8 +194,12 @@ export class NeuralNetwork {
   
 
   public async train(data: number[], options?: { maxEpochs?: number; onProgress?: (progress: number) => void }): Promise<number> {
-    if (data.length < this.inputSize) {
-      throw new Error(`Not enough data points. Need at least ${this.inputSize}`);
+    if (!Array.isArray(data) || data.length < this.inputSize) {
+      throw new Error(`Invalid input data. Need at least ${this.inputSize} numeric values`);
+    }
+
+    if (data.some(x => typeof x !== 'number' || isNaN(x))) {
+      throw new Error('Input data contains invalid numeric values');
     }
 
     const { learningRate, batchSize } = this.config;
