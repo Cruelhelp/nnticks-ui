@@ -247,6 +247,49 @@ export class NeuralNetwork {
     return this.modelAccuracy;
   }
 
+  public async train(data: number[], options?: { maxEpochs?: number; onProgress?: (progress: number) => void }): Promise<number> {
+    if (data.length < this.inputSize) {
+      throw new Error(`Not enough data points. Need at least ${this.inputSize}`);
+    }
+
+    const { learningRate, batchSize } = this.config;
+    const maxEpochs = options?.maxEpochs || this.config.epochs;
+    let totalLoss = 0;
+    this.isTraining = true;
+
+    try {
+      // Prepare training data
+      const inputs: number[][] = [];
+      const targets: number[][] = [];
+      
+      for (let i = 0; i < data.length - this.inputSize; i++) {
+        inputs.push(data.slice(i, i + this.inputSize));
+        targets.push([data[i + this.inputSize]]);
+      }
+
+      for (let epoch = 0; epoch < maxEpochs; epoch++) {
+        let epochLoss = 0;
+        
+        for (let i = 0; i < inputs.length; i++) {
+          const prediction = this.forwardPass(inputs[i]);
+          this.backpropagate(inputs[i], targets[i], learningRate);
+          epochLoss += Math.pow(prediction[0] - targets[i][0], 2);
+        }
+        
+        epochLoss /= inputs.length;
+        totalLoss = epochLoss;
+        
+        if (options?.onProgress) {
+          options.onProgress((epoch + 1) / maxEpochs);
+        }
+      }
+    } finally {
+      this.isTraining = false;
+    }
+
+    return totalLoss;
+  }
+
   public predict(marketData: number[]): number[] {
     if (marketData.length !== this.config.layers[0]) {
       throw new Error(`Input size must be ${this.config.layers[0]}`);
