@@ -12,7 +12,7 @@ import { ThemeProvider } from "./components/ui/theme-provider";
 import { useEffect, memo } from "react";
 import AdminPanel from "./components/AdminPanel";
 import "./index.css";
-import ImprovedCharts from './components/ImprovedCharts'; // Added import for ImprovedCharts
+import ImprovedCharts from '@/components/ImprovedCharts';
 
 // Create client with better defaults for mobile performance
 const queryClient = new QueryClient({
