@@ -63,15 +63,22 @@ async def get_model():
         print(f"Model export error: {str(e)}")
         return {"success": False, "error": "Failed to export model"}
 
-def find_free_port(start_port: int = 5000, max_attempts: int = 10) -> int:
-    for port in range(start_port, start_port + max_attempts):
-        try:
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-                sock.bind(('0.0.0.0', port))
-                return port
-        except OSError:
-            continue
-    raise RuntimeError(f"Could not find a free port in range {start_port}-{start_port + max_attempts}")
+def find_free_port(preferred_port: int = 5000, fallback_start: int = 8000, max_attempts: int = 20) -> int:
+    # First try the preferred port
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.bind(('0.0.0.0', preferred_port))
+            return preferred_port
+    except OSError:
+        # If preferred port is taken, try fallback ports
+        for port in range(fallback_start, fallback_start + max_attempts):
+            try:
+                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                    sock.bind(('0.0.0.0', port))
+                    return port
+            except OSError:
+                continue
+    raise RuntimeError(f"Could not find a free port in range {fallback_start}-{fallback_start + max_attempts}")
 
 if __name__ == "__main__":
     try:
