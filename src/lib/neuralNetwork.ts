@@ -34,6 +34,29 @@ export class NeuralNetwork {
   private weightMomentum: number[][][] = [];
   private biasMomentum: number[][] = [];
   private isTraining: boolean = false;
+  private inputSize: number = 10;
+
+  public updateConfig(config: NNConfiguration) {
+    this.config = config;
+    this.initializeNetwork();
+  }
+
+  public getModelStats() {
+    return {
+      accuracy: this.modelAccuracy * 100,
+      lastLoss: this.lastLoss,
+      config: this.config,
+      weightsShape: this.weights.map(w => w.length)
+    };
+  }
+
+  public exportModel() {
+    return {
+      weights: this.weights,
+      biases: this.biases,
+      config: this.config
+    };
+  }
 
   constructor(config: NNConfiguration = DEFAULT_NN_CONFIG) {
     this.config = config;
@@ -158,10 +181,25 @@ export class NeuralNetwork {
     }
   }
 
-  public async train(data: { input: number[], target: number[] }[]): Promise<number> {
-    let { learningRate, epochs, batchSize } = this.config;
-    const decayRate = 0.01;
+  public async train(data: number[], options?: { maxEpochs?: number; onProgress?: (progress: number) => void }): Promise<number> {
+    if (data.length < this.inputSize) {
+      throw new Error(`Not enough data points. Need at least ${this.inputSize}`);
+    }
+
+    const { learningRate, batchSize } = this.config;
+    const maxEpochs = options?.maxEpochs || this.config.epochs;
     let totalLoss = 0;
+    this.isTraining = true;
+
+    try {
+      // Prepare training data
+      const inputs: number[][] = [];
+      const targets: number[][] = [];
+      
+      for (let i = 0; i < data.length - this.inputSize; i++) {
+        inputs.push(data.slice(i, i + this.inputSize));
+        targets.push([data[i + this.inputSize]]);
+      }
 
     for (let epoch = 0; epoch < epochs; epoch++) {
       let epochLoss = 0;
