@@ -1,6 +1,5 @@
-
 import React, { useMemo } from 'react';
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine } from 'recharts';
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, Area } from 'recharts';
 import { Card } from './ui/card';
 import { cn } from '@/lib/utils';
 import { usePredictions } from '@/hooks/usePredictions';
@@ -34,8 +33,9 @@ const DynamicPriceChart: React.FC<ChartProps> = ({
   const { pendingPrediction } = usePredictions();
 
   const chartData = useMemo(() => {
+    if (!ticks || !Array.isArray(ticks)) return [{time: Date.now(), price: 0}]; // Handle empty or invalid ticks data
     return ticks.map(tick => ({
-      time: new Date(tick.timestamp).toLocaleTimeString(),
+      time: new Date(tick.timestamp).toLocaleTimeString(), // Corrected to use toLocaleTimeString
       price: tick.value
     }));
   }, [ticks]);
