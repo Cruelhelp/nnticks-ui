@@ -8,12 +8,25 @@ channel = "stable-24_05"
 run = ["sh", "-c", "npm run dev"]
 
 [workflows]
-runButton = "Run"
+runButton = "Dev Server"
 
 [[workflows.workflow]]
 name = "Run"
 author = 25670524
 mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run dev -- --host 0.0.0.0"
+
+[[workflows.workflow]]
+name = "Dev Server"
+author = 25670524
+mode = "parallel"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python server/main.py"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
