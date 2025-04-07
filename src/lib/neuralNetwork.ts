@@ -12,6 +12,12 @@ export interface NNConfiguration {
 export const DEFAULT_NN_CONFIG: NNConfiguration = {
   learningRate: 0.001,
   epochs: 100,
+
+  private weightMomentum: number[][][] = [];
+  private biasMomentum: number[][] = [];
+  private readonly momentum: number = 0.9;
+  private isTraining: boolean = false;
+
   layers: [10, 32, 16, 1], // Input features, hidden layers, output
   activationFunction: 'relu',
   batchSize: 32
@@ -39,6 +45,13 @@ export class NeuralNetwork {
 
       for (let j = 0; j < layers[i]; j++) {
         const neuronWeights: number[] = [];
+
+  private normalizeInput(input: number[]): number[] {
+    const mean = input.reduce((a, b) => a + b) / input.length;
+    const std = Math.sqrt(input.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / input.length);
+    return input.map(x => (x - mean) / (std + 1e-8));
+  }
+
         for (let k = 0; k < layers[i + 1]; k++) {
           neuronWeights.push((Math.random() * 2 - 1) * limit);
         }
@@ -49,6 +62,12 @@ export class NeuralNetwork {
       // Initialize biases with zeros
       const layerBiases: number[] = new Array(layers[i + 1]).fill(0);
       this.biases.push(layerBiases);
+
+  private dropout(activation: number[], rate: number = 0.2): number[] {
+    if (!this.isTraining) return activation;
+    return activation.map(a => Math.random() > rate ? a / (1 - rate) : 0);
+  }
+
     }
   }
 
@@ -141,7 +160,8 @@ export class NeuralNetwork {
   }
 
   public async train(data: { input: number[], target: number[] }[]): Promise<number> {
-    const { learningRate, epochs, batchSize } = this.config;
+    let { learningRate, epochs, batchSize } = this.config;
+    const decayRate = 0.01;
     let totalLoss = 0;
 
     for (let epoch = 0; epoch < epochs; epoch++) {
