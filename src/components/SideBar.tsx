@@ -1,4 +1,3 @@
-
 import UpdatedSideBar from './UpdatedSideBar';
 
 // Re-export the updated sidebar component

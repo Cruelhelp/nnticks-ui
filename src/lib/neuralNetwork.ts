@@ -12,13 +12,11 @@ export interface NNConfiguration {
 export const DEFAULT_NN_CONFIG: NNConfiguration = {
   learningRate: 0.001,
   epochs: 100,
-
-  private weightMomentum: number[][][] = [];
-  private biasMomentum: number[][] = [];
-  private readonly momentum: number = 0.9;
-  private isTraining: boolean = false;
-
   layers: [10, 32, 16, 1], // Input features, hidden layers, output
+  momentum: 0.9,
+  batchNormalization: true,
+  dropout: 0.2,
+  optimizerType: 'adam',
   activationFunction: 'relu',
   batchSize: 32
 };
