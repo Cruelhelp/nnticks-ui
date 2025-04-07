@@ -198,23 +198,41 @@ export class NeuralNetwork {
       const inputs: number[][] = [];
       const targets: number[][] = [];
       
-      for (let i = 0; i < data.length - this.inputSize; i++) {
-        inputs.push(data.slice(i, i + this.inputSize));
-        targets.push([data[i + this.inputSize]]);
+      // Normalize the input data
+      const normalizedData = this.normalizeInput(data);
+      
+      // Create training pairs
+      for (let i = 0; i < normalizedData.length - this.inputSize; i++) {
+        const input = normalizedData.slice(i, i + this.inputSize);
+        const target = [normalizedData[i + this.inputSize]];
+        inputs.push(input);
+        targets.push(target);
       }
 
+      // Training loop
       for (let epoch = 0; epoch < maxEpochs; epoch++) {
         let epochLoss = 0;
         
+        // Process each sample in the training data
         for (let i = 0; i < inputs.length; i++) {
-          const prediction = this.forwardPass(inputs[i]);
-          this.backpropagate(inputs[i], targets[i], learningRate);
-          epochLoss += Math.pow(prediction[0] - targets[i][0], 2);
+          const input = inputs[i];
+          const target = targets[i];
+          
+          // Forward pass
+          const prediction = this.forwardPass(input);
+          
+          // Backpropagate and update weights
+          this.backpropagate(input, target, learningRate);
+          
+          // Calculate loss
+          epochLoss += Math.pow(prediction[0] - target[0], 2);
         }
         
+        // Average loss for this epoch
         epochLoss /= inputs.length;
         totalLoss = epochLoss;
         
+        // Update progress
         if (options?.onProgress) {
           options.onProgress((epoch + 1) / maxEpochs);
         }
