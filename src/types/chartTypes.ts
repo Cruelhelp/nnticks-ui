@@ -43,7 +43,7 @@ export interface TickData {
   timestamp: string | number;
   value: number;
   market: string;
-  symbol?: string;  // Make it optional
+  symbol?: string;
 }
 
 export interface TrainingResult {

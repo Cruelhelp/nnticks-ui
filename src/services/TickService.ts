@@ -42,8 +42,7 @@ class TickService {
       return (data || []).map(tick => ({
         timestamp: new Date(tick.timestamp).getTime(),
         value: Number(tick.value),
-        market: tick.market,
-        symbol: tick.market
+        market: tick.market
       })).reverse();
     } catch (error) {
       console.error('Error getting ticks:', error);
@@ -66,8 +65,7 @@ class TickService {
       return (data || []).map(tick => ({
         timestamp: new Date(tick.timestamp).getTime(),
         value: Number(tick.value),
-        market: tick.market,
-        symbol: tick.market
+        market: tick.market
       }));
     } catch (error) {
       console.error('Error getting ticks in range:', error);

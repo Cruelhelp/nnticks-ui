@@ -1,3 +1,4 @@
+
 import { toast } from 'sonner';
 import { BrowserEventEmitter } from '@/lib/utils';
 import { TickData } from '@/types/chartTypes';
@@ -217,32 +218,28 @@ class PersistentWebSocketService extends BrowserEventEmitter {
         tickData = {
           timestamp: new Date(data.tick.epoch * 1000).toISOString(),
           value: Number(data.tick.quote.toFixed(5)),
-          market: data.tick.symbol,
-          symbol: data.tick.symbol
+          market: data.tick.symbol
         };
       }
       else if (data.s && data.p) {
         tickData = {
           timestamp: new Date().toISOString(),
           value: Number(parseFloat(data.p).toFixed(5)),
-          market: data.s,
-          symbol: data.s
+          market: data.s
         };
       }
       else if (data.symbol && data.price) {
         tickData = {
           timestamp: new Date().toISOString(),
           value: Number(data.price.toFixed(5)),
-          market: data.symbol,
-          symbol: data.symbol
+          market: data.symbol
         };
       }
       else if (data.price !== undefined && data.timestamp !== undefined) {
         tickData = {
           timestamp: new Date(data.timestamp).toISOString(),
           value: Number(data.price.toFixed(5)),
-          market: data.market || 'unknown',
-          symbol: data.market || 'unknown'
+          market: data.market || 'unknown'
         };
       }
       

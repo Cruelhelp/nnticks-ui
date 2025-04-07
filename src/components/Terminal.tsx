@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,8 +15,8 @@ import { toast } from 'sonner';
 
 interface TerminalProps {
   onClose: () => void;
-  onMinimize?: () => void;
-  onMaximize?: () => void;
+  onMinimize: () => void;
+  onMaximize: () => void;
 }
 
 interface AdminUser {
@@ -26,11 +27,7 @@ interface AdminUser {
   pro_status: boolean;
 }
 
-const Terminal: React.FC<TerminalProps> = ({ 
-  onClose, 
-  onMinimize = () => {}, 
-  onMaximize = () => {}
-}) => {
+const Terminal: React.FC<TerminalProps> = ({ onClose, onMinimize, onMaximize }) => {
   const [history, setHistory] = useState<string[]>([
     'NNticks Terminal v1.0.0',
     'Type "help" for available commands',
@@ -52,10 +49,12 @@ const Terminal: React.FC<TerminalProps> = ({
   const inputRef = useRef<HTMLInputElement>(null);
   
   useEffect(() => {
+    // Focus input when terminal is shown
     if (inputRef.current) {
       inputRef.current.focus();
     }
     
+    // Scroll to bottom when history changes
     if (terminalRef.current) {
       terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
     }
@@ -70,13 +69,16 @@ const Terminal: React.FC<TerminalProps> = ({
     
     if (!input.trim()) return;
     
+    // Add command to history
     const newHistory = [...history, `> ${input}`];
     
+    // Process command
     const response = processCommand(input.trim());
     if (response) {
       newHistory.push(...response.split('\n'));
     }
     
+    // Add empty line
     newHistory.push('');
     
     setHistory(newHistory);
@@ -216,8 +218,10 @@ License: Pro${userDetails?.proStatus ? '' : ' (Trial)'}
     setIsCollapsed(!isCollapsed);
   };
   
+  // Use custom terminal height from settings
   const terminalHeight = settings?.terminalHeight || 250;
 
+  // Admin panel authentication
   const handleAdminLogin = () => {
     if (adminPassword === 'Mastermind@123') {
       setIsAuthenticated(true);
@@ -228,6 +232,7 @@ License: Pro${userDetails?.proStatus ? '' : ' (Trial)'}
     }
   };
 
+  // Fetch users for admin panel
   const fetchUsers = async () => {
     try {
       const { data, error } = await supabase
@@ -253,6 +258,7 @@ License: Pro${userDetails?.proStatus ? '' : ' (Trial)'}
     }
   };
 
+  // Set user to pro status
   const setUserPro = async (userId: string) => {
     try {
       const { error } = await supabase
@@ -262,6 +268,7 @@ License: Pro${userDetails?.proStatus ? '' : ' (Trial)'}
 
       if (error) throw error;
       
+      // Update the users list
       setUsers(users.map(user => {
         if (user.id === userId) {
           return { ...user, pro_status: true };
@@ -337,6 +344,7 @@ License: Pro${userDetails?.proStatus ? '' : ' (Trial)'}
         )}
       </Card>
 
+      {/* Admin Panel Dialog */}
       <Dialog open={showAdminPanel} onOpenChange={setShowAdminPanel}>
         <DialogContent className="sm:max-w-[700px] bg-black border-gray-800">
           <DialogHeader>
