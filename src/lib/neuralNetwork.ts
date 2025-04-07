@@ -7,18 +7,22 @@ export interface NNConfiguration {
   layers: number[];
   activationFunction: 'relu' | 'sigmoid' | 'tanh';
   batchSize: number;
+  momentum: number;
+  batchNormalization: boolean;
+  dropout: number;
+  optimizerType: string;
 }
 
 export const DEFAULT_NN_CONFIG: NNConfiguration = {
   learningRate: 0.001,
   epochs: 100,
-  layers: [10, 32, 16, 1], // Input features, hidden layers, output
+  layers: [10, 32, 16, 1],
+  activationFunction: 'relu',
+  batchSize: 32,
   momentum: 0.9,
   batchNormalization: true,
   dropout: 0.2,
-  optimizerType: 'adam',
-  activationFunction: 'relu',
-  batchSize: 32
+  optimizerType: 'adam'
 };
 
 export class NeuralNetwork {
@@ -27,22 +31,14 @@ export class NeuralNetwork {
   private config: NNConfiguration;
   private lastLoss: number = 0;
   private modelAccuracy: number = 0;
+  private weightMomentum: number[][][] = [];
+  private biasMomentum: number[][] = [];
+  private isTraining: boolean = false;
 
   constructor(config: NNConfiguration = DEFAULT_NN_CONFIG) {
     this.config = config;
     this.initializeNetwork();
   }
-
-  private initializeNetwork(): void {
-    const { layers } = this.config;
-
-    // Xavier/Glorot initialization for weights
-    for (let i = 0; i < layers.length - 1; i++) {
-      const layerWeights: number[][] = [];
-      const limit = Math.sqrt(6 / (layers[i] + layers[i + 1]));
-
-      for (let j = 0; j < layers[i]; j++) {
-        const neuronWeights: number[] = [];
 
   private normalizeInput(input: number[]): number[] {
     const mean = input.reduce((a, b) => a + b) / input.length;
@@ -50,23 +46,28 @@ export class NeuralNetwork {
     return input.map(x => (x - mean) / (std + 1e-8));
   }
 
+  private initializeNetwork(): void {
+    const { layers } = this.config;
+
+    for (let i = 0; i < layers.length - 1; i++) {
+      const layerWeights: number[][] = [];
+      const limit = Math.sqrt(6 / (layers[i] + layers[i + 1]));
+
+      for (let j = 0; j < layers[i]; j++) {
+        const neuronWeights: number[] = [];
         for (let k = 0; k < layers[i + 1]; k++) {
           neuronWeights.push((Math.random() * 2 - 1) * limit);
         }
         layerWeights.push(neuronWeights);
       }
       this.weights.push(layerWeights);
-
-      // Initialize biases with zeros
-      const layerBiases: number[] = new Array(layers[i + 1]).fill(0);
-      this.biases.push(layerBiases);
+      this.biases.push(new Array(layers[i + 1]).fill(0));
+    }
+  }
 
   private dropout(activation: number[], rate: number = 0.2): number[] {
     if (!this.isTraining) return activation;
     return activation.map(a => Math.random() > rate ? a / (1 - rate) : 0);
-  }
-
-    }
   }
 
   private relu(x: number): number {
@@ -144,13 +145,13 @@ export class NeuralNetwork {
 
       // Calculate delta for next layer
       if (i > 0) {
-        const newDelta: number[] = new Array(this.weights[i-1].length).fill(0);
-        for (let j = 0; j < this.weights[i-1].length; j++) {
+        const newDelta: number[] = new Array(this.weights[i - 1].length).fill(0);
+        for (let j = 0; j < this.weights[i - 1].length; j++) {
           let sum = 0;
           for (let k = 0; k < delta.length; k++) {
             sum += delta[k] * this.weights[i][j][k];
           }
-          newDelta[j] = sum * this.reluDerivative(weightedInputs[i-1][j]);
+          newDelta[j] = sum * this.reluDerivative(weightedInputs[i - 1][j]);
         }
         delta = newDelta;
       }
@@ -227,48 +228,3 @@ export class NeuralNetwork {
 }
 
 export const neuralNetwork = new NeuralNetwork();
-
-//Simple ReLU function implementation (this is redundant now, but kept for completeness)
-function relu(x: number): number {
-  return Math.max(0, x);
-}
-
-// Sigmoid activation function (this is redundant now, but kept for completeness)
-function sigmoid(x: number): number {
-  return 1 / (1 + Math.exp(-x));
-}
-
-// Tanh activation function (this is redundant now, but kept for completeness)
-function tanh(x: number): number {
-  return Math.tanh(x);
-}
-
-// Get activation function based on configuration (this is redundant now, but kept for completeness)
-function getActivationFunction(type: string): (x: number) => number {
-  switch (type) {
-    case 'relu': return relu;
-    case 'sigmoid': return sigmoid;
-    case 'tanh': return tanh;
-    default: return relu;
-  }
-}
-
-export type PredictionType = 'rise' | 'fall' | 'even' | 'odd';
-export type PredictionTimePeriod = 1 | 3 | 5 | 10;
-
-export interface PredictionResult {
-  type: PredictionType;
-  period: PredictionTimePeriod;
-  confidence: number;
-  timestamp: Date;
-  startPrice?: number;
-}
-
-export interface NetworkModel {
-  config: NNConfiguration;
-  weights: number[][][];
-  biases: number[][];
-  accuracy: number;
-  timestamp: string;
-  version: string;
-}
