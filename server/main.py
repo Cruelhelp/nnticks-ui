@@ -66,8 +66,25 @@ def find_free_port(start_port: int = 5000, max_attempts: int = 10) -> int:
             sock.close()
             return port
         except OSError:
+            if port == start_port:
+                print(f"Port {port} is in use, trying alternative ports...")
             continue
     raise RuntimeError(f"Could not find a free port in range {start_port}-{start_port + max_attempts}")
+
+if __name__ == "__main__":
+    try:
+        port = find_free_port()
+        print(f"Starting server on port {port}")
+        uvicorn.run(app, host="0.0.0.0", port=port)
+    except Exception as e:
+        print(f"Failed to start server: {e}")
+        # Try one more time with a different port range
+        try:
+            port = find_free_port(8000, 10)
+            print(f"Retrying with port {port}")
+            uvicorn.run(app, host="0.0.0.0", port=port)
+        except Exception as e:
+            print(f"Failed to start server: {e}")
 
 if __name__ == "__main__":
     try:
