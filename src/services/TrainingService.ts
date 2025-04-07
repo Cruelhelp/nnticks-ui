@@ -547,6 +547,48 @@ class TrainingService {
       return null;
     }
   }
+  private async processEpoch(): Promise<void> {
+    if (this.isProcessing || this.currentTicks.length < this.batchSize) {
+      return;
+    }
+
+    try {
+      this.isProcessing = true;
+      this.status.isProcessing = true;
+      this.emit('statusUpdate', this.status);
+
+      // Prepare ticks for training
+      const tickValues = this.currentTicks.map(tick => tick.value);
+
+      // Train neural network using Python backend
+      console.log(`Training neural network with ${tickValues.length} ticks`);
+      const startTime = Date.now();
+
+      const response = await fetch('http://localhost:5000/api/train', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ ticks: tickValues })
+      });
+
+      const result = await response.json();
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+
+      const trainingResult = result.result;
+    } catch (error) {
+      console.error('Error processing epoch:', error);
+      this.status.error = error.message;
+      this.emit('statusUpdate', this.status);
+    } finally {
+      this.isProcessing = false;
+      this.status.isProcessing = false;
+      this.emit('statusUpdate', this.status);
+      this.currentTicks = [];
+    }
+  }
 }
 
 export const trainingService = new TrainingService();
