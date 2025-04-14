@@ -60,23 +60,21 @@ export interface TickCollectionSettings {
 
 class TrainingService {
   private userId: string | null = null;
-  private cache: Map<string, any> = new Map();
-  private readonly CACHE_DURATION = 1000 * 60 * 5; // 5 minutes
-
+  
   setUserId(userId: string | null) {
     this.userId = userId;
   }
-
+  
   async startTrainingSession(epochs: number): Promise<string | null> {
     if (!this.userId) return null;
-
+    
     // Check if user has enough epochs available
     const availableEpochs = await this.getAvailableEpochs();
     if (availableEpochs < epochs) {
       toast.error(`Not enough epochs available. You have ${availableEpochs} but need ${epochs}.`);
       return null;
     }
-
+    
     try {
       const { data, error } = await supabase
         .from('training_sessions')
@@ -88,19 +86,19 @@ class TrainingService {
         })
         .select('id')
         .single();
-
+      
       if (error) throw error;
-
+      
       return data.id;
     } catch (error) {
       console.error('Error starting training session:', error);
       return null;
     }
   }
-
+  
   async completeTrainingSession(sessionId: string, accuracy: number, model: any): Promise<boolean> {
     if (!this.userId) return false;
-
+    
     try {
       const { error } = await supabase
         .from('training_sessions')
@@ -112,16 +110,16 @@ class TrainingService {
         })
         .eq('id', sessionId)
         .eq('user_id', this.userId);
-
+      
       if (error) throw error;
-
+      
       return true;
     } catch (error) {
       console.error('Error completing training session:', error);
       return false;
     }
   }
-
+  
   async addTrainingHistory(data: {
     accuracy: number;
     points: number;
@@ -129,7 +127,7 @@ class TrainingService {
     mission: string;
   }): Promise<string | null> {
     if (!this.userId) return null;
-
+    
     try {
       const { data: result, error } = await supabase
         .from('training_history')
@@ -143,19 +141,19 @@ class TrainingService {
         })
         .select('id')
         .single();
-
+      
       if (error) throw error;
-
+      
       return result.id;
     } catch (error) {
       console.error('Error adding training history:', error);
       return null;
     }
   }
-
+  
   async getTrainingHistory(limit: number = 10): Promise<TrainingHistoryItem[]> {
     if (!this.userId) return [];
-
+    
     try {
       const { data, error } = await supabase
         .from('training_history')
@@ -163,9 +161,9 @@ class TrainingService {
         .eq('user_id', this.userId)
         .order('date', { ascending: false })
         .limit(limit);
-
+      
       if (error) throw error;
-
+      
       return (data || []).map(item => ({
         id: item.id,
         date: item.date,
@@ -179,17 +177,17 @@ class TrainingService {
       return [];
     }
   }
-
+  
   async addEpochs(epochs: number): Promise<number> {
     if (!this.userId) return 0;
-
+    
     try {
       // Get current epochs count
       const availableEpochs = await this.getAvailableEpochs();
-
+      
       // Update epochs in user_epochs table
       const newEpochs = availableEpochs + epochs;
-
+      
       const { error } = await supabase
         .from('user_epochs')
         .upsert({
@@ -197,9 +195,9 @@ class TrainingService {
           epochs: newEpochs,
           last_updated: new Date().toISOString()
         });
-
+      
       if (error) throw error;
-
+      
       toast.success(`Added ${epochs} training epochs`);
       return newEpochs;
     } catch (error) {
@@ -207,22 +205,22 @@ class TrainingService {
       return 0;
     }
   }
-
+  
   async useEpochs(epochs: number): Promise<number> {
     if (!this.userId) return 0;
-
+    
     try {
       // Get current epochs count
       const availableEpochs = await this.getAvailableEpochs();
-
+      
       if (availableEpochs < epochs) {
         toast.error(`Not enough epochs available. You have ${availableEpochs} but need ${epochs}.`);
         throw new Error('Not enough epochs available');
       }
-
+      
       // Update epochs in user_epochs table
       const newEpochs = availableEpochs - epochs;
-
+      
       const { error } = await supabase
         .from('user_epochs')
         .upsert({
@@ -230,9 +228,9 @@ class TrainingService {
           epochs: newEpochs,
           last_updated: new Date().toISOString()
         });
-
+      
       if (error) throw error;
-
+      
       toast.info(`Used ${epochs} training epochs`);
       return newEpochs;
     } catch (error) {
@@ -241,17 +239,17 @@ class TrainingService {
       return currentEpochs;
     }
   }
-
+  
   async getAvailableEpochs(): Promise<number> {
     if (!this.userId) return 0;
-
+    
     try {
       const { data, error } = await supabase
         .from('user_epochs')
         .select('epochs')
         .eq('user_id', this.userId)
         .single();
-
+      
       if (error) {
         if (error.code === 'PGRST116') {
           // No record found, initialize with 0 epochs
@@ -259,7 +257,7 @@ class TrainingService {
         }
         throw error;
       }
-
+      
       return data?.epochs || 0;
     } catch (error) {
       console.error('Error getting available epochs:', error);
@@ -269,23 +267,23 @@ class TrainingService {
 
   async getUserEpochs(): Promise<{ available: number; total: number }> {
     if (!this.userId) return { available: 0, total: 0 };
-
+    
     try {
       // Get available epochs
       const available = await this.getAvailableEpochs();
-
+      
       // Get total epochs from training history
       const { data, error } = await supabase
         .from('training_sessions')
         .select('epochs')
         .eq('user_id', this.userId);
-
+      
       if (error) throw error;
-
+      
       // Sum up all epochs ever used
       const used = data?.reduce((sum, session) => sum + (session.epochs || 0), 0) || 0;
       const total = available + used;
-
+      
       return { available, total };
     } catch (error) {
       console.error('Error getting user epochs:', error);
@@ -295,19 +293,19 @@ class TrainingService {
 
   async getLevel(): Promise<number> {
     if (!this.userId) return 1;
-
+    
     try {
       // Get total points from training history
       const { data, error } = await supabase
         .from('training_history')
         .select('points')
         .eq('user_id', this.userId);
-
+      
       if (error) throw error;
-
+      
       // Sum up all points earned
       const totalPoints = data?.reduce((sum, item) => sum + (item.points || 0), 0) || 0;
-
+      
       // Define level thresholds
       const levelThresholds = [
         { level: 1, minPoints: 0, maxPoints: 100 },
@@ -316,12 +314,12 @@ class TrainingService {
         { level: 4, minPoints: 501, maxPoints: 800 },
         { level: 5, minPoints: 801, maxPoints: 1200 }
       ];
-
+      
       // Find current level based on points
       const currentLevel = levelThresholds.find(
         lt => totalPoints >= lt.minPoints && totalPoints <= lt.maxPoints
       ) || levelThresholds[0];
-
+      
       return currentLevel.level;
     } catch (error) {
       console.error('Error getting user level:', error);
@@ -331,7 +329,7 @@ class TrainingService {
 
   async saveMissionResult(result: TrainingResult): Promise<boolean> {
     if (!this.userId) return false;
-
+    
     try {
       // Store in training history
       await this.addTrainingHistory({
@@ -340,7 +338,7 @@ class TrainingService {
         modelData: result.modelData,
         mission: `Mission ${result.missionId}`
       });
-
+      
       return true;
     } catch (error) {
       console.error('Error saving mission result:', error);
@@ -359,7 +357,7 @@ class TrainingService {
     sessionId?: string;
   }): Promise<string | null> {
     if (!this.userId) return null;
-
+    
     try {
       // First, save the epoch information
       const { data: epochRecord, error: epochError } = await supabase
@@ -377,9 +375,9 @@ class TrainingService {
         })
         .select('id')
         .single();
-
+      
       if (epochError) throw epochError;
-
+      
       // Next, save the epoch's tick data
       const { error: ticksError } = await supabase
         .from('epoch_ticks')
@@ -387,9 +385,9 @@ class TrainingService {
           epoch_id: epochRecord.id,
           ticks: epochData.ticks
         });
-
+      
       if (ticksError) throw ticksError;
-
+      
       return epochRecord.id;
     } catch (error) {
       console.error('Error saving epoch:', error);
@@ -399,7 +397,7 @@ class TrainingService {
 
   async getEpochs(limit: number = 20): Promise<EpochData[]> {
     if (!this.userId) return [];
-
+    
     try {
       const { data, error } = await supabase
         .from('epochs')
@@ -407,9 +405,9 @@ class TrainingService {
         .eq('user_id', this.userId)
         .order('epoch_number', { ascending: false })
         .limit(limit);
-
+      
       if (error) throw error;
-
+      
       return (data || []).map(item => ({
         id: item.id,
         epochNumber: item.epoch_number,
@@ -429,16 +427,16 @@ class TrainingService {
 
   async getEpochTicks(epochId: string): Promise<any[]> {
     if (!this.userId) return [];
-
+    
     try {
       const { data, error } = await supabase
         .from('epoch_ticks')
         .select('ticks')
         .eq('epoch_id', epochId)
         .single();
-
+      
       if (error) throw error;
-
+      
       return data?.ticks || [];
     } catch (error) {
       console.error('Error getting epoch ticks:', error);
@@ -448,7 +446,7 @@ class TrainingService {
 
   async getLatestEpoch(): Promise<EpochData | null> {
     if (!this.userId) return null;
-
+    
     try {
       const { data, error } = await supabase
         .from('epochs')
@@ -457,7 +455,7 @@ class TrainingService {
         .order('epoch_number', { ascending: false })
         .limit(1)
         .single();
-
+      
       if (error) {
         if (error.code === 'PGRST116') {
           // No records found
@@ -465,7 +463,7 @@ class TrainingService {
         }
         throw error;
       }
-
+      
       return {
         id: data.id,
         epochNumber: data.epoch_number,
@@ -488,7 +486,7 @@ class TrainingService {
     batchSize: number;
   }): Promise<boolean> {
     if (!this.userId) return false;
-
+    
     try {
       const { error } = await supabase
         .from('tick_collection_settings')
@@ -498,9 +496,9 @@ class TrainingService {
           batch_size: settings.batchSize,
           last_updated: new Date().toISOString()
         });
-
+      
       if (error) throw error;
-
+      
       return true;
     } catch (error) {
       console.error('Error saving tick collection settings:', error);
@@ -510,14 +508,14 @@ class TrainingService {
 
   async getTickCollectionSettings(): Promise<TickCollectionSettings | null> {
     if (!this.userId) return null;
-
+    
     try {
       const { data, error } = await supabase
         .from('tick_collection_settings')
         .select('*')
         .eq('user_id', this.userId)
         .single();
-
+      
       if (error) {
         if (error.code === 'PGRST116') {
           // No record found, create default settings
@@ -526,17 +524,17 @@ class TrainingService {
             batchSize: 100,
             lastUpdated: new Date().toISOString()
           };
-
+          
           await this.saveTickCollectionSettings({
             enabled: defaultSettings.enabled,
             batchSize: defaultSettings.batchSize
           });
-
+          
           return defaultSettings;
         }
         throw error;
       }
-
+      
       return {
         enabled: data.enabled,
         batchSize: data.batch_size,
@@ -545,48 +543,6 @@ class TrainingService {
     } catch (error) {
       console.error('Error getting tick collection settings:', error);
       return null;
-    }
-  }
-  private async processEpoch(): Promise<void> {
-    if (this.isProcessing || this.currentTicks.length < this.batchSize) {
-      return;
-    }
-
-    try {
-      this.isProcessing = true;
-      this.status.isProcessing = true;
-      this.emit('statusUpdate', this.status);
-
-      // Prepare ticks for training
-      const tickValues = this.currentTicks.map(tick => tick.value);
-
-      // Train neural network using Python backend
-      console.log(`Training neural network with ${tickValues.length} ticks`);
-      const startTime = Date.now();
-
-      const response = await fetch('http://localhost:5000/api/train', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ ticks: tickValues })
-      });
-
-      const result = await response.json();
-      if (!result.success) {
-        throw new Error(result.error);
-      }
-
-      const trainingResult = result.result;
-    } catch (error) {
-      console.error('Error processing epoch:', error);
-      this.status.error = error.message;
-      this.emit('statusUpdate', this.status);
-    } finally {
-      this.isProcessing = false;
-      this.status.isProcessing = false;
-      this.emit('statusUpdate', this.status);
-      this.currentTicks = [];
     }
   }
 }

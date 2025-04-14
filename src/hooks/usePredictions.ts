@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useWebSocket } from '@/hooks/useWebSocket';
-import { neuralNetwork } from '@/lib/neuralNetwork';
-import { Indicators } from '@/lib/indicators';
+import { neuralNetwork, Indicators } from '@/lib/neuralNetwork';
 import { predictionService, PredictionData, PredictionType, PredictionOutcome } from '@/services/PredictionService';
 import { TickData } from '@/types/chartTypes';
 import { toast } from 'sonner';

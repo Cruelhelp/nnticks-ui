@@ -103,20 +103,11 @@ export class WebSocketService {
   }
 
   private cleanup(): void {
-    // Clear all timers and listeners
+    // Clear all timers
     if (this.reconnectTimeout) {
       clearTimeout(this.reconnectTimeout);
       this.reconnectTimeout = null;
     }
-    
-    if (this.socket) {
-      this.socket.onopen = null;
-      this.socket.onclose = null;
-      this.socket.onerror = null;
-      this.socket.onmessage = null;
-    }
-    
-    this.eventEmitter.removeAllListeners();
     
     if (this.heartbeatInterval) {
       clearInterval(this.heartbeatInterval);

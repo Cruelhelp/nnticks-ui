@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -12,7 +13,6 @@ import { ThemeProvider } from "./components/ui/theme-provider";
 import { useEffect, memo } from "react";
 import AdminPanel from "./components/AdminPanel";
 import "./index.css";
-import ImprovedCharts from '@/components/ImprovedCharts';
 
 // Create client with better defaults for mobile performance
 const queryClient = new QueryClient({
@@ -31,31 +31,14 @@ const MemoizedAdminPanel = memo(AdminPanel);
 const App = () => {
   // Apply Roboto Mono font to entire app
   useEffect(() => {
-    let mounted = true;
+    document.documentElement.style.fontFamily = "'Roboto Mono', monospace";
     
-    const loadFont = async () => {
-      try {
-        await document.fonts.load("1em 'Roboto Mono'");
-        if (mounted) {
-          document.documentElement.style.fontFamily = "'Roboto Mono', monospace";
-        }
-      } catch (err) {
-        console.error('Font loading failed:', err);
-        if (mounted) {
-          document.documentElement.style.fontFamily = "monospace";
-        }
-      }
-    };
-
-    loadFont();
-    
-    return () => {
-      mounted = false;
-    };
+    // Ensure the font is loaded
+    const linkEl = document.createElement('link');
     linkEl.rel = 'stylesheet';
     linkEl.href = 'https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;700&display=swap';
     document.head.appendChild(linkEl);
-
+    
     // Add high-performance CSS for smooth animations
     const styleEl = document.createElement('style');
     styleEl.textContent = `
@@ -64,29 +47,29 @@ const App = () => {
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
       }
-
+      
       .animate-gpu {
         transform: translateZ(0);
         will-change: transform;
       }
-
+      
       @keyframes fadeIn {
         from { opacity: 0; }
         to { opacity: 1; }
       }
-
+      
       .fade-in {
         animation: fadeIn 0.3s ease-out forwards;
       }
     `;
     document.head.appendChild(styleEl);
-
+    
     return () => {
       document.head.removeChild(linkEl);
       document.head.removeChild(styleEl);
     };
   }, []);
-
+  
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
@@ -101,7 +84,6 @@ const App = () => {
                     <Route path="/" element={<Index />} />
                     <Route path="/login" element={<Login />} />
                     <Route path="/admin" element={<MemoizedAdminPanel />} />
-                    <Route path="/charts" element={<ImprovedCharts />} /> {/* Added route for charts */}
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </div>
