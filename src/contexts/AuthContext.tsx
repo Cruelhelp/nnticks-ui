@@ -10,8 +10,13 @@ interface AuthContextType {
   session: Session | null;
   userDetails: UserDetailsType | null;
   loading: boolean;
+
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signUp: (email: string, password: string, username: string) => Promise<{ error: any }>;
+
+  signIn: (email: string, password: string) => Promise<{ error: unknown }>;
+  signUp: (email: string, password: string, username: string) => Promise<{ error: unknown }>;
+
   signOut: () => Promise<void>;
   loginWithGoogle: () => Promise<void>;
   loginWithGithub: () => Promise<void>;
@@ -26,6 +31,53 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [session, setSession] = useState<Session | null>(null);
   const [userDetails, setUserDetails] = useState<UserDetailsType | null>(null);
   const [loading, setLoading] = useState(true);
+
+
+
+  const fetchUserDetails = async (userId: string) => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('users_extra')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
+      if (error) {
+        if (error.code !== 'PGRST116') {
+          console.error('Error fetching user details:', error);
+        }
+        setUserDetails(null);
+      } else if (data) {
+        setUserDetails({
+          id: data.id,
+          user_id: data.user_id,
+          username: data.username,
+          email: user?.email,
+          avatarUrl: data.avatar_url,
+          proStatus: data.pro_status,
+          isAdmin: data.is_admin,
+          lastLogin: data.last_login,
+          createdAt: data.created_at,
+          settings: data.settings,
+          availableEpochs: data.available_epochs,
+          totalEpochs: data.total_epochs
+        });
+        // Update last login time
+        const { error: updateError } = await supabase
+          .from('users_extra')
+          .update({ last_login: new Date().toISOString() })
+          .eq('user_id', userId);
+        if (updateError) {
+          console.error('Error updating last login time:', updateError);
+        }
+      }
+    } catch (err) {
+      console.error('Error in fetchUserDetails:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
 
   useEffect(() => {
     // Get initial session
@@ -55,6 +107,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     // Cleanup subscription
     return () => subscription.unsubscribe();
+
   }, []);
 
   const fetchUserDetails = async (userId: string) => {
@@ -107,6 +160,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const signIn = async (email: string, password: string) => {
+
+  }, [fetchUserDetails]);
+
+  const signIn = async (email: string, password: string): Promise<{ error: unknown }> => {
+
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       return { error };
@@ -116,7 +174,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+
   const signUp = async (email: string, password: string, username: string) => {
+
+  const signUp = async (email: string, password: string, username: string): Promise<{ error: unknown }> => {
+
     try {
       const { error } = await supabase.auth.signUp({
         email,
@@ -176,7 +238,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     
     try {
       // Format the data to match the database column names
+
       const formattedData: any = {};
+
+      const formattedData: Record<string, unknown> = {};
+
       
       if (details.username !== undefined) formattedData.username = details.username;
       if (details.avatarUrl !== undefined) formattedData.avatar_url = details.avatarUrl;

@@ -15,6 +15,7 @@ const NeuralNetHistory = () => {
   const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();
 
+<<<<<<< HEAD
   useEffect(() => {
     loadModels();
   }, [user]);
@@ -22,6 +23,10 @@ const NeuralNetHistory = () => {
   const loadModels = async () => {
     setIsLoading(true);
     
+=======
+  const loadModels = React.useCallback(async () => {
+    setIsLoading(true);
+>>>>>>> 6e3fa6c (Initial commit: fix lint errors in Terminal.tsx, Index.tsx; update LINT_ISSUES_TRACKER.md; begin work on Login.tsx lint issues)
     try {
       // Load models from Supabase if user is logged in
       if (user) {
@@ -30,21 +35,32 @@ const NeuralNetHistory = () => {
           .select('*')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false });
+<<<<<<< HEAD
           
         if (error) {
           throw error;
         }
         
+=======
+        if (error) {
+          throw error;
+        }
+>>>>>>> 6e3fa6c (Initial commit: fix lint errors in Terminal.tsx, Index.tsx; update LINT_ISSUES_TRACKER.md; begin work on Login.tsx lint issues)
         if (data && data.length > 0) {
           // Transform data to match NetworkModel structure
           const loadedModels = data.map(item => ({
             config: item.config,
             weights: item.weights,
+<<<<<<< HEAD
             biases: item.weights, // Biases might be stored within weights in DB
+=======
+            biases: item.biases || item.weights, // Use biases if available, fallback to weights
+>>>>>>> 6e3fa6c (Initial commit: fix lint errors in Terminal.tsx, Index.tsx; update LINT_ISSUES_TRACKER.md; begin work on Login.tsx lint issues)
             accuracy: item.accuracy,
             timestamp: item.created_at,
             version: item.name || '1.0.0'
           }));
+<<<<<<< HEAD
           
           setModels(loadedModels);
           
@@ -71,6 +87,26 @@ const NeuralNetHistory = () => {
       setIsLoading(false);
     }
   };
+=======
+          setModels(loadedModels);
+        } else {
+          setModels([]);
+        }
+      } else {
+        setModels([]);
+      }
+    } catch (error) {
+      toast.error('Failed to load models');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    loadModels();
+  }, [user, loadModels]);
+
+>>>>>>> 6e3fa6c (Initial commit: fix lint errors in Terminal.tsx, Index.tsx; update LINT_ISSUES_TRACKER.md; begin work on Login.tsx lint issues)
 
   const handleImportModel = () => {
     const input = document.createElement('input');

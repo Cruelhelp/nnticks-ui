@@ -7,21 +7,35 @@ export function cn(...inputs: ClassValue[]) {
 
 // Browser-compatible EventEmitter implementation
 export class BrowserEventEmitter {
+
   private events: Record<string, Function[]> = {};
 
   on(event: string, listener: Function): void {
+
+  private events: Record<string, ((...args: unknown[]) => void)[]> = {};
+
+  on(event: string, listener: (...args: unknown[]) => void): void {
+
     if (!this.events[event]) {
       this.events[event] = [];
     }
     this.events[event].push(listener);
   }
 
+
   off(event: string, listener: Function): void {
+
+  off(event: string, listener: (...args: unknown[]) => void): void {
+
     if (!this.events[event]) return;
     this.events[event] = this.events[event].filter(l => l !== listener);
   }
 
+
   emit(event: string, ...args: any[]): void {
+
+  emit(event: string, ...args: unknown[]): void {
+
     if (!this.events[event]) return;
     this.events[event].forEach(listener => {
       try {

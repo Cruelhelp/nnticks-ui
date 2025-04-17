@@ -2,6 +2,10 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 
+
+import { DEFAULT_SETTINGS } from './settingsUtils';
+
+
 export type UserSettings = {
   theme: string;
   accent: 'green' | 'blue' | 'purple' | 'red';
@@ -20,6 +24,7 @@ export type UserSettings = {
   };
 };
 
+
 export const DEFAULT_SETTINGS: UserSettings = {
   theme: 'dark',
   accent: 'green',
@@ -37,6 +42,9 @@ export const DEFAULT_SETTINGS: UserSettings = {
     market: false
   }
 };
+
+
+
 
 interface SettingsContextType {
   settings: UserSettings;

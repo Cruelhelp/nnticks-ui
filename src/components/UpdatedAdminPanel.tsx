@@ -64,10 +64,17 @@ const UpdatedAdminPanel = () => {
     
     try {
       // Get user count
+<<<<<<< HEAD
       let { count: userCount, error: userError } = await supabase
         .from('users_extra')
         .select('*', { count: 'exact', head: true });
       
+=======
+      const { count: userCountRaw, error: userError } = await supabase
+        .from('users_extra')
+        .select('*', { count: 'exact', head: true });
+      let userCount = userCountRaw;
+>>>>>>> 6e3fa6c (Initial commit: fix lint errors in Terminal.tsx, Index.tsx; update LINT_ISSUES_TRACKER.md; begin work on Login.tsx lint issues)
       // If users_extra table doesn't exist yet
       if (userError && userError.message.includes('does not exist')) {
         // Just set a placeholder value
@@ -79,10 +86,17 @@ const UpdatedAdminPanel = () => {
       setUserCount(userCount);
       
       // Get trades count
+<<<<<<< HEAD
       let { count: tradesCount, error: tradesError } = await supabase
         .from('trade_history')
         .select('*', { count: 'exact', head: true });
       
+=======
+      const { count: tradesCountRaw, error: tradesError } = await supabase
+        .from('trade_history')
+        .select('*', { count: 'exact', head: true });
+      let tradesCount = tradesCountRaw;
+>>>>>>> 6e3fa6c (Initial commit: fix lint errors in Terminal.tsx, Index.tsx; update LINT_ISSUES_TRACKER.md; begin work on Login.tsx lint issues)
       if (tradesError && tradesError.message.includes('does not exist')) {
         tradesCount = 0;
       } else if (tradesError) {
@@ -92,10 +106,17 @@ const UpdatedAdminPanel = () => {
       setTradesCount(tradesCount);
       
       // Get epochs count
+<<<<<<< HEAD
       let { count: epochsCount, error: epochsError } = await supabase
         .from('epochs')
         .select('*', { count: 'exact', head: true });
       
+=======
+      const { count: epochsCountRaw, error: epochsError } = await supabase
+        .from('epochs')
+        .select('*', { count: 'exact', head: true });
+      let epochsCount = epochsCountRaw;
+>>>>>>> 6e3fa6c (Initial commit: fix lint errors in Terminal.tsx, Index.tsx; update LINT_ISSUES_TRACKER.md; begin work on Login.tsx lint issues)
       if (epochsError && epochsError.message.includes('does not exist')) {
         epochsCount = 0;
       } else if (epochsError) {

@@ -13,7 +13,16 @@ import WebSocketStatus from './WebSocketStatus';
 import { toast } from 'sonner';
 
 const WebSocketDebug: React.FC = () => {
+<<<<<<< HEAD
   const [messages, setMessages] = useState<Array<{data: any, direction: 'in' | 'out', timestamp: number}>>([]);
+=======
+  interface WebSocketMessage {
+  data: Record<string, unknown>;
+  direction: 'in' | 'out';
+  timestamp: number;
+}
+const [messages, setMessages] = useState<WebSocketMessage[]>([]);
+>>>>>>> 6e3fa6c (Initial commit: fix lint errors in Terminal.tsx, Index.tsx; update LINT_ISSUES_TRACKER.md; begin work on Login.tsx lint issues)
   const [ticks, setTicks] = useState<TickData[]>([]);
   const [customMessage, setCustomMessage] = useState('{"ping": 1}');
   const [customSubscription, setCustomSubscription] = useState('{"ticks": "R_10"}');
@@ -21,7 +30,11 @@ const WebSocketDebug: React.FC = () => {
   const [activeTab, setActiveTab] = useState('overview');
   
   useEffect(() => {
+<<<<<<< HEAD
     const handleMessage = (data: any) => {
+=======
+    const handleMessage = (data: Record<string, unknown>) => {
+>>>>>>> 6e3fa6c (Initial commit: fix lint errors in Terminal.tsx, Index.tsx; update LINT_ISSUES_TRACKER.md; begin work on Login.tsx lint issues)
       setMessages(prev => [...prev.slice(-99), {
         data,
         direction: 'in',

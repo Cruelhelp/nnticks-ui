@@ -1,5 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+
+
+import { PredictionTimePeriod } from '@/types/chartTypes';
+
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -43,7 +47,11 @@ const NeuralNet = () => {
   const [tickPeriod, setTickPeriod] = useState(3);
   const [currentConfig, setCurrentConfig] = useState<NNConfiguration>(DEFAULT_NN_CONFIG);
   const [pendingPredictions, setPendingPredictions] = useState<PendingPrediction[]>([]);
+
   const [completedPredictions, setCompletedPredictions] = useState<any[]>([]);
+
+  const [completedPredictions, setCompletedPredictions] = useState<PendingPrediction[]>([]);
+
   const [networkNeurons, setNetworkNeurons] = useState<{x: number, y: number, layer: number}[]>([]);
   const [networkConnections, setNetworkConnections] = useState<{startX: number, startY: number, endX: number, endY: number}[]>([]);
   const [animatingNeurons, setAnimatingNeurons] = useState<number[]>([]);
@@ -64,6 +72,7 @@ const NeuralNet = () => {
 
   useEffect(() => {
     setCurrentConfig(neuralNetwork.getConfig());
+
     generateNetworkVisualization();
     
     if (user) {
@@ -71,6 +80,10 @@ const NeuralNet = () => {
     }
   }, [user]);
   
+
+  }, [user]);
+
+
   const generateNetworkVisualization = () => {
     const layers = currentConfig.layers;
     const neurons: {x: number, y: number, layer: number}[] = [];
@@ -132,11 +145,19 @@ const NeuralNet = () => {
     return () => {
       if (interval) clearInterval(interval);
     };
+
   }, [isTraining, networkNeurons]);
 
   useEffect(() => {
     generateNetworkVisualization();
   }, [currentConfig]);
+
+  }, [isTraining, networkNeurons, animateNeuralNetwork]);
+
+  useEffect(() => {
+    generateNetworkVisualization();
+  }, [currentConfig, generateNetworkVisualization]);
+
 
   const loadPredictions = async () => {
     if (!user) return;
@@ -154,6 +175,7 @@ const NeuralNet = () => {
       if (data && data.length > 0) {
         setCompletedPredictions(data.map(item => ({
           id: item.id,
+
           type: item.prediction,
           market: item.market,
           confidence: item.confidence,
@@ -162,6 +184,18 @@ const NeuralNet = () => {
           startPrice: item.start_price,
           endPrice: item.end_price,
           timePeriod: item.time_period
+
+          predictionType: item.prediction as PredictionType,
+          market: item.market,
+          confidence: item.confidence,
+          timestamp: new Date(item.timestamp),
+          warningCountdown: 0,
+          tickCountdown: 0,
+          phase: 'completed' as PredictionPhase,
+          startPrice: item.start_price,
+          tickPeriod: item.time_period,
+          ticksElapsed: 0
+
         })));
       }
     } catch (error) {
@@ -222,6 +256,7 @@ const NeuralNet = () => {
     
     setPendingPredictions(prev => prev.filter(p => p.id !== id));
     
+
     const completedPrediction = {
       id,
       type: prediction.predictionType,
@@ -232,6 +267,20 @@ const NeuralNet = () => {
       startPrice,
       endPrice,
       timePeriod: prediction.tickPeriod
+
+    const completedPrediction: PendingPrediction = {
+      id,
+      predictionType: prediction.predictionType,
+      market: prediction.market,
+      confidence: prediction.confidence,
+      timestamp: prediction.timestamp,
+      warningCountdown: 0,
+      tickCountdown: 0,
+      phase: 'completed',
+      startPrice,
+      tickPeriod: prediction.tickPeriod,
+      ticksElapsed: prediction.tickPeriod
+
     };
     
     setCompletedPredictions(prev => [completedPrediction, ...prev]);
@@ -293,7 +342,11 @@ const NeuralNet = () => {
       const prediction = await neuralNetwork.predict(
         tickValues,
         predictionType,
+
         tickPeriod as any,
+
+        tickPeriod as PredictionTimePeriod,
+
         ws.latestTick.value
       );
       
@@ -449,7 +502,11 @@ const NeuralNet = () => {
     }
   };
 
+
   const handleConfigChange = (key: keyof NNConfiguration, value: any) => {
+
+  const handleConfigChange = (key: keyof NNConfiguration, value: NNConfiguration[keyof NNConfiguration]) => {
+
     const updatedConfig = { ...currentConfig, [key]: value };
     setCurrentConfig(updatedConfig);
     neuralNetwork.updateConfig(updatedConfig);
@@ -858,17 +915,29 @@ const NeuralNet = () => {
                       <div 
                         key={prediction.id} 
                         className={`border rounded-md p-3 hover:bg-muted/50 transition-colors ${
+
                           prediction.outcome === 'win' ? 'border-green-200 dark:border-green-900' : 'border-red-200 dark:border-red-900'
+
+                          (prediction.startPrice < prediction.startPrice + prediction.ticksElapsed ? 'border-green-200 dark:border-green-900' : 'border-red-200 dark:border-red-900')
+
                         }`}
                       >
                         <div className="flex justify-between items-start">
                           <div>
                             <div className="flex items-center gap-2">
+
                               <Badge variant={prediction.outcome === 'win' ? "success" : "destructive"}>
                                 {prediction.outcome === 'win' ? 'Correct' : 'Incorrect'}
                               </Badge>
                               <p className="font-medium">
                                 {prediction.type.toUpperCase()}
+
+                              <Badge variant={prediction.startPrice < (prediction.startPrice + prediction.ticksElapsed) ? "success" : "destructive"}>
+                                {prediction.startPrice < (prediction.startPrice + prediction.ticksElapsed) ? 'Correct' : 'Incorrect'}
+                              </Badge>
+                              <p className="font-medium">
+                                {prediction.predictionType.toUpperCase()}
+
                               </p>
                             </div>
                             <p className="text-xs text-muted-foreground mt-1">
@@ -881,7 +950,11 @@ const NeuralNet = () => {
                               </div>
                               <div>
                                 <p className="text-muted-foreground">End Price:</p>
+
                                 <p className="font-medium">{prediction.endPrice?.toFixed(5)}</p>
+
+                                <p className="font-medium">N/A</p>
+
                               </div>
                             </div>
                           </div>
@@ -891,7 +964,11 @@ const NeuralNet = () => {
                               {new Date(prediction.timestamp).toLocaleString()}
                             </p>
                             <p className="text-xs mt-1">
+
                               Tick period: {prediction.timePeriod}
+
+                              Tick period: {prediction.tickPeriod}
+
                             </p>
                           </div>
                         </div>

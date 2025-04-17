@@ -7,10 +7,17 @@ interface WebSocketHookOptions {
   autoConnect?: boolean;
   subscription?: object;
   wsUrl?: string;
+
   onMessage?: (data: any) => void;
   onTick?: (tick: TickData) => void;
   onStatusChange?: (status: string) => void;
   onError?: (error: any) => void;
+
+  onMessage?: (data: Record<string, unknown>) => void;
+  onTick?: (tick: TickData) => void;
+  onStatusChange?: (status: string) => void;
+  onError?: (error: unknown) => void;
+
   onOpen?: () => void;
   onClose?: () => void;
 }
@@ -55,7 +62,11 @@ export function usePersistentWebSocket(options: WebSocketHookOptions = {}) {
   }, [onMessage, onTick, onStatusChange, onError, onOpen, onClose]);
   
   useEffect(() => {
+
     const handleMessage = (data: any) => {
+
+    const handleMessage = (data: Record<string, unknown>) => {
+
       callbacksRef.current.onMessage?.(data);
     };
     
@@ -72,7 +83,11 @@ export function usePersistentWebSocket(options: WebSocketHookOptions = {}) {
       callbacksRef.current.onStatusChange?.(status);
     };
     
+
     const handleError = (error: any) => {
+
+    const handleError = (error: unknown) => {
+
       callbacksRef.current.onError?.(error);
     };
     
@@ -130,8 +145,13 @@ export function usePersistentWebSocket(options: WebSocketHookOptions = {}) {
     clearBuffer: () => persistentWebSocket.clearBuffer(),
     getBufferedTicks: () => persistentWebSocket.getBufferedTicks(),
     // Add event methods to the API
+
     on: (event: string, callback: Function) => persistentWebSocket.on(event, callback),
     off: (event: string, callback: Function) => persistentWebSocket.off(event, callback)
+
+    on: (event: string, callback: (...args: unknown[]) => void) => persistentWebSocket.on(event, callback),
+    off: (event: string, callback: (...args: unknown[]) => void) => persistentWebSocket.off(event, callback)
+
   }), []);
   
   return {

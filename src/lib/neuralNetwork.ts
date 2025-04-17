@@ -20,8 +20,12 @@ export const DEFAULT_NN_CONFIG: NNConfiguration = {
 };
 
 // Prediction types
+
 export type PredictionType = 'rise' | 'fall' | 'even' | 'odd';
 export type PredictionTimePeriod = 1 | 3 | 5 | 10;
+
+import { PredictionType, PredictionTimePeriod } from '@/types/chartTypes';
+
 
 // Interface for prediction results
 export interface PredictionResult {
@@ -445,7 +449,11 @@ export class NeuralNetwork {
   }
 
   // Get model statistics
+
   getModelStats(): { accuracy: number; config: NNConfiguration; trainingData: any[] } {
+
+  getModelStats(): { accuracy: number; config: NNConfiguration; trainingData: unknown[] } {
+
     return {
       accuracy: this.modelAccuracy,
       config: this.config,

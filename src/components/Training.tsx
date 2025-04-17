@@ -176,7 +176,11 @@ const NeuralNetworkVisualization = ({ activeNodes, animationIntensity }: { activ
 const Training = () => {
   const { user, userDetails } = useAuth();
   const isPro = userDetails?.proStatus || false;
+<<<<<<< HEAD
   
+=======
+
+>>>>>>> 6e3fa6c (Initial commit: fix lint errors in Terminal.tsx, Index.tsx; update LINT_ISSUES_TRACKER.md; begin work on Login.tsx lint issues)
   const [missions, setMissions] = useState<Mission[]>([
     {
       id: 1,
@@ -278,6 +282,34 @@ const Training = () => {
       epochs: 500000
     }
   ]);
+<<<<<<< HEAD
+=======
+
+  const completeMission = async (mission: Mission) => {
+    setIsProcessing(true);
+    try {
+      setMissions(prev =>
+        prev.map(m => m.id === mission.id ? { ...m, completed: true } : m)
+      );
+      const newTotalPoints = totalPoints + mission.points;
+      setTotalPoints(newTotalPoints);
+      const newEpochs = trainingEpochs + (mission.epochs || 0);
+      setTrainingEpochs(newEpochs);
+      const currentLevelData = levelThresholds.find(
+        lt => newTotalPoints >= lt.minPoints && newTotalPoints <= lt.maxPoints
+      ) || levelThresholds[0];
+      const newLevelValue = currentLevelData.level;
+      setLevel(newLevelValue);
+      // ... (rest of completeMission logic)
+    } catch (error) {
+      console.error('Error completing mission:', error);
+      toast.error('Failed to save mission progress');
+    } finally {
+      setIsProcessing(false);
+      setActiveMission(null);
+    }
+  };
+>>>>>>> 6e3fa6c (Initial commit: fix lint errors in Terminal.tsx, Index.tsx; update LINT_ISSUES_TRACKER.md; begin work on Login.tsx lint issues)
   
   const [totalPoints, setTotalPoints] = useState(0);
   const [level, setLevel] = useState(1);
@@ -300,13 +332,21 @@ const Training = () => {
     }
   }, [user]);
   
+<<<<<<< HEAD
   const levelThresholds = [
+=======
+  const levelThresholds = React.useMemo(() => [
+>>>>>>> 6e3fa6c (Initial commit: fix lint errors in Terminal.tsx, Index.tsx; update LINT_ISSUES_TRACKER.md; begin work on Login.tsx lint issues)
     { level: 1, minPoints: 0, maxPoints: 100 },
     { level: 2, minPoints: 101, maxPoints: 250 },
     { level: 3, minPoints: 251, maxPoints: 500 },
     { level: 4, minPoints: 501, maxPoints: 800 },
     { level: 5, minPoints: 801, maxPoints: 1200 }
+<<<<<<< HEAD
   ];
+=======
+  ], []);
+>>>>>>> 6e3fa6c (Initial commit: fix lint errors in Terminal.tsx, Index.tsx; update LINT_ISSUES_TRACKER.md; begin work on Login.tsx lint issues)
   
   useEffect(() => {
     const fetchEpochs = async () => {
@@ -446,7 +486,11 @@ const Training = () => {
     return () => {
       cancelAnimationFrame(frameId);
     };
+<<<<<<< HEAD
   }, [showTrainingAnimation, activeMission]);
+=======
+  }, [showTrainingAnimation, activeMission, completeMission]);
+>>>>>>> 6e3fa6c (Initial commit: fix lint errors in Terminal.tsx, Index.tsx; update LINT_ISSUES_TRACKER.md; begin work on Login.tsx lint issues)
   
   const startMission = async (mission: Mission) => {
     if (mission.locked) {
@@ -497,6 +541,7 @@ const Training = () => {
     }
   };
   
+<<<<<<< HEAD
   const completeMission = async (mission: Mission) => {
     setIsProcessing(true);
     
@@ -564,6 +609,9 @@ const Training = () => {
     }
   };
   
+=======
+
+>>>>>>> 6e3fa6c (Initial commit: fix lint errors in Terminal.tsx, Index.tsx; update LINT_ISSUES_TRACKER.md; begin work on Login.tsx lint issues)
   const calculateLevelProgress = () => {
     const currentLevelData = levelThresholds.find(
       lt => totalPoints >= lt.minPoints && totalPoints <= lt.maxPoints

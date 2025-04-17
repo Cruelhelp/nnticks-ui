@@ -27,7 +27,11 @@ interface AdminUser {
   pro_status: boolean;
 }
 
+
 const Terminal: React.FC<TerminalProps> = ({ onClose, onMinimize, onMaximize }) => {
+
+export const Terminal: React.FC<TerminalProps> = ({ onClose, onMinimize, onMaximize }): JSX.Element => {
+
   const [history, setHistory] = useState<string[]>([
     'NNticks Terminal v1.0.0',
     'Type "help" for available commands',
@@ -127,7 +131,11 @@ System Status:
         return userDetails?.username
           ? `Current user: ${userDetails.username} | Pro: ${userDetails.proStatus ? 'Yes' : 'No'} | Admin: ${userDetails.isAdmin ? 'Yes' : 'No'}`
           : 'Not logged in';
+
       case 'market':
+
+      case 'market': {
+
         const symbol = args[1] || 'R_10';
         return `
 Market data for ${symbol.toUpperCase()}:
@@ -136,7 +144,12 @@ Market data for ${symbol.toUpperCase()}:
   Volatility: ${(Math.random() * 5 + 1).toFixed(2)}
   RSI: ${Math.floor(30 + Math.random() * 40)}
 `;
+
       case 'predict':
+
+      }
+      case 'predict': {
+
         const direction = args[1] || (Math.random() > 0.5 ? 'rise' : 'fall');
         const confidence = Math.floor(50 + Math.random() * 40);
         return `
@@ -152,6 +165,10 @@ Computing probabilities...
 
 Prediction registered. Track results in Predictions tab.
 `;
+
+
+      }
+
       case 'train':
         return `
 Starting neural network training...
@@ -180,7 +197,11 @@ Prediction Engine: v3.0.1
 
 License: Pro${userDetails?.proStatus ? '' : ' (Trial)'}
 
+
 © 2025 Ruel McNeil. All rights reserved.
+
+ 2025 Ruel McNeil. All rights reserved.
+
 `;
       case 'admin':
         setShowAdminPanel(true);
@@ -242,7 +263,19 @@ License: Pro${userDetails?.proStatus ? '' : ' (Trial)'}
       if (error) throw error;
       
       if (data) {
+
         const formattedUsers = data.map((user: any) => ({
+
+        interface SupabaseUserRow {
+          user_id: string;
+          email?: string;
+          username: string;
+          created_at: string;
+          pro_status: boolean;
+        }
+
+        const formattedUsers = data.map((user: SupabaseUserRow): AdminUser => ({
+
           id: user.user_id,
           email: user.email || 'No email',
           username: user.username,
@@ -282,7 +315,11 @@ License: Pro${userDetails?.proStatus ? '' : ' (Trial)'}
       toast.error('Failed to upgrade user');
     }
   };
+
   
+
+
+
   return (
     <div className="w-full" style={{ height: isCollapsed ? '40px' : `${terminalHeight}px` }}>
       <Card className="border-t-2 border-t-primary w-full rounded-b-none h-full flex flex-col">
@@ -381,7 +418,10 @@ License: Pro${userDetails?.proStatus ? '' : ' (Trial)'}
                   <TabsTrigger value="system">System</TabsTrigger>
                   <TabsTrigger value="logs">Logs</TabsTrigger>
                 </TabsList>
+
                 
+
+
                 <TabsContent value="users" className="max-h-[400px] overflow-auto">
                   <Table>
                     <TableHeader>
@@ -417,7 +457,10 @@ License: Pro${userDetails?.proStatus ? '' : ' (Trial)'}
                     </TableBody>
                   </Table>
                 </TabsContent>
+
                 
+
+
                 <TabsContent value="system">
                   <div className="space-y-4">
                     <div>
@@ -441,7 +484,10 @@ License: Pro${userDetails?.proStatus ? '' : ' (Trial)'}
                         </div>
                       </div>
                     </div>
+
                     
+
+
                     <div>
                       <h4 className="font-medium mb-2">System Controls</h4>
                       <div className="flex gap-2">
@@ -452,7 +498,10 @@ License: Pro${userDetails?.proStatus ? '' : ' (Trial)'}
                     </div>
                   </div>
                 </TabsContent>
+
                 
+
+
                 <TabsContent value="logs">
                   <div className="bg-gray-900 p-3 rounded-md font-mono text-xs h-[300px] overflow-auto">
                     <p>[2025-06-15 08:32:14] INFO: System started</p>
@@ -476,6 +525,10 @@ License: Pro${userDetails?.proStatus ? '' : ' (Trial)'}
       </Dialog>
     </div>
   );
+
 };
 
 export default Terminal;
+
+}
+

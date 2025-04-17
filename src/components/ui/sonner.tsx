@@ -29,4 +29,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
 
 // Extend the toast with debounced methods to prevent spam
 export { Toaster }
+<<<<<<< HEAD
 export { toast } from "sonner"
+=======
+>>>>>>> 6e3fa6c (Initial commit: fix lint errors in Terminal.tsx, Index.tsx; update LINT_ISSUES_TRACKER.md; begin work on Login.tsx lint issues)

@@ -1,5 +1,11 @@
 
 export type PredictionType = "rise" | "fall" | "even" | "odd";
+
+
+
+// Allowed tick period values for predictions
+export type PredictionTimePeriod = 1 | 3 | 5 | 10 | 15 | 30 | 60;
+
 export type PredictionPhase = "warning" | "counting" | "completed";
 export type PredictionMode = "conservative" | "balanced" | "aggressive";
 
@@ -44,6 +50,10 @@ export interface TickData {
   value: number;
   market: string;
   symbol?: string;  // Make it optional
+
+
+  change?: number;  // Optional property for price change
+
 }
 
 export interface TrainingResult {

@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TopBar from '@/components/TopBar';
 import SideBar from '@/components/SideBar';
@@ -33,7 +32,7 @@ const Index = () => {
   const { user, userDetails, session } = useAuth();
   const navigate = useNavigate();
   const isMobile = useMediaQuery('(max-width: 768px)');
-  
+
   useEffect(() => {
     const timer = setTimeout(() => {
       setShowSplash(false);
@@ -49,11 +48,7 @@ const Index = () => {
     }
   }, [user, userDetails, session, navigate]);
   
-  useEffect(() => {
-    if (user) {
-      updateUserLoginTime();
-    }
-  }, [user]);
+
   
   useEffect(() => {
     const handleNavigateEvent = (event: CustomEvent) => {
@@ -75,9 +70,8 @@ const Index = () => {
     }
   }, [isMobile]);
   
-  const updateUserLoginTime = async () => {
+  const updateUserLoginTime = useCallback(async () => {
     if (!user) return;
-    
     try {
       await supabase
         .from('users_extra')
@@ -86,7 +80,13 @@ const Index = () => {
     } catch (error) {
       console.error('Failed to update login time:', error);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    if (user) {
+      updateUserLoginTime();
+    }
+  }, [user, updateUserLoginTime]);
   
   const handleSectionChange = (section: string) => {
     setActiveSection(section);

@@ -10,7 +10,11 @@ import { supabase } from '@/lib/supabase';
 
 interface PayPalCheckoutProps {
   onSuccess?: () => void;
+<<<<<<< HEAD
   onError?: (error: any) => void;
+=======
+  onError?: (error: unknown) => void;
+>>>>>>> 6e3fa6c (Initial commit: fix lint errors in Terminal.tsx, Index.tsx; update LINT_ISSUES_TRACKER.md; begin work on Login.tsx lint issues)
 }
 
 const PayPalCheckout: React.FC<PayPalCheckoutProps> = ({ onSuccess, onError }) => {
@@ -54,7 +58,16 @@ const PayPalCheckout: React.FC<PayPalCheckoutProps> = ({ onSuccess, onError }) =
     }
   };
 
+<<<<<<< HEAD
   const handleApprove = async (data: any) => {
+=======
+  interface PayPalApproveData {
+  orderID: string;
+  // Add more properties if PayPal provides them
+}
+
+const handleApprove = async (data: PayPalApproveData) => {
+>>>>>>> 6e3fa6c (Initial commit: fix lint errors in Terminal.tsx, Index.tsx; update LINT_ISSUES_TRACKER.md; begin work on Login.tsx lint issues)
     try {
       setMessage("Payment processing...");
       
