@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -13,7 +12,7 @@ import {
   Info,
   Shield
 } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/useAuth';
 import { cn } from '@/lib/utils';
 
 interface SideBarProps {
@@ -81,7 +80,7 @@ const UpdatedSideBar: React.FC<SideBarProps> = ({
       <div className="pt-4 mt-4 border-t text-center px-2">
         <div className="text-xs text-muted-foreground">
           <p>Version 2.0.0</p>
-          <p className="mt-1">© 2025 NN Ticks</p>
+          <p className="mt-1"> 2025 NN Ticks</p>
         </div>
       </div>
     </div>

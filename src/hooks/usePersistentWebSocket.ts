@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { persistentWebSocket } from '@/services/PersistentWebSocketService';
 import { TickData } from '@/types/chartTypes';
@@ -7,17 +6,10 @@ interface WebSocketHookOptions {
   autoConnect?: boolean;
   subscription?: object;
   wsUrl?: string;
-
-  onMessage?: (data: any) => void;
-  onTick?: (tick: TickData) => void;
-  onStatusChange?: (status: string) => void;
-  onError?: (error: any) => void;
-
-  onMessage?: (data: Record<string, unknown>) => void;
+  onMessage?: (data: unknown) => void;
   onTick?: (tick: TickData) => void;
   onStatusChange?: (status: string) => void;
   onError?: (error: unknown) => void;
-
   onOpen?: () => void;
   onClose?: () => void;
 }
@@ -63,10 +55,7 @@ export function usePersistentWebSocket(options: WebSocketHookOptions = {}) {
   
   useEffect(() => {
 
-    const handleMessage = (data: any) => {
-
-    const handleMessage = (data: Record<string, unknown>) => {
-
+    const handleMessage = (data: unknown) => {
       callbacksRef.current.onMessage?.(data);
     };
     
@@ -84,10 +73,7 @@ export function usePersistentWebSocket(options: WebSocketHookOptions = {}) {
     };
     
 
-    const handleError = (error: any) => {
-
     const handleError = (error: unknown) => {
-
       callbacksRef.current.onError?.(error);
     };
     
@@ -133,7 +119,7 @@ export function usePersistentWebSocket(options: WebSocketHookOptions = {}) {
       clearInterval(intervalId);
     };
   }, [autoConnect, subscription, wsUrl]);
-  
+
   const api = useMemo(() => ({
     connect: () => persistentWebSocket.connect(),
     disconnect: () => {
@@ -144,14 +130,8 @@ export function usePersistentWebSocket(options: WebSocketHookOptions = {}) {
     setSubscription: (sub: object) => persistentWebSocket.setSubscription(sub),
     clearBuffer: () => persistentWebSocket.clearBuffer(),
     getBufferedTicks: () => persistentWebSocket.getBufferedTicks(),
-    // Add event methods to the API
-
-    on: (event: string, callback: Function) => persistentWebSocket.on(event, callback),
-    off: (event: string, callback: Function) => persistentWebSocket.off(event, callback)
-
     on: (event: string, callback: (...args: unknown[]) => void) => persistentWebSocket.on(event, callback),
     off: (event: string, callback: (...args: unknown[]) => void) => persistentWebSocket.off(event, callback)
-
   }), []);
   
   return {

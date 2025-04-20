@@ -1,9 +1,6 @@
-
-import { useState, useEffect, useCallback } from 'react';
-
 import { useState, useEffect, useCallback, useMemo } from 'react';
 
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/useAuth';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { neuralNetwork, Indicators } from '@/lib/neuralNetwork';
 import { predictionService, PredictionData, PredictionType, PredictionOutcome } from '@/services/PredictionService';
@@ -32,10 +29,7 @@ export function usePredictions() {
   const [stats, setStats] = useState({ wins: 0, losses: 0, winRate: 0 });
   
 
-  const predictionModes: Record<string, PredictionMode> = {
-
   const predictionModes = useMemo<Record<string, PredictionMode>>(() => ({
-
     strict: {
       name: 'Strict',
       description: 'Only makes predictions with high confidence (75%+)',
@@ -54,9 +48,6 @@ export function usePredictions() {
       minConfidence: 0.51,
       enabled: true
     }
-
-  };
-
   }), []);
 
   

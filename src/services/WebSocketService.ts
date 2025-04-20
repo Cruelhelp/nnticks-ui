@@ -193,16 +193,16 @@ export class WebSocketService {
     }
   }
 
-  public on(event: string, callback: Function): void {
+  public on(event: string, callback: (...args: unknown[]) => void): void {
     this.eventEmitter.on(event, callback);
   }
 
-  public off(event: string, callback: Function): void {
+  public off(event: string, callback: (...args: unknown[]) => void): void {
     this.eventEmitter.off(event, callback);
   }
   
-  public once(event: string, callback: Function): void {
-    const onceWrapper = (...args: any[]) => {
+  public once(event: string, callback: (...args: unknown[]) => void): void {
+    const onceWrapper = (...args: unknown[]) => {
       this.off(event, onceWrapper);
       callback(...args);
     };
@@ -345,7 +345,7 @@ export class WebSocketService {
     }, delay);
   }
   
-  private emitEvent(event: string, data: any): void {
+  private emitEvent(event: string, data: unknown): void {
     this.eventEmitter.emit(event, data);
   }
 }

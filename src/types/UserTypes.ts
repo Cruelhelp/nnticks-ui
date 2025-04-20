@@ -1,4 +1,3 @@
-
 export interface UserDetailsType {
   id?: string;
   user_id?: string;
@@ -12,7 +11,7 @@ export interface UserDetailsType {
   settings?: {
     theme?: string;
     accent?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   };
   availableEpochs?: number;
   totalEpochs?: number;

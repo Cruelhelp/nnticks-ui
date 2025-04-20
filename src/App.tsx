@@ -1,4 +1,4 @@
-
+import React from 'react';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -8,11 +8,16 @@ import Index from "./pages/Index";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import { AuthProvider } from "./contexts/AuthContext";
+import { useAuth } from "./contexts/useAuth";
 import { SettingsProvider } from "./hooks/useSettings";
-import { ThemeProvider } from "./components/ui/theme-provider";
+import { useSettings } from "./hooks/useSettingsHook";
+import { ThemeProvider } from "@/components/ui/themeUtils.tsx";
 import { useEffect, memo } from "react";
 import AdminPanel from "./components/AdminPanel";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import "./index.css";
+
+console.log('App.tsx rendering');
 
 // Create client with better defaults for mobile performance
 const queryClient = new QueryClient({
@@ -71,28 +76,30 @@ const App = () => {
   }, []);
   
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <SettingsProvider>
-          <ThemeProvider defaultTheme="dark" attribute="class">
-            <TooltipProvider>
-              <BrowserRouter>
-                <div className="h-full min-h-screen flex flex-col bg-background text-foreground overflow-hidden font-mono">
-                  <Toaster />
-                  <Sonner />
-                  <Routes>
-                    <Route path="/" element={<Index />} />
-                    <Route path="/login" element={<Login />} />
-                    <Route path="/admin" element={<MemoizedAdminPanel />} />
-                    <Route path="*" element={<NotFound />} />
-                  </Routes>
-                </div>
-              </BrowserRouter>
-            </TooltipProvider>
-          </ThemeProvider>
-        </SettingsProvider>
-      </AuthProvider>
-    </QueryClientProvider>
+    <div>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <SettingsProvider>
+            <ThemeProvider>
+              <TooltipProvider>
+                <BrowserRouter>
+                  <div className="h-full min-h-screen flex flex-col bg-background text-foreground overflow-hidden font-mono">
+                    <Toaster />
+                    <Sonner />
+                    <Routes>
+                      <Route path="/" element={<Index />} />
+                      <Route path="/login" element={<Login />} />
+                      <Route path="/admin" element={<MemoizedAdminPanel />} />
+                      <Route path="*" element={<NotFound />} />
+                    </Routes>
+                  </div>
+                </BrowserRouter>
+              </TooltipProvider>
+            </ThemeProvider>
+          </SettingsProvider>
+        </AuthProvider>
+      </QueryClientProvider>
+    </div>
   );
 };
 

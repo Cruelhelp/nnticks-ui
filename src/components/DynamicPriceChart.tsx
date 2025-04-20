@@ -9,7 +9,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 
 interface CustomTooltipProps {
   active?: boolean;
-  payload?: Array<{ payload: TickData; value: number; name: string }>;
+  payload?: Array<{ payload: TickData; value: unknown; name: string }>;
   label?: string;
 }
 
@@ -68,7 +68,7 @@ const DynamicPriceChart: React.FC<DynamicPriceChartProps> = ({
   const { ticks: wsTicks, latestTick, isConnected } = useWebSocket();
   const ticks = propTicks || wsTicks;
   
-  const [chartData, setChartData] = useState<any[]>([]);
+  const [chartData, setChartData] = useState<unknown[]>([]);
   const [timeframe, setTimeframe] = useState(defaultTimeframe);
   const [localChartType, setLocalChartType] = useState<'line' | 'area'>(chartType as 'line' | 'area');
   const [smoothingFactor, setSmoothingFactor] = useState(2);

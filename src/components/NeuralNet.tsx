@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 
-
 import { PredictionTimePeriod } from '@/types/chartTypes';
+import type { PredictionType, PredictionPhase } from '@/types/chartTypes';
 
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -17,15 +17,26 @@ import { Brain, GitBranch, Settings, TrendingUp, TrendingDown, Save, Upload, Dow
 import { toast } from 'sonner';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { supabase } from '@/lib/supabase';
-import { useAuth } from '@/contexts/AuthContext';
-import { neuralNetwork, NNConfiguration, DEFAULT_NN_CONFIG } from '@/lib/neuralNetwork';
-import { PredictionPhase, PredictionType } from '@/types/chartTypes';
+import { useAuth } from '@/contexts/useAuth';
+import { NeuralNetwork, NNConfiguration, DEFAULT_NN_CONFIG } from '@/lib/neuralNetwork';
 import { useTicks } from '@/hooks/useTicks';
 import { motion } from 'framer-motion';
 import { trainingService } from '@/services/TrainingService';
 
-interface PendingPrediction {
+interface Prediction {
   id: number;
+  confidence: number;
+  timestamp: Date;
+  outcome: 'win' | 'loss' | 'pending';
+  market: string;
+  startPrice?: number;
+  endPrice?: number;
+  timePeriod: number;
+  predictionType: PredictionType;
+}
+
+interface PendingPrediction {
+  id: string;
   confidence: number;
   timestamp: Date;
   warningCountdown: number;
@@ -39,127 +50,33 @@ interface PendingPrediction {
 }
 
 const NeuralNet = () => {
-  const [activeTab, setActiveTab] = useState('history');
-  const [isTraining, setIsTraining] = useState(false);
-  const [trainingProgress, setTrainingProgress] = useState(0);
-  const [isPredicting, setIsPredicting] = useState(false);
-  const [predictionType, setPredictionType] = useState<PredictionType>('rise');
-  const [tickPeriod, setTickPeriod] = useState(3);
+  // State declarations
   const [currentConfig, setCurrentConfig] = useState<NNConfiguration>(DEFAULT_NN_CONFIG);
+  const [isTraining, setIsTraining] = useState(false);
+  const [isPredicting, setIsPredicting] = useState(false);
+  const [trainingProgress, setTrainingProgress] = useState(0);
+  const [activeTab, setActiveTab] = useState<string>('history');
   const [pendingPredictions, setPendingPredictions] = useState<PendingPrediction[]>([]);
-
-  const [completedPredictions, setCompletedPredictions] = useState<any[]>([]);
-
-  const [completedPredictions, setCompletedPredictions] = useState<PendingPrediction[]>([]);
-
+  const [availableEpochs, setAvailableEpochs] = useState<number[]>([]);
+  const [outcome, setOutcome] = useState<string>('');
+  const [prediction, setPrediction] = useState<Prediction | null>(null);
+  const [startPrice, setStartPrice] = useState<number | null>(null);
+  const [endPrice, setEndPrice] = useState<number | null>(null);
+  const [tickPeriod, setTickPeriod] = useState<number>(3);
+  const [predictionType, setPredictionType] = useState<PredictionType>('rise');
   const [networkNeurons, setNetworkNeurons] = useState<{x: number, y: number, layer: number}[]>([]);
   const [networkConnections, setNetworkConnections] = useState<{startX: number, startY: number, endX: number, endY: number}[]>([]);
   const [animatingNeurons, setAnimatingNeurons] = useState<number[]>([]);
+  const [completedPredictions, setCompletedPredictions] = useState<Prediction[]>([]);
   const { user } = useAuth();
+  const ws = useWebSocket({ subscription: { ticks: 'R_10' }, onMessage: () => {} });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
+  const neuralNetRef = useRef<NeuralNetwork>(new NeuralNetwork(DEFAULT_NN_CONFIG));
   
-  const ws = useWebSocket({
-    subscription: { ticks: 'R_10' },
-    onMessage: (data) => {
-      if (data.tick) {
-        handleNewTick(data.tick.quote);
-      }
-    }
-  });
+  const generateNetworkVisualization = () => {};
 
-  const { availableEpochs } = useTicks({ updateEpochs: true });
-
-  useEffect(() => {
-    setCurrentConfig(neuralNetwork.getConfig());
-
-    generateNetworkVisualization();
-    
-    if (user) {
-      loadPredictions();
-    }
-  }, [user]);
-  
-
-  }, [user]);
-
-
-  const generateNetworkVisualization = () => {
-    const layers = currentConfig.layers;
-    const neurons: {x: number, y: number, layer: number}[] = [];
-    const connections: {startX: number, startY: number, endX: number, endY: number}[] = [];
-    
-    const containerWidth = 400;
-    const containerHeight = 200; 
-    const margin = 50;
-    
-    layers.forEach((neuronsCount, layerIndex) => {
-      const layerX = margin + (containerWidth - 2 * margin) * (layerIndex / (layers.length - 1));
-      
-      const displayedNeurons = Math.min(neuronsCount, 7);
-      
-      for (let i = 0; i < displayedNeurons; i++) {
-        const neuronY = margin + (containerHeight - 2 * margin) * (i / (displayedNeurons - 1 || 1));
-        neurons.push({ x: layerX, y: neuronY, layer: layerIndex });
-      }
-    });
-    
-    for (let layer = 0; layer < layers.length - 1; layer++) {
-      const currentLayerNeurons = neurons.filter(n => n.layer === layer);
-      const nextLayerNeurons = neurons.filter(n => n.layer === layer + 1);
-      
-      currentLayerNeurons.forEach(startNeuron => {
-        nextLayerNeurons.forEach(endNeuron => {
-          connections.push({
-            startX: startNeuron.x,
-            startY: startNeuron.y,
-            endX: endNeuron.x,
-            endY: endNeuron.y
-          });
-        });
-      });
-    }
-    
-    setNetworkNeurons(neurons);
-    setNetworkConnections(connections);
-  };
-
-  const animateNeuralNetwork = () => {
-    if (!networkNeurons.length) return;
-    
-    const randomNeuron = Math.floor(Math.random() * networkNeurons.length);
-    setAnimatingNeurons(prev => [...prev, randomNeuron]);
-    
-    setTimeout(() => {
-      setAnimatingNeurons(prev => prev.filter(n => n !== randomNeuron));
-    }, 300);
-  };
-
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    
-    if (isTraining) {
-      interval = setInterval(animateNeuralNetwork, 100);
-    }
-    
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-
-  }, [isTraining, networkNeurons]);
-
-  useEffect(() => {
-    generateNetworkVisualization();
-  }, [currentConfig]);
-
-  }, [isTraining, networkNeurons, animateNeuralNetwork]);
-
-  useEffect(() => {
-    generateNetworkVisualization();
-  }, [currentConfig, generateNetworkVisualization]);
-
-
-  const loadPredictions = async () => {
+  const loadPredictions = useCallback(async () => {
     if (!user) return;
     
     try {
@@ -175,33 +92,33 @@ const NeuralNet = () => {
       if (data && data.length > 0) {
         setCompletedPredictions(data.map(item => ({
           id: item.id,
-
           type: item.prediction,
-          market: item.market,
-          confidence: item.confidence,
+          market: String(item.market),
+          confidence: Number(item.confidence),
           timestamp: new Date(item.timestamp),
-          outcome: item.outcome,
-          startPrice: item.start_price,
-          endPrice: item.end_price,
-          timePeriod: item.time_period
-
+          outcome: String(item.outcome),
+          startPrice: item.start_price !== undefined ? Number(item.start_price) : null,
+          endPrice: item.end_price !== undefined ? Number(item.end_price) : null,
+          timePeriod: item.time_period !== undefined ? Number(item.time_period) : undefined,
           predictionType: item.prediction as PredictionType,
-          market: item.market,
-          confidence: item.confidence,
-          timestamp: new Date(item.timestamp),
-          warningCountdown: 0,
-          tickCountdown: 0,
-          phase: 'completed' as PredictionPhase,
-          startPrice: item.start_price,
-          tickPeriod: item.time_period,
+          tickPeriod: item.time_period !== undefined ? Number(item.time_period) : undefined,
           ticksElapsed: 0
-
         })));
       }
     } catch (error) {
       console.error('Error loading predictions:', error);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    setCurrentConfig(neuralNetRef.current.getConfig());
+
+    generateNetworkVisualization();
+    
+    if (user) {
+      loadPredictions();
+    }
+  }, [user, loadPredictions]);
 
   const handleNewTick = (price: number) => {
     setPendingPredictions(prevPredictions => {
@@ -257,30 +174,29 @@ const NeuralNet = () => {
     setPendingPredictions(prev => prev.filter(p => p.id !== id));
     
 
-    const completedPrediction = {
-      id,
-      type: prediction.predictionType,
-      market: prediction.market,
-      confidence: prediction.confidence,
-      timestamp: prediction.timestamp,
-      outcome,
-      startPrice,
-      endPrice,
-      timePeriod: prediction.tickPeriod
-
+    interface PendingPrediction {
+      id: string;
+      predictionType: PredictionType;
+      market?: string;
+      confidence: number;
+      timestamp: Date;
+      outcome: string;
+      startPrice: number | null;
+      endPrice: number | null;
+      timePeriod?: number;
+      tickPeriod?: number;
+    }
+    
     const completedPrediction: PendingPrediction = {
-      id,
+      id: id.toString(),
       predictionType: prediction.predictionType,
       market: prediction.market,
       confidence: prediction.confidence,
       timestamp: prediction.timestamp,
-      warningCountdown: 0,
-      tickCountdown: 0,
-      phase: 'completed',
-      startPrice,
-      tickPeriod: prediction.tickPeriod,
-      ticksElapsed: prediction.tickPeriod
-
+      outcome: String(outcome),
+      startPrice: startPrice ?? null,
+      endPrice: endPrice ?? null,
+      tickPeriod: prediction.tickPeriod
     };
     
     setCompletedPredictions(prev => [completedPrediction, ...prev]);
@@ -313,7 +229,7 @@ const NeuralNet = () => {
             inputs: currentTicks.slice(-20),
             prediction: prediction.predictionType,
             actual: outcome === 'win' ? prediction.predictionType : (prediction.predictionType === 'rise' ? 'fall' : 'rise'),
-            weights: neuralNetwork.exportModel().weights
+            weights: neuralNetRef.current.exportModel().weights
           },
           accuracy: outcome === 'win' ? 1 : 0,
           points: outcome === 'win' ? 1 : 0,
@@ -339,19 +255,16 @@ const NeuralNet = () => {
         return;
       }
       
-      const prediction = await neuralNetwork.predict(
+      const prediction = await neuralNetRef.current.predict(
         tickValues,
         predictionType,
-
-        tickPeriod as any,
-
+        tickPeriod as number,
         tickPeriod as PredictionTimePeriod,
-
         ws.latestTick.value
       );
       
       const newPrediction: PendingPrediction = {
-        id: Date.now(),
+        id: Date.now().toString(),
         predictionType: predictionType,
         market: ws.latestTick.market || 'Unknown',
         confidence: Math.round(prediction.confidence * 100),
@@ -428,7 +341,7 @@ const NeuralNet = () => {
         setTrainingProgress(progress * 100);
       };
       
-      const accuracy = await neuralNetwork.train(tickValues, {
+      const accuracy = await neuralNetRef.current.train(tickValues, {
         maxEpochs: currentConfig.epochs,
         onProgress: updateProgress
       });
@@ -436,7 +349,7 @@ const NeuralNet = () => {
       if (user) {
         await trainingService.useEpochs(currentConfig.epochs);
         
-        const model = neuralNetwork.exportModel();
+        const model = neuralNetRef.current.exportModel();
         await supabase.from('models').insert({
           user_id: user.id,
           name: `Model-${new Date().toISOString().split('T')[0]}`,
@@ -465,7 +378,7 @@ const NeuralNet = () => {
 
   const handleSaveModel = () => {
     try {
-      neuralNetwork.saveModelToFile();
+      neuralNetRef.current.saveModelToFile();
       toast.success('Model saved successfully');
     } catch (error) {
       console.error('Error saving model:', error);
@@ -484,10 +397,10 @@ const NeuralNet = () => {
     if (!file) return;
     
     try {
-      const success = await neuralNetwork.loadModelFromFile(file);
+      const success = await neuralNetRef.current.loadModelFromFile(file);
       if (success) {
         toast.success('Model imported successfully');
-        setCurrentConfig(neuralNetwork.getConfig());
+        setCurrentConfig(neuralNetRef.current.getConfig());
         setActiveTab('history');
       } else {
         toast.error('Failed to import model');
@@ -503,13 +416,11 @@ const NeuralNet = () => {
   };
 
 
-  const handleConfigChange = (key: keyof NNConfiguration, value: any) => {
-
-  const handleConfigChange = (key: keyof NNConfiguration, value: NNConfiguration[keyof NNConfiguration]) => {
+  const handleConfigChange = (key: keyof NNConfiguration, value: unknown) => {
 
     const updatedConfig = { ...currentConfig, [key]: value };
     setCurrentConfig(updatedConfig);
-    neuralNetwork.updateConfig(updatedConfig);
+    neuralNetRef.current.updateConfig(updatedConfig);
     generateNetworkVisualization();
   };
 
@@ -762,7 +673,6 @@ const NeuralNet = () => {
                         variant={predictionType === 'rise' ? "default" : "outline"} 
                         size="sm"
                         onClick={() => setPredictionType('rise')}
-                        className="flex-1"
                       >
                         <TrendingUp className="h-4 w-4 mr-1" /> Rise
                       </Button>
@@ -770,7 +680,6 @@ const NeuralNet = () => {
                         variant={predictionType === 'fall' ? "default" : "outline"} 
                         size="sm"
                         onClick={() => setPredictionType('fall')}
-                        className="flex-1"
                       >
                         <TrendingDown className="h-4 w-4 mr-1" /> Fall
                       </Button>
@@ -914,30 +823,16 @@ const NeuralNet = () => {
                     {completedPredictions.map((prediction) => (
                       <div 
                         key={prediction.id} 
-                        className={`border rounded-md p-3 hover:bg-muted/50 transition-colors ${
-
-                          prediction.outcome === 'win' ? 'border-green-200 dark:border-green-900' : 'border-red-200 dark:border-red-900'
-
-                          (prediction.startPrice < prediction.startPrice + prediction.ticksElapsed ? 'border-green-200 dark:border-green-900' : 'border-red-200 dark:border-red-900')
-
-                        }`}
+                        className={`border rounded-md p-3 hover:bg-muted/50 transition-colors ${prediction.outcome === 'win' ? 'border-green-200 dark:border-green-900' : 'border-red-200 dark:border-red-900'}`}
                       >
                         <div className="flex justify-between items-start">
                           <div>
                             <div className="flex items-center gap-2">
-
                               <Badge variant={prediction.outcome === 'win' ? "success" : "destructive"}>
                                 {prediction.outcome === 'win' ? 'Correct' : 'Incorrect'}
                               </Badge>
                               <p className="font-medium">
-                                {prediction.type.toUpperCase()}
-
-                              <Badge variant={prediction.startPrice < (prediction.startPrice + prediction.ticksElapsed) ? "success" : "destructive"}>
-                                {prediction.startPrice < (prediction.startPrice + prediction.ticksElapsed) ? 'Correct' : 'Incorrect'}
-                              </Badge>
-                              <p className="font-medium">
                                 {prediction.predictionType.toUpperCase()}
-
                               </p>
                             </div>
                             <p className="text-xs text-muted-foreground mt-1">
@@ -950,11 +845,7 @@ const NeuralNet = () => {
                               </div>
                               <div>
                                 <p className="text-muted-foreground">End Price:</p>
-
                                 <p className="font-medium">{prediction.endPrice?.toFixed(5)}</p>
-
-                                <p className="font-medium">N/A</p>
-
                               </div>
                             </div>
                           </div>
@@ -964,11 +855,7 @@ const NeuralNet = () => {
                               {new Date(prediction.timestamp).toLocaleString()}
                             </p>
                             <p className="text-xs mt-1">
-
-                              Tick period: {prediction.timePeriod}
-
                               Tick period: {prediction.tickPeriod}
-
                             </p>
                           </div>
                         </div>
@@ -978,7 +865,7 @@ const NeuralNet = () => {
                 )}
               </CardContent>
               <CardFooter className="border-t pt-4">
-                <Button variant="outline" size="sm" className="ml-auto" onClick={loadPredictions}>
+                <Button variant="outline" size="sm" onClick={loadPredictions}>
                   Refresh History
                 </Button>
               </CardFooter>

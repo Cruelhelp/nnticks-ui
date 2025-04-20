@@ -52,8 +52,8 @@ const NeuralNetworkSimulation: React.FC = () => {
     const layerStructure = networkStats.layers;
     const paddingX = 80;
     const paddingY = 40;
-    let newNeurons: Neuron[] = [];
-    let newConnections: NeuronConnection[] = [];
+    const newNeurons: Neuron[] = [];
+    const newConnections: NeuronConnection[] = [];
     
     // Get canvas dimensions
     const canvas = canvasRef.current;

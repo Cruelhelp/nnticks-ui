@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Menu, Bell, TerminalSquare, Settings, LogOut, UserCircle, Shield } from 'lucide-react';
 import SettingsDialog from '@/components/SettingsDialog';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/useAuth';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { supabase } from '@/lib/supabase';

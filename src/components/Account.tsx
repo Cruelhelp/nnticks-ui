@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -8,11 +7,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/useAuth';
 import { toast } from 'sonner';
-import { useSettings, UserSettings } from '@/hooks/useSettings';
+import { useSettings } from '@/hooks/useSettingsHook';
+import { UserSettings } from '@/hooks/settingsTypes';
 import Logo from '@/components/Logo';
-import PayPalCheckout from '@/components/PayPalCheckout';
+import { PayPalCheckout } from '@/components/PayPalCheckout';
 import { supabase } from '@/lib/supabase';
 
 const Account = () => {

@@ -135,12 +135,12 @@ class WebSocketManager {
     this.eventEmitter.emit('tick', tick);
   };
   
-  private handleMessage = (data: any) => {
+  private handleMessage = (data: unknown) => {
     this.lastMessageTime = Date.now();
     this.eventEmitter.emit('message', data);
   };
   
-  private handleError = (error: any) => {
+  private handleError = (error: unknown) => {
     console.error('[WebSocketManager] Error:', error);
     this.eventEmitter.emit('error', error);
     this.scheduleReconnect();
@@ -272,11 +272,11 @@ class WebSocketManager {
   }
   
   // Event listeners
-  public on(event: string, callback: Function) {
+  public on(event: string, callback: (...args: unknown[]) => void) {
     this.eventEmitter.on(event, callback);
   }
   
-  public off(event: string, callback: Function) {
+  public off(event: string, callback: (...args: unknown[]) => void) {
     this.eventEmitter.off(event, callback);
   }
   

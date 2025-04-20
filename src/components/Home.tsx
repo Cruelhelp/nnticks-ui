@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -23,7 +22,7 @@ import {
   PlugZap,
   Settings2
 } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/useAuth";
 
 interface HomeProps {
   onSectionChange: (section: string) => void;
@@ -150,11 +149,11 @@ const Home = ({ onSectionChange }: HomeProps) => {
                       <div className="rounded-md overflow-hidden border border-border mt-4">
                         <div className="bg-card/50 p-3">
                           <div className="grid grid-cols-2 gap-2">
-                            <div className="bg-primary/5 rounded p-3 flex items-center justify-center border border-primary/20">
+                            <div className="bg-primary/5 rounded-md p-3 flex items-center justify-center border border-primary/20">
                               <Binary className="h-6 w-6 mr-2 text-primary/70" />
                               <span>Deriv</span>
                             </div>
-                            <div className="bg-muted rounded p-3 flex items-center justify-center">
+                            <div className="bg-muted rounded-md p-3 flex items-center justify-center">
                               <PieChart className="h-6 w-6 mr-2 text-muted-foreground" />
                               <span className="text-muted-foreground">IQ Option</span>
                             </div>
@@ -483,7 +482,7 @@ const Home = ({ onSectionChange }: HomeProps) => {
             <span>Mobile</span>
           </div>
           <span className="hidden md:inline">•</span>
-          <span>Copyright © 2025 Ruel McNeil</span>
+          <span>Copyright 2025 Ruel McNeil</span>
         </div>
       </footer>
     </div>

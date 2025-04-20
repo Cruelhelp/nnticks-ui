@@ -1,6 +1,5 @@
-
 import { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/useAuth';
 import { epochCollectionService } from '@/services/EpochCollectionService';
 import { EpochCollectionStatus, EpochData } from '@/types/chartTypes';
 import { persistentWebSocket } from '@/services/PersistentWebSocketService';

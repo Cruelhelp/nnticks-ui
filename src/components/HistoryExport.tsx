@@ -1,8 +1,7 @@
-
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Download } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/useAuth';
 import { toast } from 'sonner';
 import Logo from '@/components/Logo';
 
@@ -180,7 +179,7 @@ const HistoryExport: React.FC<HistoryExportProps> = ({ tradeHistory, trainingHis
             </table>
             
             <div class="footer">
-              <p>Copyright © 2025 Ruel McNeil | NNticks Trading Performance Report</p>
+              <p>Copyright 2025 Ruel McNeil | NNticks Trading Performance Report</p>
               <p>This report contains confidential information. Do not distribute without permission.</p>
             </div>
           </body>

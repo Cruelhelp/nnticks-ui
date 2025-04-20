@@ -9,7 +9,9 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
 import { toast } from 'sonner';
-import { useSettings, DEFAULT_SETTINGS, UserSettings } from '@/hooks/useSettings';
+import { useSettings } from '@/hooks/useSettingsHook';
+import { DEFAULT_SETTINGS } from '@/hooks/settingsUtils';
+import { UserSettings } from '@/hooks/settingsTypes';
 
 type SettingsDialogProps = {
   open: boolean;

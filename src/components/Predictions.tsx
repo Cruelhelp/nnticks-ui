@@ -1,22 +1,19 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-<<<<<<< HEAD
-=======
 import type { PredictionTimePeriod } from '../types/chartTypes';
->>>>>>> 6e3fa6c (Initial commit: fix lint errors in Terminal.tsx, Index.tsx; update LINT_ISSUES_TRACKER.md; begin work on Login.tsx lint issues)
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/useAuth';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Brain, Clock, BadgeCheck, BadgeX, X, TrendingUp, TrendingDown, Zap, AlertCircle, Copyright, Settings, Gauge } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { toast } from 'sonner';
-import { neuralNetwork } from '@/lib/neuralNetwork';
-import { supabase } from '@/lib/supabase';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { PREDICTION_MODES, PredictionMode, PredictionPhase, PredictionType } from '@/types/chartTypes';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
+import { supabase } from '@/lib/supabase';
+import { toast } from 'sonner';
+import { neuralNetwork } from '@/lib/neuralNetwork';
 
 interface Prediction {
   id: number;
@@ -226,7 +223,6 @@ const NeuralNetworkVisual = ({
             
             return (
               <NNNode 
-                key={nodeId}
                 id={nodeId}
                 active={isActive || !!sparkleNode}
                 x={x}
@@ -252,7 +248,6 @@ const NeuralNetworkVisual = ({
                 
                 return (
                   <NNConnection 
-                    key={`${fromId}-to-${toId}`}
                     from={fromId}
                     to={toId}
                     active={isActive || !!sparkleFrom || !!sparkleTo}
@@ -313,10 +308,14 @@ const Predictions = () => {
     wsUrl: 'wss://ws.binaryws.com/websockets/v3?app_id=70997',
     subscription: { ticks: currentMarket },
     onMessage: (data) => {
+      // @ts-expect-error: wsData is known to have tick property here
       if (data.tick) {
+        // @ts-expect-error: wsData is known to have tick property here
         setCurrentPrice(data.tick.quote);
+        // @ts-expect-error: wsData is known to have tick property here
         setCurrentMarket(data.tick.symbol);
         
+        // @ts-expect-error: wsData is known to have tick property here
         handleNewTick(data.tick.quote);
       }
     },
@@ -334,40 +333,9 @@ const Predictions = () => {
     },
   });
   
-<<<<<<< HEAD
-  useEffect(() => {
-    loadPredictions();
-    
-    return () => {
-      if (autoIntervalRef.current) {
-        clearInterval(autoIntervalRef.current);
-      }
-    };
-  }, []);
-  
-  useEffect(() => {
-    if (isBotRunning) {
-      if (autoIntervalRef.current) {
-        clearInterval(autoIntervalRef.current);
-      }
-      
-      predictionRateRef.current = PREDICTION_MODES[predictionMode].predictionRate || 15000;
-      
-      autoIntervalRef.current = setInterval(generatePrediction, predictionRateRef.current);
-      
-      if (Date.now() - lastPredictionTimeRef.current > 5000) {
-        setTimeout(generatePrediction, 1000);
-      }
-    }
-  }, [predictionMode, isBotRunning]);
-  
-  const loadPredictions = async () => {
-    if (!user) return;
-    
-=======
   const loadPredictions = React.useCallback(async () => {
     if (!user) return;
->>>>>>> 6e3fa6c (Initial commit: fix lint errors in Terminal.tsx, Index.tsx; update LINT_ISSUES_TRACKER.md; begin work on Login.tsx lint issues)
+    
     try {
       const { data, error } = await supabase
         .from('trade_history')
@@ -375,15 +343,9 @@ const Predictions = () => {
         .eq('user_id', user.id)
         .order('timestamp', { ascending: false })
         .limit(10);
-<<<<<<< HEAD
-        
-      if (error) {
-        throw error;
-      }
       
-=======
       if (error) throw error;
->>>>>>> 6e3fa6c (Initial commit: fix lint errors in Terminal.tsx, Index.tsx; update LINT_ISSUES_TRACKER.md; begin work on Login.tsx lint issues)
+      
       if (data) {
         const loaded = data.map(item => ({
           id: item.id,
@@ -400,17 +362,8 @@ const Predictions = () => {
       }
     } catch (error) {
       console.error('Error loading predictions:', error);
-      toast.error('Failed to load prediction history');
     }
-<<<<<<< HEAD
-  };
-  
-  const generateId = () => {
-    return Date.now() + Math.floor(Math.random() * 1000);
-  };
-  
-=======
-  }, [user, supabase]);
+  }, [user]);
 
   useEffect(() => {
     loadPredictions();
@@ -420,7 +373,7 @@ const Predictions = () => {
         autoIntervalRef.current = null;
       }
     };
-  }, [loadPredictions, autoIntervalRef]); // Added autoIntervalRef for completeness
+  }, [loadPredictions]); 
 
   const handleAddPrediction = useCallback(async (
     type: PredictionType = 'rise',
@@ -430,7 +383,6 @@ const Predictions = () => {
   ) => {
     if (isPredicting) return;
     if (!currentPrice) {
-      toast.error('No price data available');
       return;
     }
     setIsPredicting(true);
@@ -451,12 +403,9 @@ const Predictions = () => {
     };
     setPendingPredictions(prev => [...prev, newPrediction]);
     if (isAuto) {
-      toast(`New prediction: Market will ${type} after 10s + ${period} ticks`, {
-        icon: <Zap className="h-4 w-4" />,
-        description: `${confidence}% confidence - Place your trade now!`
-      });
+      return;
     } else {
-      toast.success(`Prediction added: Market will ${type} after 10s + ${period} ticks`);
+      return;
     }
     // Use a ref to store the interval id for cleanup
     const warningCountdownInterval = setInterval(() => {
@@ -469,9 +418,6 @@ const Predictions = () => {
               tickCounterRef.current.set(p.id, 0);
               // Use latest price for startPriceAtCounting
               const startPriceAtCounting = currentPrice;
-              toast(`Starting tick count for ${period} ticks`, {
-                description: `Initial price: ${startPriceAtCounting?.toFixed(5)}`
-              });
               return {
                 ...p,
                 warningCountdown: 0,
@@ -488,7 +434,7 @@ const Predictions = () => {
       });
     }, 1000);
     setIsPredicting(false);
-  }, [isPredicting, currentPrice, currentMarket, predictionTimePeriod, tickCounterRef, setPendingPredictions, setIsPredicting, toast]);
+  }, [isPredicting, currentPrice, currentMarket, predictionTimePeriod, tickCounterRef, setPendingPredictions, setIsPredicting]);
 
   const generatePrediction = React.useCallback((): Promise<void> | null => {
     if (!currentPrice || !isBotRunning) return null;
@@ -508,14 +454,28 @@ const Predictions = () => {
         handleAddPrediction('rise', predictionTimePeriod, prediction.confidence, true);
       }
     });
-  }, [currentPrice, isBotRunning, socket.ticks, predictionTimePeriod, predictionMode, handleAddPrediction]);
+  }, [currentPrice, isBotRunning, predictionTimePeriod, socket.ticks, predictionMode, handleAddPrediction]);
+
+  useEffect(() => {
+    if (isBotRunning) {
+      if (autoIntervalRef.current) {
+        clearInterval(autoIntervalRef.current);
+      }
+      
+      predictionRateRef.current = PREDICTION_MODES[predictionMode].predictionRate || 15000;
+      
+      autoIntervalRef.current = setInterval(generatePrediction, predictionRateRef.current);
+      
+      if (Date.now() - lastPredictionTimeRef.current > 5000) {
+        setTimeout(generatePrediction, 1000);
+      }
+    }
+  }, [predictionMode, isBotRunning, generatePrediction]);
 
   const generateId = (): number => {
     return Date.now() + Math.floor(Math.random() * 1000);
   };
 
-
->>>>>>> 6e3fa6c (Initial commit: fix lint errors in Terminal.tsx, Index.tsx; update LINT_ISSUES_TRACKER.md; begin work on Login.tsx lint issues)
   const handleNewTick = (price: number) => {
     setPendingPredictions(prevPredictions => {
       const updatedPredictions = prevPredictions.map(prediction => {
@@ -549,42 +509,6 @@ const Predictions = () => {
       return updatedPredictions;
     });
   };
-<<<<<<< HEAD
-  
-  const generatePrediction = useCallback(() => {
-    if (!currentPrice || !isBotRunning) return null;
-    
-    lastPredictionTimeRef.current = Date.now();
-    
-    const tickValues = socket.ticks.map(t => t.value);
-    
-    if (tickValues.length < 10) {
-      return null;
-    }
-    
-    return neuralNetwork.predict(tickValues, 'rise', predictionTimePeriod as any, currentPrice)
-      .then(prediction => {
-        const minConfidence = PREDICTION_MODES[predictionMode].minConfidence;
-        
-        if (prediction.confidence >= minConfidence) {
-          handleAddPrediction(
-            prediction.type, 
-            prediction.period, 
-            Math.round(prediction.confidence * 100),
-            true
-          );
-        } else {
-          console.log(`Prediction skipped: confidence ${prediction.confidence.toFixed(2)} below threshold ${minConfidence.toFixed(2)}`);
-        }
-      })
-      .catch(err => {
-        console.error("Error generating prediction:", err);
-        setHasError(true);
-        setTimeout(() => setHasError(false), 5000);
-      });
-  }, [currentPrice, socket.ticks, isBotRunning, predictionTimePeriod, predictionMode]);
-  
-=======
 
   const handleCompletePrediction = async (id: number, finalPrice: number) => {
     const pendingPred = pendingPredictions.find(p => p.id === id);
@@ -620,9 +544,9 @@ const Predictions = () => {
     };
     setCompletedPredictions(prevCompleted => [completedPrediction, ...prevCompleted]);
     if (outcome === 'win') {
-      toast.success(`Prediction correct! Market ${pendingPred.predictionType === 'rise' ? 'rose' : 'fell'} from ${startPrice.toFixed(5)} to ${endPrice.toFixed(5)}`);
+      return;
     } else {
-      toast.error(`Prediction incorrect. Market ${pendingPred.predictionType === 'rise' ? 'fell' : 'rose'} from ${startPrice.toFixed(5)} to ${endPrice.toFixed(5)}`);
+      return;
     }
     if (user) {
       try {
@@ -646,7 +570,6 @@ const Predictions = () => {
     }
   };
 
->>>>>>> 6e3fa6c (Initial commit: fix lint errors in Terminal.tsx, Index.tsx; update LINT_ISSUES_TRACKER.md; begin work on Login.tsx lint issues)
   const toggleBot = () => {
     if (isBotRunning) {
       setIsBotRunning(false);
@@ -654,7 +577,6 @@ const Predictions = () => {
         clearInterval(autoIntervalRef.current);
         autoIntervalRef.current = null;
       }
-      toast.info('Bot stopped');
     } else {
       setIsTraining(true);
       setTrainingProgress(0);
@@ -666,7 +588,6 @@ const Predictions = () => {
             setIsTraining(false);
             
             setIsBotRunning(true);
-            toast.success(`Bot started - ${PREDICTION_MODES[predictionMode].mode} mode activated`);
             
             predictionRateRef.current = PREDICTION_MODES[predictionMode].predictionRate || 15000;
             
@@ -680,166 +601,11 @@ const Predictions = () => {
       }, 300);
     }
   };
-<<<<<<< HEAD
-  
-  const handleAddPrediction = async (
-    type: PredictionType = 'rise',
-    period: number = predictionTimePeriod, 
-    confidence: number = 75,
-    isAuto: boolean = false
-  ) => {
-    if (isPredicting) return;
-    
-    if (!currentPrice) {
-      toast.error('No price data available');
-      return;
-    }
-    
-    setIsPredicting(true);
-    
-    const newPrediction: PendingPrediction = {
-      id: generateId(),
-      confidence,
-      timestamp: new Date(),
-      warningCountdown: 10,
-      tickCountdown: 0,
-      phase: 'warning' as PredictionPhase,
-      market: currentMarket,
-      startPrice: currentPrice,
-      tickPeriod: period,
-      ticksElapsed: 0,
-      predictionType: type
-    };
-    
-    setPendingPredictions(prev => [...prev, newPrediction]);
-    
-    if (isAuto) {
-      toast(`New prediction: Market will ${type} after 10s + ${period} ticks`, {
-        icon: <Zap className="h-4 w-4" />,
-        description: `${confidence}% confidence - Place your trade now!`
-      });
-    } else {
-      toast.success(`Prediction added: Market will ${type} after 10s + ${period} ticks`);
-    }
-    
-    const warningCountdownInterval = setInterval(() => {
-      setPendingPredictions(prev => {
-        const updatedPredictions = prev.map(p => {
-          if (p.id === newPrediction.id) {
-            const newCountdown = p.warningCountdown - 1;
-            
-            if (newCountdown <= 0) {
-              clearInterval(warningCountdownInterval);
-              
-              tickCounterRef.current.set(p.id, 0);
-              
-              const startPriceAtCounting = currentPrice;
-              
-              toast(`Starting tick count for ${period} ticks`, {
-                description: `Initial price: ${startPriceAtCounting?.toFixed(5)}`
-              });
-              
-              return {
-                ...p,
-                warningCountdown: 0,
-                phase: 'counting' as PredictionPhase,
-                startPrice: startPriceAtCounting,
-                ticksElapsed: 0
-              };
-            }
-            
-            return { ...p, warningCountdown: newCountdown };
-          }
-          return p;
-        });
-        
-        return updatedPredictions;
-      });
-    }, 1000);
-    
-    setIsPredicting(false);
-  };
-  
-  const handleCompletePrediction = async (id: number, finalPrice: number) => {
-    const pendingPred = pendingPredictions.find(p => p.id === id);
-    
-    if (!pendingPred) return;
-    
-    const startPrice = pendingPred.startPrice;
-    const endPrice = finalPrice;
-    let outcome: "win" | "loss" = "loss";
-    
-    switch (pendingPred.predictionType) {
-      case 'rise':
-        outcome = endPrice > startPrice ? "win" : "loss";
-        break;
-      case 'fall':
-        outcome = endPrice < startPrice ? "win" : "loss";
-        break;
-      case 'even':
-        outcome = Math.round(endPrice * 100) % 2 === 0 ? "win" : "loss";
-        break;
-      case 'odd':
-        outcome = Math.round(endPrice * 100) % 2 !== 0 ? "win" : "loss";
-        break;
-    }
-    
-    setPendingPredictions(prev => prev.filter(p => p.id !== id));
-    
-    const completedPrediction: Prediction = {
-      id,
-      confidence: pendingPred.confidence,
-      timestamp: pendingPred.timestamp,
-      outcome,
-      market: pendingPred.market,
-      startPrice: pendingPred.startPrice,
-      endPrice,
-      timePeriod: pendingPred.tickPeriod,
-      predictionType: pendingPred.predictionType
-    };
-    
-    setCompletedPredictions(prevCompleted => [completedPrediction, ...prevCompleted]);
-    
-    if (outcome === 'win') {
-      toast.success(`Prediction correct! Market ${pendingPred.predictionType === 'rise' ? 'rose' : 'fell'} from ${startPrice.toFixed(5)} to ${endPrice.toFixed(5)}`);
-    } else {
-      toast.error(`Prediction incorrect. Market ${pendingPred.predictionType === 'rise' ? 'fell' : 'rose'} from ${startPrice.toFixed(5)} to ${endPrice.toFixed(5)}`);
-    }
-    
-    if (user) {
-      try {
-        const { error } = await supabase.from('trade_history').insert({
-          user_id: user.id,
-          timestamp: new Date().toISOString(),
-          market: pendingPred.market,
-          prediction: pendingPred.predictionType,
-          confidence: pendingPred.confidence,
-          outcome: outcome,
-          start_price: startPrice,
-          end_price: endPrice,
-          time_period: pendingPred.tickPeriod
-        });
-        
-        if (error) {
-          console.error('Error saving prediction:', error);
-        }
-      } catch (error) {
-        console.error('Failed to save prediction:', error);
-      }
-    }
-  };
-  
-  const handleDeletePrediction = (id: number) => {
-    setCompletedPredictions(prev => prev.filter(p => p.id !== id));
-  };
-  
-=======
 
   const handleDeletePrediction = (id: number) => {
     setCompletedPredictions(prev => prev.filter(p => p.id !== id));
   };
 
->>>>>>> 6e3fa6c (Initial commit: fix lint errors in Terminal.tsx, Index.tsx; update LINT_ISSUES_TRACKER.md; begin work on Login.tsx lint issues)
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
       <div className="md:col-span-2">
@@ -941,7 +707,7 @@ const Predictions = () => {
                     <div key={key} className="flex items-center space-x-2">
                       <RadioGroupItem value={key} id={`mode-${key}`} />
                       <Label htmlFor={`mode-${key}`} className="text-sm cursor-pointer">
-                        {config.mode} ({(config.minConfidence * 100).toFixed(0)}%+)
+                        {config.mode} ({(config.threshold * 100).toFixed(0)}%+)
                       </Label>
                     </div>
                   ))}

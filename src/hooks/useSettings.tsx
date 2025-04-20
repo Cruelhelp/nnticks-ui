@@ -1,57 +1,9 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/lib/supabase';
-import { useAuth } from '@/contexts/AuthContext';
-
-
+import { useAuth } from '@/contexts/useAuth';
 import { DEFAULT_SETTINGS } from './settingsUtils';
-
-
-export type UserSettings = {
-  theme: string;
-  accent: 'green' | 'blue' | 'purple' | 'red';
-  font: 'JetBrains Mono' | 'Fira Code' | 'Courier New' | 'Consolas' | 'Menlo' | 'Monaco' | 'Roboto Mono' | 'Source Code Pro' | 'VT323' | 'default' | 'sans-serif';
-  chartStyle: 'line' | 'candlestick' | 'bar';
-  terminalHeight: number;
-  sidebarWidth: number;
-  wsUrl: string;
-  apiKey: string;
-  subscription: string;
-  notifications: {
-    email: boolean;
-    predictions: boolean;
-    training: boolean;
-    market: boolean;
-  };
-};
-
-
-export const DEFAULT_SETTINGS: UserSettings = {
-  theme: 'dark',
-  accent: 'green',
-  font: 'VT323',
-  chartStyle: 'line',
-  terminalHeight: 200,
-  sidebarWidth: 200,
-  wsUrl: 'wss://ws.binaryws.com/websockets/v3?app_id=1089',
-  apiKey: '',
-  subscription: '{"ticks":"R_10"}',
-  notifications: {
-    email: false,
-    predictions: true,
-    training: true,
-    market: false
-  }
-};
-
-
-
-
-interface SettingsContextType {
-  settings: UserSettings;
-  updateSettings: (settings: Partial<UserSettings>) => Promise<void>;
-}
-
-const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
+import { UserSettings } from './settingsTypes';
+import { SettingsContext } from './SettingsContextObject';
 
 export const SettingsProvider = ({ children }: { children: ReactNode }) => {
   const [settings, setSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
@@ -162,14 +114,4 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
       {children}
     </SettingsContext.Provider>
   );
-};
-
-export const useSettings = () => {
-  const context = useContext(SettingsContext);
-  
-  if (context === undefined) {
-    throw new Error('useSettings must be used within a SettingsProvider');
-  }
-  
-  return context;
 };

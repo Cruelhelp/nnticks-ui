@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,8 +7,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { X, Minus, ChevronDown, ChevronUp, Shield, User, User2 } from 'lucide-react';
-import { useSettings } from '@/hooks/useSettings';
-import { useAuth } from '@/contexts/AuthContext';
+import { useSettings } from '@/hooks/useSettingsHook';
+import { useAuth } from '@/contexts/useAuth';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 
@@ -27,10 +26,15 @@ interface AdminUser {
   pro_status: boolean;
 }
 
+interface SupabaseUserRow {
+  user_id: string;
+  email?: string;
+  username: string;
+  created_at: string;
+  pro_status: boolean;
+}
 
 const Terminal: React.FC<TerminalProps> = ({ onClose, onMinimize, onMaximize }) => {
-
-export const Terminal: React.FC<TerminalProps> = ({ onClose, onMinimize, onMaximize }): JSX.Element => {
 
   const [history, setHistory] = useState<string[]>([
     'NNticks Terminal v1.0.0',
@@ -96,7 +100,7 @@ export const Terminal: React.FC<TerminalProps> = ({ onClose, onMinimize, onMaxim
     const args = cmd.split(' ').filter(arg => arg.length > 0);
     
     switch (args[0]) {
-      case 'help':
+      case 'help': {
         return `
 Available commands:
   help                  - Show this help
@@ -110,7 +114,8 @@ Available commands:
   admin                 - Access admin panel
   exit                  - Close terminal
 `;
-      case 'clear':
+      }
+      case 'clear': {
         setTimeout(() => {
           setHistory([
             'NNticks Terminal v1.0.0',
@@ -119,7 +124,8 @@ Available commands:
           ]);
         }, 10);
         return '';
-      case 'status':
+      }
+      case 'status': {
         return `
 System Status:
   CPU: 23% | Memory: 512MB | Uptime: ${Math.floor(Date.now() / 1000) % 86400}s
@@ -127,90 +133,38 @@ System Status:
   Connection: Binary.com (R_10) | Latency: ${10 + Math.floor(Math.random() * 20)}ms
   WebSocket: Connected
 `;
-      case 'whoami':
+      }
+      case 'whoami': {
         return userDetails?.username
           ? `Current user: ${userDetails.username} | Pro: ${userDetails.proStatus ? 'Yes' : 'No'} | Admin: ${userDetails.isAdmin ? 'Yes' : 'No'}`
           : 'Not logged in';
-
-      case 'market':
-
+      }
       case 'market': {
-
         const symbol = args[1] || 'R_10';
-        return `
-Market data for ${symbol.toUpperCase()}:
-  Current price: ${(6000 + Math.random() * 0.99).toFixed(2)}
-  24h change: ${(Math.random() * 2 - 1).toFixed(2)}%
-  Volatility: ${(Math.random() * 5 + 1).toFixed(2)}
-  RSI: ${Math.floor(30 + Math.random() * 40)}
-`;
-
-      case 'predict':
-
+        return `\nMarket data for ${symbol.toUpperCase()}:\n  Current price: ${(6000 + Math.random() * 0.99).toFixed(2)}\n  24h change: ${(Math.random() * 2 - 1).toFixed(2)}%\n  Volatility: ${(Math.random() * 5 + 1).toFixed(2)}\n  RSI: ${Math.floor(30 + Math.random() * 40)}\n`;
       }
       case 'predict': {
-
         const direction = args[1] || (Math.random() > 0.5 ? 'rise' : 'fall');
         const confidence = Math.floor(50 + Math.random() * 40);
-        return `
-Prediction generated:
-  Direction: ${direction.toUpperCase()}
-  Confidence: ${confidence}%
-  Timeframe: 3 ticks
-  Market: R_10
-  
-Running neural model...
-Analyzing market patterns...
-Computing probabilities...
-
-Prediction registered. Track results in Predictions tab.
-`;
-
-
+        return `\nPrediction generated:\n  Direction: ${direction.toUpperCase()}\n  Confidence: ${confidence}%\n  Timeframe: 3 ticks\n  Market: R_10\n  \nRunning neural model...\nAnalyzing market patterns...\nComputing probabilities...\n\nPrediction registered. Track results in Predictions tab.\n`;
       }
-
-      case 'train':
-        return `
-Starting neural network training...
-Epochs: 100 | Batch size: 32 | Learning rate: 0.001
-
-Progress: [----------] 0%
-         [#---------] 10%
-         [###-------] 30%
-         [#####-----] 50%
-         [#######---] 70%
-         [#########-] 90%
-         [##########] 100%
-
-Training complete!
-Accuracy: ${75 + Math.floor(Math.random() * 15)}%
-Loss: ${(0.1 + Math.random() * 0.2).toFixed(4)}
-
-Model saved as "model_${Date.now()}.nnt"
-`;
-      case 'version':
-        return `
-NNticks Terminal v1.0.0
-Neural Network Core: v2.3.4
-Market Connector: v1.1.2
-Prediction Engine: v3.0.1
-
-License: Pro${userDetails?.proStatus ? '' : ' (Trial)'}
-
-
-© 2025 Ruel McNeil. All rights reserved.
-
- 2025 Ruel McNeil. All rights reserved.
-
-`;
-      case 'admin':
+      case 'train': {
+        return `\nStarting neural network training...\nEpochs: 100 | Batch size: 32 | Learning rate: 0.001\n\nProgress: [----------] 0%\n         [#---------] 10%\n         [###-------] 30%\n         [#####-----] 50%\n         [#######---] 70%\n         [#########-] 90%\n         [##########] 100%\n\nTraining complete!\nAccuracy: ${75 + Math.floor(Math.random() * 15)}%\nLoss: ${(0.1 + Math.random() * 0.2).toFixed(4)}\n\nModel saved as model_${Date.now()}.nnt\n`;
+      }
+      case 'version': {
+        return `\nNNticks Terminal v1.0.0\nNeural Network Core: v2.3.4\nMarket Connector: v1.1.2\nPrediction Engine: v3.0.1\n\nLicense: Pro${userDetails?.proStatus ? '' : ' (Trial)'}\n\n\n 2025 Ruel McNeil. All rights reserved.\n`;
+      }
+      case 'admin': {
         setShowAdminPanel(true);
         return 'Opening admin panel...';
-      case 'exit':
+      }
+      case 'exit': {
         onClose();
         return 'Closing terminal...';
-      default:
+      }
+      default: {
         return `Command not found: ${args[0]}. Type "help" for available commands.`;
+      }
     }
   };
   
@@ -263,19 +217,7 @@ License: Pro${userDetails?.proStatus ? '' : ' (Trial)'}
       if (error) throw error;
       
       if (data) {
-
-        const formattedUsers = data.map((user: any) => ({
-
-        interface SupabaseUserRow {
-          user_id: string;
-          email?: string;
-          username: string;
-          created_at: string;
-          pro_status: boolean;
-        }
-
         const formattedUsers = data.map((user: SupabaseUserRow): AdminUser => ({
-
           id: user.user_id,
           email: user.email || 'No email',
           username: user.username,
@@ -441,7 +383,7 @@ License: Pro${userDetails?.proStatus ? '' : ' (Trial)'}
                           <TableCell>{user.created_at}</TableCell>
                           <TableCell>
                             {user.pro_status ? 
-                              <Badge className="bg-primary">PRO</Badge> : 
+                              <Badge variant="default">PRO</Badge> : 
                               <Badge variant="outline">Free</Badge>
                             }
                           </TableCell>
@@ -529,6 +471,3 @@ License: Pro${userDetails?.proStatus ? '' : ' (Trial)'}
 };
 
 export default Terminal;
-
-}
-

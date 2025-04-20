@@ -1,5 +1,4 @@
-
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import Logo from '@/components/Logo';
@@ -9,11 +8,12 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { useTheme } from '@/components/ui/theme-provider';
+import { useTheme } from '@/components/ui/themeUtils.tsx';
 import { Github, Mail, User, AlertCircle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 const Login = () => {
+  console.log('Login.tsx rendering');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
@@ -21,46 +21,65 @@ const Login = () => {
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
   const { setTheme, theme } = useTheme();
-  
+
+  // Debug fallback: show this in development mode to prove rendering
+  // if (process.env.NODE_ENV !== 'production') {
+  //   return (
+  //     <div style={{ background: 'red', color: 'white', padding: 20 }}>
+  //       <h1>Login Page Fallback</h1>
+  //       <p>If you see this, the Login component is rendering.</p>
+  //     </div>
+  //   );
+  // }
+
   // Login with email
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
-    
+
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
-      
+
       if (error) throw error;
-      
+
       if (data?.user) {
         toast.success('Login successful!');
         navigate('/');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error during login:', error);
-      setError(error.message || 'Failed to login');
+      let message = 'Failed to login';
+      if (
+        error &&
+        typeof error === 'object' &&
+        'message' in error &&
+        typeof (error as { message?: string }).message === 'string'
+      ) {
+        message = (error as { message: string }).message;
+      }
+      setError(message);
       toast.error('Login failed. Please check your credentials.');
     } finally {
       setIsLoading(false);
     }
   };
-  
+
   // Register with email
   const handleEmailRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
-    
+
     if (!username.trim()) {
       setError('Username is required');
       setIsLoading(false);
       return;
     }
-    
+
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -71,9 +90,9 @@ const Login = () => {
           }
         }
       });
-      
+
       if (error) throw error;
-      
+
       if (data?.user) {
         // Create user profile
         await supabase.from('users_extra').insert({
@@ -82,24 +101,33 @@ const Login = () => {
           registration_date: new Date().toISOString(),
           last_login: new Date().toISOString()
         });
-        
+
         toast.success('Registration successful! Please check your email for confirmation.');
         navigate('/');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error during registration:', error);
-      setError(error.message || 'Failed to register');
+      let message = 'Failed to register';
+      if (
+        error &&
+        typeof error === 'object' &&
+        'message' in error &&
+        typeof (error as { message?: string }).message === 'string'
+      ) {
+        message = (error as { message: string }).message;
+      }
+      setError(message);
       toast.error('Registration failed.');
     } finally {
       setIsLoading(false);
     }
   };
-  
+
   // Login with GitHub
   const handleGithubLogin = async () => {
     setIsLoading(true);
     setError(null);
-    
+
     try {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'github',
@@ -107,25 +135,25 @@ const Login = () => {
           redirectTo: `${window.location.origin}/`
         }
       });
-      
+
       if (error) {
         throw error;
       }
-      
+
       // Redirect will happen automatically
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('GitHub login error:', error);
       setError('Failed to login with GitHub. Provider might not be configured.');
       toast.error('GitHub login failed.');
       setIsLoading(false);
     }
   };
-  
+
   // Login with Google
   const handleGoogleLogin = async () => {
     setIsLoading(true);
     setError(null);
-    
+
     try {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -133,33 +161,33 @@ const Login = () => {
           redirectTo: `${window.location.origin}/`
         }
       });
-      
+
       if (error) {
         throw error;
       }
-      
+
       // Redirect will happen automatically
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Google login error:', error);
       setError('Failed to login with Google. Provider might not be configured.');
       toast.error('Google login failed.');
       setIsLoading(false);
     }
   };
-  
+
   // Guest login
   const handleGuestLogin = () => {
     localStorage.setItem('guestMode', 'true');
     localStorage.setItem('guestUsername', 'Guest User');
-    
+
     toast.success('Logged in as guest!');
     navigate('/');
   };
-  
+
   const themeToggle = () => {
     setTheme(theme === 'dark' ? 'light' : 'dark');
   };
-  
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-background">
       <div className="absolute top-4 right-4">
@@ -167,13 +195,13 @@ const Login = () => {
           {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
         </Button>
       </div>
-      
+
       <div className="flex flex-col items-center justify-center space-y-4 mb-8">
         <Logo size={56} />
         <h1 className="text-3xl font-bold">NNticks</h1>
         <p className="text-muted-foreground">Neural Network Trading Prediction Platform</p>
       </div>
-      
+
       <Card className="w-full max-w-lg shadow-lg">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl text-center">Welcome back</CardTitle>
@@ -189,7 +217,7 @@ const Login = () => {
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
-          
+
           <div className="flex flex-col gap-4">
             <Button
               variant="outline"
@@ -200,7 +228,7 @@ const Login = () => {
               {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Github className="mr-2 h-4 w-4" />}
               Continue with GitHub
             </Button>
-            
+
             <Button
               variant="outline"
               disabled={isLoading}
@@ -228,7 +256,7 @@ const Login = () => {
               </svg>
               Continue with Google
             </Button>
-            
+
             <div className="relative my-2">
               <div className="absolute inset-0 flex items-center">
                 <span className="w-full border-t" />
@@ -239,13 +267,13 @@ const Login = () => {
                 </span>
               </div>
             </div>
-            
+
             <Tabs defaultValue="login" className="w-full">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="login">Login</TabsTrigger>
                 <TabsTrigger value="register">Register</TabsTrigger>
               </TabsList>
-              
+
               <TabsContent value="login">
                 <form onSubmit={handleEmailLogin} className="space-y-4 mt-4">
                   <div className="space-y-2">
@@ -288,7 +316,7 @@ const Login = () => {
                   </Button>
                 </form>
               </TabsContent>
-              
+
               <TabsContent value="register">
                 <form onSubmit={handleEmailRegister} className="space-y-4 mt-4">
                   <div className="space-y-2">

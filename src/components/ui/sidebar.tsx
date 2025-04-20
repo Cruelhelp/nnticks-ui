@@ -5,7 +5,7 @@ import { PanelLeft } from "lucide-react"
 
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
+import { Button, ButtonProps } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { Sheet, SheetContent } from "@/components/ui/sheet"
@@ -17,33 +17,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 
-const SIDEBAR_COOKIE_NAME = "sidebar:state"
-const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
-const SIDEBAR_WIDTH = "16rem"
-const SIDEBAR_WIDTH_MOBILE = "18rem"
-const SIDEBAR_WIDTH_ICON = "3rem"
-const SIDEBAR_KEYBOARD_SHORTCUT = "b"
-
-type SidebarContext = {
-  state: "expanded" | "collapsed"
-  open: boolean
-  setOpen: (open: boolean) => void
-  openMobile: boolean
-  setOpenMobile: (open: boolean) => void
-  isMobile: boolean
-  toggleSidebar: () => void
-}
-
-const SidebarContext = React.createContext<SidebarContext | null>(null)
-
-function useSidebar() {
-  const context = React.useContext(SidebarContext)
-  if (!context) {
-    throw new Error("useSidebar must be used within a SidebarProvider.")
-  }
-
-  return context
-}
+import { SIDEBAR_COOKIE_NAME, SIDEBAR_COOKIE_MAX_AGE, SIDEBAR_WIDTH, SIDEBAR_WIDTH_MOBILE, SIDEBAR_WIDTH_ICON, SIDEBAR_KEYBOARD_SHORTCUT } from './sidebarUtils';
+import { useSidebar, SidebarContext } from './useSidebar';
 
 const SidebarProvider = React.forwardRef<
   HTMLDivElement,
@@ -114,7 +89,7 @@ const SidebarProvider = React.forwardRef<
     // This makes it easier to style the sidebar with Tailwind classes.
     const state = open ? "expanded" : "collapsed"
 
-    const contextValue = React.useMemo<SidebarContext>(
+    const contextValue = React.useMemo<ReturnType<typeof useSidebar> & { state: string }>(
       () => ({
         state,
         open,
@@ -267,8 +242,8 @@ const SidebarTrigger = React.forwardRef<
     <Button
       ref={ref}
       data-sidebar="trigger"
-      variant="ghost"
-      size="icon"
+      variant={typeof props.variant === 'string' && (props.variant === 'default' || props.variant === 'outline') ? props.variant : 'default'}
+      size={typeof props.size === 'string' && (props.size === 'default' || props.size === 'sm' || props.size === 'lg') ? props.size : 'default'}
       className={cn("h-7 w-7", className)}
       onClick={(event) => {
         onClick?.(event)
@@ -560,7 +535,7 @@ const SidebarMenuButton = React.forwardRef<
         data-sidebar="menu-button"
         data-size={size}
         data-active={isActive}
-        className={cn(sidebarMenuButtonVariants({ variant, size }), className)}
+        className={cn(sidebarMenuButtonVariants({ variant: typeof variant === 'string' && (variant === 'default' || variant === 'outline') ? variant : 'default', size: typeof size === 'string' && (size === 'default' || size === 'sm' || size === 'lg') ? size : 'default' }), className)}
         {...props}
       />
     )
@@ -734,7 +709,6 @@ const SidebarMenuSubButton = React.forwardRef<
 SidebarMenuSubButton.displayName = "SidebarMenuSubButton"
 
 export {
-<<<<<<< HEAD
   Sidebar,
   SidebarContent,
   SidebarFooter,
@@ -744,8 +718,6 @@ export {
   SidebarGroupLabel,
   SidebarHeader,
   SidebarInput,
-=======
->>>>>>> 6e3fa6c (Initial commit: fix lint errors in Terminal.tsx, Index.tsx; update LINT_ISSUES_TRACKER.md; begin work on Login.tsx lint issues)
   SidebarInset,
   SidebarMenu,
   SidebarMenuAction,
@@ -760,5 +732,4 @@ export {
   SidebarRail,
   SidebarSeparator,
   SidebarTrigger,
-  useSidebar,
 }

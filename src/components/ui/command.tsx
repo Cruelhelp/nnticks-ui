@@ -6,28 +6,14 @@ import { Search } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
 
-const Command = React.forwardRef<
-  React.ElementRef<typeof CommandPrimitive>,
-  React.ComponentPropsWithoutRef<typeof CommandPrimitive>
->(({ className, ...props }, ref) => (
-  <CommandPrimitive
-    ref={ref}
-    className={cn(
-      "flex h-full w-full flex-col overflow-hidden rounded-md bg-popover text-popover-foreground",
-      className
-    )}
-    {...props}
-  />
-))
-Command.displayName = CommandPrimitive.displayName
+// Removed empty interface: use React.HTMLAttributes<HTMLDivElement> directly
+const Command = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ className, ...props }, ref) => {
+  return <div className={className} ref={ref} {...props} />;
+});
 
-<<<<<<< HEAD
-interface CommandDialogProps extends DialogProps {}
+Command.displayName = "Command";
 
-const CommandDialog = ({ children, ...props }: CommandDialogProps) => {
-=======
 const CommandDialog = ({ children, ...props }: DialogProps) => {
->>>>>>> 6e3fa6c (Initial commit: fix lint errors in Terminal.tsx, Index.tsx; update LINT_ISSUES_TRACKER.md; begin work on Login.tsx lint issues)
   return (
     <Dialog {...props}>
       <DialogContent className="overflow-hidden p-0 shadow-lg">

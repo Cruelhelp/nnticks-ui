@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Bell } from 'lucide-react';
 import {
@@ -9,7 +8,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/useAuth';
 
 // Define notification type
 interface Notification {

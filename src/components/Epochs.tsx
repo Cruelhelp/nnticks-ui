@@ -1,12 +1,11 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Brain, Clock, BarChart4, Calendar, Download, ChevronRight, Info } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/useAuth';
 import { trainingService, EpochData } from '@/services/TrainingService';
 import { toast } from 'sonner';
 import { neuralNetwork } from '@/lib/neuralNetwork';
@@ -18,7 +17,7 @@ const Epochs: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [activeTab, setActiveTab] = useState<string>('history');
   
-  const loadEpochs = async () => {
+  const loadEpochs = useCallback(async () => {
     if (!user) return;
     
     setIsLoading(true);
@@ -31,14 +30,14 @@ const Epochs: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [user]);
   
   useEffect(() => {
     if (user) {
       trainingService.setUserId(user.id);
       loadEpochs();
     }
-  }, [user]);
+  }, [user, loadEpochs]);
   
   const handleImportModelClick = (epoch: EpochData) => {
     try {

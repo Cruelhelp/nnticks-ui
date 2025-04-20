@@ -1,9 +1,8 @@
-
 import React, { useState } from 'react';
 import { PayPalScriptProvider, PayPalButtons } from '@paypal/react-paypal-js';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/useAuth';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { Shield, Award, CheckCircle } from 'lucide-react';
@@ -26,22 +25,18 @@ const ProSubscription: React.FC<ProSubscriptionProps> = ({ onSuccess }) => {
     components: "buttons",
   };
 
-<<<<<<< HEAD
-  const handlePaymentSuccess = async (details: any) => {
-=======
   interface PayPalDetails {
     id: string;
     status: string;
-    purchase_units?: Array<any>;
+    purchase_units?: Array<Record<string, unknown>>;
     payer?: {
       name?: { given_name?: string; surname?: string };
       email_address?: string;
     };
-    [key: string]: any;
+    [key: string]: unknown;
   }
 
   const handlePaymentSuccess = async (details: PayPalDetails) => {
->>>>>>> 6e3fa6c (Initial commit: fix lint errors in Terminal.tsx, Index.tsx; update LINT_ISSUES_TRACKER.md; begin work on Login.tsx lint issues)
     try {
       setLoading(true);
       
@@ -98,16 +93,12 @@ const ProSubscription: React.FC<ProSubscriptionProps> = ({ onSuccess }) => {
     });
   };
 
-<<<<<<< HEAD
-  const onApprove = async (data: any) => {
-=======
   interface PayPalApproveData {
     orderID?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   }
 
   const onApprove = async (data: PayPalApproveData) => {
->>>>>>> 6e3fa6c (Initial commit: fix lint errors in Terminal.tsx, Index.tsx; update LINT_ISSUES_TRACKER.md; begin work on Login.tsx lint issues)
     // Simulate order capture
     const captureDetails = {
       id: data.orderID || "SIMULATED_ORDER_ID",
@@ -128,7 +119,6 @@ const ProSubscription: React.FC<ProSubscriptionProps> = ({ onSuccess }) => {
     };
     
     await handlePaymentSuccess(captureDetails);
-    // Remove the boolean return value to fix the TypeScript error
   };
 
   return (

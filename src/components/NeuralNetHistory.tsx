@@ -1,11 +1,10 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Clock, Brain, ArrowUpDown, Download, Upload, GitBranch } from 'lucide-react';
 import { toast } from 'sonner';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/useAuth';
 import { neuralNetwork, NetworkModel } from '@/lib/neuralNetwork';
 import { supabase } from '@/lib/supabase';
 
@@ -15,18 +14,8 @@ const NeuralNetHistory = () => {
   const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();
 
-<<<<<<< HEAD
-  useEffect(() => {
-    loadModels();
-  }, [user]);
-
-  const loadModels = async () => {
-    setIsLoading(true);
-    
-=======
   const loadModels = React.useCallback(async () => {
     setIsLoading(true);
->>>>>>> 6e3fa6c (Initial commit: fix lint errors in Terminal.tsx, Index.tsx; update LINT_ISSUES_TRACKER.md; begin work on Login.tsx lint issues)
     try {
       // Load models from Supabase if user is logged in
       if (user) {
@@ -35,59 +24,17 @@ const NeuralNetHistory = () => {
           .select('*')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false });
-<<<<<<< HEAD
-          
-        if (error) {
-          throw error;
-        }
-        
-=======
-        if (error) {
-          throw error;
-        }
->>>>>>> 6e3fa6c (Initial commit: fix lint errors in Terminal.tsx, Index.tsx; update LINT_ISSUES_TRACKER.md; begin work on Login.tsx lint issues)
+        if (error) throw error;
         if (data && data.length > 0) {
           // Transform data to match NetworkModel structure
           const loadedModels = data.map(item => ({
             config: item.config,
             weights: item.weights,
-<<<<<<< HEAD
-            biases: item.weights, // Biases might be stored within weights in DB
-=======
             biases: item.biases || item.weights, // Use biases if available, fallback to weights
->>>>>>> 6e3fa6c (Initial commit: fix lint errors in Terminal.tsx, Index.tsx; update LINT_ISSUES_TRACKER.md; begin work on Login.tsx lint issues)
             accuracy: item.accuracy,
             timestamp: item.created_at,
             version: item.name || '1.0.0'
           }));
-<<<<<<< HEAD
-          
-          setModels(loadedModels);
-          
-          // Set the most recent model as active
-          setActiveModel(data[0].id);
-        } else {
-          // If no models in DB, use the current model in memory
-          const currentModel = neuralNetwork.exportModel();
-          setModels([currentModel]);
-        }
-      } else {
-        // If not logged in, use the current model in memory
-        const currentModel = neuralNetwork.exportModel();
-        setModels([currentModel]);
-      }
-    } catch (error) {
-      console.error('Error loading models:', error);
-      toast.error('Failed to load models');
-      
-      // Fallback to current model
-      const currentModel = neuralNetwork.exportModel();
-      setModels([currentModel]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-=======
           setModels(loadedModels);
         } else {
           setModels([]);
@@ -105,8 +52,6 @@ const NeuralNetHistory = () => {
   useEffect(() => {
     loadModels();
   }, [user, loadModels]);
-
->>>>>>> 6e3fa6c (Initial commit: fix lint errors in Terminal.tsx, Index.tsx; update LINT_ISSUES_TRACKER.md; begin work on Login.tsx lint issues)
 
   const handleImportModel = () => {
     const input = document.createElement('input');

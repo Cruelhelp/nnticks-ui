@@ -1,8 +1,7 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/useAuth';
 import { supabase } from '@/lib/supabase';
 import { Trophy, Medal, Clock } from 'lucide-react';
 import { toast } from 'sonner';
@@ -202,7 +201,7 @@ const Leaderboard = () => {
       </Card>
       
       <div className="text-center text-xs text-muted-foreground mt-4">
-        Copyright © 2025 Ruel McNeil
+        Copyright 2025 Ruel McNeil
       </div>
     </div>
   );

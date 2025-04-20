@@ -1,20 +1,20 @@
-
 import React, { useState, useEffect } from 'react';
 import { PayPalScriptProvider, PayPalButtons } from '@paypal/react-paypal-js';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Check, Star } from 'lucide-react';
 import { toast } from 'sonner';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/useAuth';
 import { supabase } from '@/lib/supabase';
 
 interface PayPalCheckoutProps {
   onSuccess?: () => void;
-<<<<<<< HEAD
-  onError?: (error: any) => void;
-=======
   onError?: (error: unknown) => void;
->>>>>>> 6e3fa6c (Initial commit: fix lint errors in Terminal.tsx, Index.tsx; update LINT_ISSUES_TRACKER.md; begin work on Login.tsx lint issues)
+}
+
+interface PayPalApproveData {
+  orderID: string;
+  // Add more properties if PayPal provides them
 }
 
 const PayPalCheckout: React.FC<PayPalCheckoutProps> = ({ onSuccess, onError }) => {
@@ -58,16 +58,7 @@ const PayPalCheckout: React.FC<PayPalCheckoutProps> = ({ onSuccess, onError }) =
     }
   };
 
-<<<<<<< HEAD
-  const handleApprove = async (data: any) => {
-=======
-  interface PayPalApproveData {
-  orderID: string;
-  // Add more properties if PayPal provides them
-}
-
-const handleApprove = async (data: PayPalApproveData) => {
->>>>>>> 6e3fa6c (Initial commit: fix lint errors in Terminal.tsx, Index.tsx; update LINT_ISSUES_TRACKER.md; begin work on Login.tsx lint issues)
+  const handleApprove = async (data: PayPalApproveData) => {
     try {
       setMessage("Payment processing...");
       
@@ -193,4 +184,4 @@ const handleApprove = async (data: PayPalApproveData) => {
   );
 };
 
-export default PayPalCheckout;
+export { PayPalCheckout };

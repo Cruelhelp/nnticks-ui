@@ -1,0 +1,135 @@
+
+/home/ruel/CascadeProjects/nnticks-ui/src/components/Epochs.tsx
+  41:6  warning  React Hook useEffect has a missing dependency: 'loadEpochs'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+/home/ruel/CascadeProjects/nnticks-ui/src/components/History.tsx
+  39:16  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/ruel/CascadeProjects/nnticks-ui/src/components/NeuralNet.tsx
+  47:64  error    Unexpected any. Specify a different type                                                                            @typescript-eslint/no-explicit-any
+  50:48  error    Unexpected any. Specify a different type                                                                            @typescript-eslint/no-explicit-any
+  58:68  error    Unexpected any. Specify a different type                                                                            @typescript-eslint/no-explicit-any
+  75:6   warning  React Hook useEffect has a missing dependency: 'loadPredictions'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+/home/ruel/CascadeProjects/nnticks-ui/src/components/NeuralNetworkSimulation.tsx
+  55:9  error  'newNeurons' is never reassigned. Use 'const' instead      prefer-const
+  56:9  error  'newConnections' is never reassigned. Use 'const' instead  prefer-const
+
+/home/ruel/CascadeProjects/nnticks-ui/src/components/PayPalCheckout.tsx
+  188:10  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+/home/ruel/CascadeProjects/nnticks-ui/src/components/Predictions.tsx
+  365:6  warning  React Hook React.useCallback has an unnecessary dependency: 'supabase'. Either exclude it or remove the dependency array. Outer scope values like 'supabase' aren't valid dependencies because mutating them doesn't re-render the component  react-hooks/exhaustive-deps
+  391:6  warning  React Hook useEffect has a missing dependency: 'generatePrediction'. Either include it or remove the dependency array                                                                                                                         react-hooks/exhaustive-deps
+  459:6  warning  React Hook useCallback has an unnecessary dependency: 'toast'. Either exclude it or remove the dependency array. Outer scope values like 'toast' aren't valid dependencies because mutating them doesn't re-render the component              react-hooks/exhaustive-deps
+
+/home/ruel/CascadeProjects/nnticks-ui/src/components/ProSubscription.tsx
+  31:28  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  36:20  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  98:20  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/ruel/CascadeProjects/nnticks-ui/src/components/Terminal.tsx
+  148:6  error  Parsing error: Declaration or statement expected
+
+/home/ruel/CascadeProjects/nnticks-ui/src/components/Training.tsx
+  277:9  warning  The 'completeMission' function makes the dependencies of useEffect Hook (at line 405) change on every render. Move it inside the useEffect callback. Alternatively, wrap the definition of 'completeMission' in its own useCallback() Hook  react-hooks/exhaustive-deps
+
+/home/ruel/CascadeProjects/nnticks-ui/src/components/UpdatedAdminPanel.tsx
+  67:0  error  Parsing error: Merge conflict marker encountered
+
+/home/ruel/CascadeProjects/nnticks-ui/src/components/WebSocketDebug.tsx
+  104:35  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/ruel/CascadeProjects/nnticks-ui/src/components/ui/badge.tsx
+  10:17  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+/home/ruel/CascadeProjects/nnticks-ui/src/components/ui/button.tsx
+  53:18  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+/home/ruel/CascadeProjects/nnticks-ui/src/components/ui/command.tsx
+  9:18  error  An interface declaring no members is equivalent to its supertype  @typescript-eslint/no-empty-object-type
+
+/home/ruel/CascadeProjects/nnticks-ui/src/components/ui/form.tsx
+  168:0  error  Parsing error: Merge conflict marker encountered
+
+/home/ruel/CascadeProjects/nnticks-ui/src/components/ui/navigation-menu.tsx
+  119:0  error  Parsing error: Merge conflict marker encountered
+
+/home/ruel/CascadeProjects/nnticks-ui/src/components/ui/sidebar.tsx
+  760:3  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+/home/ruel/CascadeProjects/nnticks-ui/src/components/ui/sonner.tsx
+  32:0  error  Parsing error: Merge conflict marker encountered
+
+/home/ruel/CascadeProjects/nnticks-ui/src/components/ui/textarea.tsx
+  3:18  error  An interface declaring no members is equivalent to its supertype  @typescript-eslint/no-empty-object-type
+
+/home/ruel/CascadeProjects/nnticks-ui/src/components/ui/theme-provider.tsx
+  12:10  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+/home/ruel/CascadeProjects/nnticks-ui/src/components/ui/toggle.tsx
+  41:18  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+/home/ruel/CascadeProjects/nnticks-ui/src/contexts/AuthContext.tsx
+  107:6   warning  React Hook useEffect has a missing dependency: 'fetchUserDetails'. Either include it or remove the dependency array             react-hooks/exhaustive-deps
+  278:14  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+/home/ruel/CascadeProjects/nnticks-ui/src/hooks/usePersistentWebSocket.ts
+  135:39  error  Parsing error: ',' expected
+
+/home/ruel/CascadeProjects/nnticks-ui/src/hooks/usePredictions.ts
+  37:8  error  Parsing error: ':' expected
+
+/home/ruel/CascadeProjects/nnticks-ui/src/hooks/useSettings.tsx
+   28:14  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+  167:14  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+/home/ruel/CascadeProjects/nnticks-ui/src/lib/neuralNetwork.ts
+  455:17  error  Parsing error: ';' expected
+
+/home/ruel/CascadeProjects/nnticks-ui/src/lib/utils.ts
+  15:2  error  Parsing error: Declaration or statement expected
+
+/home/ruel/CascadeProjects/nnticks-ui/src/pages/Splash.tsx
+  39:6  warning  React Hook useEffect has a missing dependency: 'icons.length'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  61:6  warning  React Hook useEffect has a missing dependency: 'messages'. Either include it or remove the dependency array      react-hooks/exhaustive-deps
+
+/home/ruel/CascadeProjects/nnticks-ui/src/services/EpochService.ts
+   24:32  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  313:26  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/ruel/CascadeProjects/nnticks-ui/src/services/TrainingService.ts
+   11:10  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   31:15  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   40:15  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   51:15  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   99:77  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  126:17  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  352:12  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  356:18  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  428:49  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/ruel/CascadeProjects/nnticks-ui/src/services/WebSocketManager.ts
+  138:34  error  Unexpected any. Specify a different type                                                                                 @typescript-eslint/no-explicit-any
+  143:33  error  Unexpected any. Specify a different type                                                                                 @typescript-eslint/no-explicit-any
+  275:38  error  The `Function` type accepts any function-like value.
+Prefer explicitly defining any function parameters and return type  @typescript-eslint/no-unsafe-function-type
+  279:39  error  The `Function` type accepts any function-like value.
+Prefer explicitly defining any function parameters and return type  @typescript-eslint/no-unsafe-function-type
+
+/home/ruel/CascadeProjects/nnticks-ui/src/services/WebSocketService.ts
+  196:38  error  The `Function` type accepts any function-like value.
+Prefer explicitly defining any function parameters and return type  @typescript-eslint/no-unsafe-function-type
+  200:39  error  The `Function` type accepts any function-like value.
+Prefer explicitly defining any function parameters and return type  @typescript-eslint/no-unsafe-function-type
+  204:40  error  The `Function` type accepts any function-like value.
+Prefer explicitly defining any function parameters and return type  @typescript-eslint/no-unsafe-function-type
+  205:35  error  Unexpected any. Specify a different type                                                                                 @typescript-eslint/no-explicit-any
+  348:42  error  Unexpected any. Specify a different type                                                                                 @typescript-eslint/no-explicit-any
+
+/home/ruel/CascadeProjects/nnticks-ui/src/types/UserTypes.ts
+  15:20  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+✖ 60 problems (42 errors, 18 warnings)
+  2 errors and 0 warnings potentially fixable with the `--fix` option.
+

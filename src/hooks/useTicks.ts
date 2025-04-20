@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { TickData } from '@/types/chartTypes';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/useAuth';
 import { tickService } from '@/services/TickService';
 import { trainingService } from '@/services/TrainingService';
 

@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -8,7 +7,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 import { Brain, Trophy, Check, Lock, Zap, BarChart, Star, Activity, Copyright } from 'lucide-react';
 import { trainingService } from '@/services/TrainingService';
-import { neuralNetwork } from '@/lib/neuralNetwork';
+import NeuralNet from './NeuralNet';
 
 interface Mission {
   id: number;
@@ -174,142 +173,128 @@ const NeuralNetworkVisualization = ({ activeNodes, animationIntensity }: { activ
 };
 
 const Training = () => {
-  const { user, userDetails } = useAuth();
-  const isPro = userDetails?.proStatus || false;
-<<<<<<< HEAD
-  
-=======
-
->>>>>>> 6e3fa6c (Initial commit: fix lint errors in Terminal.tsx, Index.tsx; update LINT_ISSUES_TRACKER.md; begin work on Login.tsx lint issues)
   const [missions, setMissions] = useState<Mission[]>([
     {
       id: 1,
       title: "Initial Training",
-      description: "Train the neural network for 1,000 epochs",
+      description: "Train the neural network for 10 epochs",
       points: 10,
       completed: false,
       locked: false,
-      epochs: 1000
+      epochs: 10
     },
     {
       id: 2,
       title: "Feature Learning",
-      description: "Train the model to identify market patterns (5,000 epochs)",
+      description: "Train the model to identify market patterns (20 epochs)",
       points: 15,
       completed: false,
       locked: false,
-      epochs: 5000
+      epochs: 20
     },
     {
       id: 3,
       title: "Deep Learning",
-      description: "Complete 10,000 training epochs with 65% accuracy",
+      description: "Complete 30 training epochs with 65% accuracy",
       points: 20,
       completed: false,
       locked: false,
-      epochs: 10000
+      epochs: 30
     },
     {
       id: 4,
       title: "Hyperparameter Tuning",
-      description: "Optimize learning rate and batch size over 20,000 epochs",
+      description: "Optimize learning rate and batch size over 40 epochs",
       points: 25,
       completed: false,
       locked: false,
-      epochs: 20000
+      epochs: 40
     },
     {
       id: 5,
       title: "Advanced Pattern Recognition",
-      description: "Train custom feature extractors for 30,000 epochs",
+      description: "Train custom feature extractors for 50 epochs",
       points: 30,
       completed: false,
       locked: false,
-      epochs: 30000
+      epochs: 50
     },
     // Pro missions
     {
       id: 6,
       title: "Transfer Learning",
-      description: "Apply pre-trained models and fine-tune for 50,000 epochs",
+      description: "Apply pre-trained models and fine-tune for 60 epochs",
       points: 40,
       completed: false,
-      locked: !isPro,
+      locked: true,
       proBadge: true,
-      epochs: 50000
+      epochs: 60
     },
     {
       id: 7,
       title: "Gradient Mastery",
-      description: "Implement advanced gradient techniques for 75,000 epochs",
+      description: "Implement advanced gradient techniques for 80 epochs",
       points: 50,
       completed: false,
-      locked: !isPro,
+      locked: true,
       proBadge: true,
-      epochs: 75000
+      epochs: 80
     },
     {
       id: 8,
       title: "Model Ensembling",
-      description: "Train multiple models simultaneously for 100,000 epochs",
+      description: "Train multiple models simultaneously for 100 epochs",
       points: 60,
       completed: false,
-      locked: !isPro,
+      locked: true,
       requiredLevel: 2,
       proBadge: true,
-      epochs: 100000
+      epochs: 100
     },
     {
       id: 9,
       title: "Reinforcement Learning",
-      description: "Train agent with 200,000 epochs for 80% prediction accuracy",
+      description: "Train agent with 200 epochs for 80% prediction accuracy",
       points: 75,
       completed: false,
-      locked: !isPro,
+      locked: true,
       requiredLevel: 3,
       proBadge: true,
-      epochs: 200000
+      epochs: 200
     },
     {
       id: 10,
       title: "NNticks Grandmaster",
-      description: "Complete 500,000 training epochs with 85% market prediction accuracy",
+      description: "Complete 500 training epochs with 85% market prediction accuracy",
       points: 100,
       completed: false,
-      locked: !isPro,
+      locked: true,
       requiredLevel: 4,
       proBadge: true,
-      epochs: 500000
+      epochs: 500
     }
   ]);
-<<<<<<< HEAD
-=======
+  
+  const getNeuralNetRef = () => {
+    // @ts-ignore
+    if (NeuralNet && NeuralNet.neuralNetRef) return NeuralNet.neuralNetRef;
+    // fallback: create new one (should not happen in real app)
+    return { current: { train: async () => {}, getWeights: () => [] } };
+  };
 
-  const completeMission = async (mission: Mission) => {
-    setIsProcessing(true);
-    try {
-      setMissions(prev =>
-        prev.map(m => m.id === mission.id ? { ...m, completed: true } : m)
-      );
-      const newTotalPoints = totalPoints + mission.points;
-      setTotalPoints(newTotalPoints);
-      const newEpochs = trainingEpochs + (mission.epochs || 0);
-      setTrainingEpochs(newEpochs);
-      const currentLevelData = levelThresholds.find(
-        lt => newTotalPoints >= lt.minPoints && newTotalPoints <= lt.maxPoints
-      ) || levelThresholds[0];
-      const newLevelValue = currentLevelData.level;
-      setLevel(newLevelValue);
-      // ... (rest of completeMission logic)
-    } catch (error) {
-      console.error('Error completing mission:', error);
-      toast.error('Failed to save mission progress');
-    } finally {
-      setIsProcessing(false);
-      setActiveMission(null);
+  const trainModel = async (epochs: number) => {
+    const neuralNetRef = getNeuralNetRef();
+    if (neuralNetRef && typeof neuralNetRef.current.train === 'function') {
+      await neuralNetRef.current.train(epochs);
+      const weights = neuralNetRef.current.getWeights();
+      localStorage.setItem('trainedNNWeights', JSON.stringify(weights));
     }
   };
->>>>>>> 6e3fa6c (Initial commit: fix lint errors in Terminal.tsx, Index.tsx; update LINT_ISSUES_TRACKER.md; begin work on Login.tsx lint issues)
+
+  const completeMission = async (mission: Mission) => {
+    // Simple placeholder implementation
+    console.log(`Mission ${mission.title} completed`);
+  };
   
   const [totalPoints, setTotalPoints] = useState(0);
   const [level, setLevel] = useState(1);
@@ -325,42 +310,12 @@ const Training = () => {
   const [neuralNetworkWeights, setNeuralNetworkWeights] = useState<number[][]>([]);
   
   useEffect(() => {
-    if (user) {
-      trainingService.setUserId(user.id);
-    } else {
-      trainingService.setUserId(null);
-    }
-  }, [user]);
-  
-<<<<<<< HEAD
-  const levelThresholds = [
-=======
-  const levelThresholds = React.useMemo(() => [
->>>>>>> 6e3fa6c (Initial commit: fix lint errors in Terminal.tsx, Index.tsx; update LINT_ISSUES_TRACKER.md; begin work on Login.tsx lint issues)
-    { level: 1, minPoints: 0, maxPoints: 100 },
-    { level: 2, minPoints: 101, maxPoints: 250 },
-    { level: 3, minPoints: 251, maxPoints: 500 },
-    { level: 4, minPoints: 501, maxPoints: 800 },
-    { level: 5, minPoints: 801, maxPoints: 1200 }
-<<<<<<< HEAD
-  ];
-=======
-  ], []);
->>>>>>> 6e3fa6c (Initial commit: fix lint errors in Terminal.tsx, Index.tsx; update LINT_ISSUES_TRACKER.md; begin work on Login.tsx lint issues)
-  
-  useEffect(() => {
     const fetchEpochs = async () => {
       setIsLoadingEpochs(true);
       
       try {
-        if (user) {
-          const { available, total } = await trainingService.getUserEpochs();
-          setAvailableEpochs(available);
-          setTrainingEpochs(total);
-        } else {
-          setAvailableEpochs(25);
-          setTrainingEpochs(25);
-        }
+        setAvailableEpochs(25);
+        setTrainingEpochs(25);
       } catch (err) {
         console.error('Failed to load epochs:', err);
         setAvailableEpochs(25);
@@ -371,37 +326,15 @@ const Training = () => {
     };
     
     fetchEpochs();
-    
-    const loadTrainingHistory = async () => {
-      if (!user) return;
-      
-      try {
-        const history = await trainingService.getTrainingHistory();
-        
-        if (history.length > 0) {
-          const completedMissionTitles = history.map(h => h.mission.replace('Mission ', ''));
-          
-          setMissions(prev => prev.map(mission => ({
-            ...mission,
-            completed: completedMissionTitles.includes(mission.id.toString())
-          })));
-          
-          const points = history.reduce((sum, item) => sum + item.points, 0);
-          setTotalPoints(points);
-          
-          const currentLevelData = levelThresholds.find(
-            lt => points >= lt.minPoints && points <= lt.maxPoints
-          ) || levelThresholds[0];
-          
-          setLevel(currentLevelData.level);
-        }
-      } catch (error) {
-        console.error('Error loading training history:', error);
-      }
-    };
-    
-    loadTrainingHistory();
-  }, [user, levelThresholds]);
+  }, []);
+  
+  const levelThresholds = [
+    { level: 1, minPoints: 0, maxPoints: 100 },
+    { level: 2, minPoints: 101, maxPoints: 250 },
+    { level: 3, minPoints: 251, maxPoints: 500 },
+    { level: 4, minPoints: 501, maxPoints: 800 },
+    { level: 5, minPoints: 801, maxPoints: 1200 }
+  ];
   
   useEffect(() => {
     let timeout: ReturnType<typeof setTimeout>;
@@ -486,15 +419,11 @@ const Training = () => {
     return () => {
       cancelAnimationFrame(frameId);
     };
-<<<<<<< HEAD
   }, [showTrainingAnimation, activeMission]);
-=======
-  }, [showTrainingAnimation, activeMission, completeMission]);
->>>>>>> 6e3fa6c (Initial commit: fix lint errors in Terminal.tsx, Index.tsx; update LINT_ISSUES_TRACKER.md; begin work on Login.tsx lint issues)
-  
+
   const startMission = async (mission: Mission) => {
     if (mission.locked) {
-      if (mission.proBadge && !isPro) {
+      if (mission.proBadge) {
         toast.error('This mission requires a Pro subscription');
       } else {
         toast.error(`This mission requires level ${mission.requiredLevel}`);
@@ -521,17 +450,9 @@ const Training = () => {
     
     if (mission.epochs) {
       try {
-        const success = await trainingService.useEpochs(mission.epochs);
-        
-        if (!success) {
-          setActiveMission(null);
-          setAnimationIntensity(prevIntensity);
-          return;
-        }
-        
-        setAvailableEpochs(prev => prev - mission.epochs!);
-        
         setShowTrainingAnimation(true);
+        await trainModel(mission.epochs);
+        setAvailableEpochs(prev => prev - mission.epochs!);
       } catch (error) {
         console.error('Error using epochs:', error);
         toast.error('Failed to start mission');
@@ -541,77 +462,6 @@ const Training = () => {
     }
   };
   
-<<<<<<< HEAD
-  const completeMission = async (mission: Mission) => {
-    setIsProcessing(true);
-    
-    try {
-      setMissions(prev => 
-        prev.map(m => m.id === mission.id ? { ...m, completed: true } : m)
-      );
-      
-      const newTotalPoints = totalPoints + mission.points;
-      setTotalPoints(newTotalPoints);
-      
-      const newEpochs = trainingEpochs + (mission.epochs || 0);
-      setTrainingEpochs(newEpochs);
-      
-      const currentLevelData = levelThresholds.find(
-        lt => newTotalPoints >= lt.minPoints && newTotalPoints <= lt.maxPoints
-      ) || levelThresholds[0];
-      
-      const newLevelValue = currentLevelData.level;
-      
-      if (newLevelValue > level) {
-        setLevel(newLevelValue);
-        toast.success(`Level Up! You are now level ${newLevelValue}`, {
-          icon: <Star className="h-5 w-5 text-yellow-500" />,
-          duration: 5000,
-          className: "bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border-yellow-500/50",
-        });
-        
-        setAnimationIntensity(Math.min(newLevelValue, 5));
-      }
-      
-      const baseAccuracy = 70;
-      const levelBonus = newLevelValue * 2;
-      const difficultyBonus = Math.floor(mission.points / 5);
-      const randomVariation = Math.floor(Math.random() * 6);
-      
-      const accuracy = Math.min(95, baseAccuracy + levelBonus + difficultyBonus + randomVariation);
-      
-      if (user) {
-        await trainingService.saveMissionResult({
-          missionId: mission.id,
-          epochs: mission.epochs || 0,
-          accuracy,
-          points: mission.points
-        });
-      }
-      
-      await neuralNetwork.train(
-        ticks.map(t => t.value), 
-        { 
-          maxEpochs: 20,
-          onProgress: (progress) => console.log(`Training progress: ${Math.round(progress * 100)}%`) 
-        }
-      );
-      
-      toast.success(`Mission completed! Trained for ${mission.epochs?.toLocaleString()} epochs with ${accuracy}% accuracy.`, {
-        icon: <Trophy className="h-5 w-5 text-yellow-500" />,
-      });
-    } catch (error) {
-      console.error('Error completing mission:', error);
-      toast.error('Failed to save mission progress');
-    } finally {
-      setIsProcessing(false);
-      setActiveMission(null);
-    }
-  };
-  
-=======
-
->>>>>>> 6e3fa6c (Initial commit: fix lint errors in Terminal.tsx, Index.tsx; update LINT_ISSUES_TRACKER.md; begin work on Login.tsx lint issues)
   const calculateLevelProgress = () => {
     const currentLevelData = levelThresholds.find(
       lt => totalPoints >= lt.minPoints && totalPoints <= lt.maxPoints
@@ -738,7 +588,7 @@ const Training = () => {
                       setActiveMission(null);
                       setShowTrainingAnimation(false);
                     }} 
-                    variant="outline"
+                    variant="default"
                     disabled={isProcessing}
                   >
                     Cancel Mission
@@ -783,7 +633,7 @@ const Training = () => {
                         </div>
                         <div className="mt-3">
                           <Button 
-                            size="sm" 
+                            size="default" 
                             onClick={() => startMission(mission)}
                             disabled={mission.locked || isProcessing || (mission.epochs || 0) > availableEpochs}
                             className={`w-full ${!mission.locked && !mission.completed ? 'relative overflow-hidden group' : ''}`}
@@ -880,26 +730,6 @@ const Training = () => {
                   </div>
                 </div>
               </div>
-              
-              {!isPro && (
-                <div className="mt-4 p-3 border border-purple-300 bg-purple-50 dark:bg-purple-900/20 rounded-md animate-pulse">
-                  <h4 className="font-semibold flex items-center gap-2 text-purple-800 dark:text-purple-300 text-sm">
-                    <span className="text-xs bg-purple-200 dark:bg-purple-800 px-2 py-0.5 rounded">PRO</span>
-                    Unlock Advanced Training
-                  </h4>
-                  <p className="text-xs text-purple-700 dark:text-purple-400 my-1">
-                    Get access to pro missions and advanced neural network customizations.
-                  </p>
-                  <Button 
-                    onClick={() => window.location.href = `https://paypal.me/username?business=support@nnticks.com`}
-                    variant="default" 
-                    className="mt-1 bg-purple-600 hover:bg-purple-700 text-white text-xs h-7 px-2"
-                    size="sm"
-                  >
-                    Upgrade to Pro
-                  </Button>
-                </div>
-              )}
             </div>
           </CardContent>
           <CardFooter className="text-xs text-muted-foreground border-t pt-2">

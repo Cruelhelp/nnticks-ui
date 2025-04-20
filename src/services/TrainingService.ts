@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
+import type { NetworkModel } from '@/lib/neuralNetwork';
 
 export interface TrainingSession {
   id: string;
@@ -8,7 +9,7 @@ export interface TrainingSession {
   completedAt: string | null;
   epochs: number;
   accuracy: number | null;
-  model: any | null;
+  model: NetworkModel | null;
 }
 
 export interface TrainingMission {
@@ -28,7 +29,7 @@ export interface TrainingResult {
   epochs: number;
   accuracy: number;
   points: number;
-  modelData?: any;
+  modelData?: NetworkModel;
 }
 
 export interface TrainingHistoryItem {
@@ -37,7 +38,7 @@ export interface TrainingHistoryItem {
   accuracy: number;
   points: number;
   mission: string;
-  modelData?: any;
+  modelData?: NetworkModel;
 }
 
 export interface EpochData {
@@ -48,7 +49,7 @@ export interface EpochData {
   trainingTime: number | null;
   loss: number | null;
   accuracy: number | null;
-  modelState: any | null;
+  modelState: NetworkModel | null;
   sessionId: string | null;
 }
 
@@ -96,7 +97,7 @@ class TrainingService {
     }
   }
   
-  async completeTrainingSession(sessionId: string, accuracy: number, model: any): Promise<boolean> {
+  async completeTrainingSession(sessionId: string, accuracy: number, model: NetworkModel): Promise<boolean> {
     if (!this.userId) return false;
     
     try {
@@ -123,7 +124,7 @@ class TrainingService {
   async addTrainingHistory(data: {
     accuracy: number;
     points: number;
-    modelData?: any;
+    modelData?: NetworkModel;
     mission: string;
   }): Promise<string | null> {
     if (!this.userId) return null;
@@ -349,11 +350,11 @@ class TrainingService {
   async saveEpoch(epochData: {
     epochNumber: number;
     batchSize: number;
-    ticks: any[];
+    ticks: number[];
     trainingTime?: number;
     loss?: number;
     accuracy?: number;
-    modelState?: any;
+    modelState?: NetworkModel;
     sessionId?: string;
   }): Promise<string | null> {
     if (!this.userId) return null;
@@ -425,7 +426,7 @@ class TrainingService {
     }
   }
 
-  async getEpochTicks(epochId: string): Promise<any[]> {
+  async getEpochTicks(epochId: string): Promise<number[]> {
     if (!this.userId) return [];
     
     try {

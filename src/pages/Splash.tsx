@@ -1,5 +1,4 @@
-
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Logo from '@/components/Logo';
 import { Progress } from '@/components/ui/progress';
@@ -36,17 +35,18 @@ const Splash = () => {
       clearInterval(interval);
       clearInterval(iconInterval);
     }
-  }, [navigate]);
+  }, [navigate, icons.length]);
   
   // Animation for loading messages
-  const [loadingMessage, setLoadingMessage] = useState('Initializing neural network');
-  const messages = [
+  const messages = useMemo(() => [
     'Initializing neural network',
     'Connecting to market data',
     'Loading predictive models',
     'Preparing analysis tools',
     'Setting up trading environment'
-  ];
+  ], []);
+  
+  const [loadingMessage, setLoadingMessage] = useState(messages[0]);
   
   useEffect(() => {
     const messageInterval = setInterval(() => {
@@ -58,7 +58,7 @@ const Splash = () => {
     }, 1500);
     
     return () => clearInterval(messageInterval);
-  }, []);
+  }, [messages]);
   
   const IconComponent = icons[currentIcon];
   
@@ -104,7 +104,7 @@ const Splash = () => {
         </div>
         
         <p className="mt-16 text-xs text-muted-foreground">
-          Copyright © 2025 Ruel McNeil
+          Copyright 2025 Ruel McNeil
         </p>
       </div>
     </div>

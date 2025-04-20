@@ -1,9 +1,8 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/useAuth';
 import { supabase } from '@/lib/supabase';
 import { 
   ArrowDown, 
@@ -36,7 +35,7 @@ interface TrainingHistoryItem {
   mission: string;
   points: number;
   accuracy: number;
-  model_data?: any;
+  model_data?: Record<string, unknown>;
 }
 
 const History = () => {
@@ -399,7 +398,7 @@ const History = () => {
       </Card>
       
       <div className="text-center text-xs text-muted-foreground mt-4">
-        Copyright © 2025 NNticks Enterprise Analytics
+        Copyright 2025 NNticks Enterprise Analytics
       </div>
     </div>
   );

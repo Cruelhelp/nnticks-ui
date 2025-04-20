@@ -1,8 +1,8 @@
-
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 import { webSocketService, TickData } from '@/services/WebSocketService';
 import { neuralNetwork } from '@/lib/neuralNetwork';
+import type { NetworkModel } from '@/lib/neuralNetwork';
 import { trainingService } from '@/services/TrainingService';
 
 export interface EpochProgressStatus {
@@ -21,7 +21,7 @@ class EpochService {
   private epochNumber: number = 0;
   private isActive: boolean = false;
   private isProcessing: boolean = false;
-  private lastSavedModelState: any = null;
+  private lastSavedModelState: NetworkModel | null = null;
   private listeners: {[key: string]: ((status: EpochProgressStatus) => void)[]} = {};
   private sessionId: string | null = null;
 
@@ -210,7 +210,7 @@ class EpochService {
       
       // Export model state
       const modelState = neuralNetwork.exportModel();
-      this.lastSavedModelState = modelState;
+      this.lastSavedModelState = modelState as unknown as NetworkModel;
       
       // Save the epoch data to Supabase
       if (this.userId) {
@@ -264,12 +264,11 @@ class EpochService {
           this.batchSize = state.batchSize || 100;
           this.epochNumber = state.epochNumber || 0;
           this.isActive = !!state.isActive;
-          this.lastSavedModelState = state.lastSavedModelState;
-          this.sessionId = state.sessionId;
+          this.lastSavedModelState = state.lastSavedModelState as unknown as NetworkModel;
           
           // If we have a saved model state, restore it to the neural network
           if (this.lastSavedModelState) {
-            neuralNetwork.importModel(this.lastSavedModelState);
+            neuralNetwork.importModel(this.lastSavedModelState as unknown as NetworkModel);
           }
           
           console.log('Restored epoch service state from local storage');
@@ -298,8 +297,8 @@ class EpochService {
         
         // Restore model state if available
         if (latestEpoch.modelState) {
-          this.lastSavedModelState = latestEpoch.modelState;
-          neuralNetwork.importModel(latestEpoch.modelState);
+          this.lastSavedModelState = latestEpoch.modelState as unknown as NetworkModel;
+          neuralNetwork.importModel(latestEpoch.modelState as unknown as NetworkModel);
         }
       }
       
@@ -310,7 +309,7 @@ class EpochService {
     }
   }
 
-  getLatestModelState(): any {
+  getLatestModelState(): NetworkModel | null {
     return this.lastSavedModelState;
   }
 

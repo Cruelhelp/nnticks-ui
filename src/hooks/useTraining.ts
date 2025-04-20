@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/useAuth';
 import { neuralNetwork, NNConfiguration } from '@/lib/neuralNetwork';
 import { trainingService, TrainingMission, TrainingResult, TrainingHistoryItem } from '@/services/TrainingService';
 import { useTicks } from '@/hooks/useTicks';

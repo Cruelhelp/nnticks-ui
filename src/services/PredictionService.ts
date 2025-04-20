@@ -1,9 +1,11 @@
-
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 
 export type PredictionType = 'rise' | 'fall' | 'odd' | 'even';
 export type PredictionOutcome = 'win' | 'loss' | 'pending';
+
+type IndicatorKey = 'sma' | 'ema' | 'rsi' | 'macd' | 'custom';
+type IndicatorData = Partial<Record<IndicatorKey, number | string | boolean | null>>;
 
 export interface PredictionData {
   id?: string;
@@ -17,7 +19,7 @@ export interface PredictionData {
   outcome?: PredictionOutcome;
   createdAt?: string;
   completedAt?: string;
-  indicators?: any;
+  indicators?: IndicatorData;
 }
 
 class PredictionService {
