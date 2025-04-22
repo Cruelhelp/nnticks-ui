@@ -3,13 +3,14 @@ import { useAuth } from '@/contexts/useAuth';
 import { epochCollectionService } from '@/services/EpochCollectionService';
 import { EpochCollectionStatus, EpochData } from '@/types/chartTypes';
 import { persistentWebSocket } from '@/services/PersistentWebSocketService';
+import { supabase } from '@/lib/supabase';
 
 export function useEpochCollection() {
   const { user } = useAuth();
   const [isInitialized, setIsInitialized] = useState(false);
   const [status, setStatus] = useState<EpochCollectionStatus>(epochCollectionService.getStatus());
   const [batchSize, setBatchSize] = useState(epochCollectionService.getBatchSize());
-  const [epochsCompleted, setEpochsCompleted] = useState(epochCollectionService.getCurrentEpochCount());
+  const [epochsCompleted, setEpochsCompleted] = useState(0);
   const [latestEpoch, setLatestEpoch] = useState<EpochData | null>(null);
   const [isConnected, setIsConnected] = useState(persistentWebSocket.isConnected());
   
@@ -21,12 +22,21 @@ export function useEpochCollection() {
     
     // Update state with current values
     setBatchSize(epochCollectionService.getBatchSize());
-    setEpochsCompleted(epochCollectionService.getCurrentEpochCount());
     setStatus(epochCollectionService.getStatus());
     
     // Initial connection status
     setIsConnected(persistentWebSocket.isConnected());
   }, [user]);
+  
+  // Fetch epochs completed from Supabase
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from('epochs')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .then(({ count }) => setEpochsCompleted(count || 0));
+  }, [user, status]);
   
   // Set up listeners
   useEffect(() => {

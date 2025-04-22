@@ -2,13 +2,12 @@ import type { Config } from "tailwindcss"
 import tailwindcssAnimate from "tailwindcss-animate"
 
 export default {
-  darkMode: ["class"],
   content: [
     './pages/**/*.{ts,tsx}',
     './components/**/*.{ts,tsx}',
     './app/**/*.{ts,tsx}',
     './src/**/*.{ts,tsx}',
-	],
+  ],
   theme: {
     container: {
       center: true,
@@ -19,6 +18,7 @@ export default {
     },
     extend: {
       fontFamily: {
+        'sans': ['Roboto Mono', 'monospace'],
         'mono': ['"Roboto Mono"', 'monospace'],
       },
       colors: {

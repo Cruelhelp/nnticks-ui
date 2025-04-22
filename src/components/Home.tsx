@@ -39,8 +39,8 @@ const Home = ({ onSectionChange }: HomeProps) => {
           <div className="flex justify-center mb-4">
             <Logo size={48} />
           </div>
-          <CardTitle className="text-3xl">Welcome to NNticks</CardTitle>
-          <p className="text-muted-foreground">
+          <CardTitle className="text-3xl text-foreground">Welcome to NNticks</CardTitle>
+          <p className="text-foreground">
             Neural Network-Powered Market Prediction
           </p>
         </CardHeader>
@@ -61,10 +61,10 @@ const Home = ({ onSectionChange }: HomeProps) => {
             
             <TabsContent value="welcome" className="space-y-4">
               <div className="text-center space-y-4">
-                <h3 className="text-xl font-semibold">
+                <h3 className="text-xl font-semibold text-foreground">
                   Predict Financial Markets with Neural Networks
                 </h3>
-                <p className="text-muted-foreground">
+                <p className="text-foreground">
                   NNticks combines real-time market data with powerful neural networks
                   to predict market movements and help you make better trading decisions.
                 </p>
@@ -77,7 +77,7 @@ const Home = ({ onSectionChange }: HomeProps) => {
                           <BrainCircuit className="h-8 w-8 text-primary" />
                         </div>
                         <h4 className="font-medium">Neural Analysis</h4>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-sm text-foreground">
                           Predict market movements with advanced machine learning models
                         </p>
                       </div>
@@ -91,7 +91,7 @@ const Home = ({ onSectionChange }: HomeProps) => {
                           <LineChart className="h-8 w-8 text-primary" />
                         </div>
                         <h4 className="font-medium">Real-Time Charts</h4>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-sm text-foreground">
                           Visualize live market data with interactive charts
                         </p>
                       </div>
@@ -105,7 +105,7 @@ const Home = ({ onSectionChange }: HomeProps) => {
                           <Dumbbell className="h-8 w-8 text-primary" />
                         </div>
                         <h4 className="font-medium">Training Missions</h4>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-sm text-foreground">
                           Complete missions to improve your prediction skills
                         </p>
                       </div>
@@ -127,7 +127,7 @@ const Home = ({ onSectionChange }: HomeProps) => {
             
             <TabsContent value="setup" className="space-y-4">
               <div className="space-y-4">
-                <h3 className="text-xl font-semibold text-center flex justify-center items-center gap-2">
+                <h3 className="text-xl font-semibold text-center flex justify-center items-center gap-2 text-foreground">
                   <PlugZap className="h-6 w-6 text-primary" />
                   Setting Up Your Broker Connection
                 </h3>
@@ -141,7 +141,7 @@ const Home = ({ onSectionChange }: HomeProps) => {
                         </div>
                         <div>
                           <h4 className="font-medium mb-1">1. Select a Broker</h4>
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-sm text-foreground">
                             Choose from popular brokers like Deriv, IQ Option, Binance, or MetaTrader.
                           </p>
                         </div>
@@ -154,8 +154,8 @@ const Home = ({ onSectionChange }: HomeProps) => {
                               <span>Deriv</span>
                             </div>
                             <div className="bg-muted rounded-md p-3 flex items-center justify-center">
-                              <PieChart className="h-6 w-6 mr-2 text-muted-foreground" />
-                              <span className="text-muted-foreground">IQ Option</span>
+                              <PieChart className="h-6 w-6 mr-2 text-foreground" />
+                              <span className="text-foreground">IQ Option</span>
                             </div>
                           </div>
                         </div>
@@ -171,14 +171,14 @@ const Home = ({ onSectionChange }: HomeProps) => {
                         </div>
                         <div>
                           <h4 className="font-medium mb-1">2. Enter Your API Key</h4>
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-sm text-foreground">
                             Provide your broker API key for authentication.
                           </p>
                         </div>
                       </div>
                       <div className="rounded-md overflow-hidden border border-border mt-4 p-3">
                         <div className="bg-card/50 rounded flex items-center">
-                          <div className="border border-border rounded-l px-3 py-2 bg-muted text-muted-foreground font-mono text-xs">
+                          <div className="border border-border rounded-l px-3 py-2 bg-muted text-foreground font-mono text-xs">
                             API KEY
                           </div>
                           <div className="border-t border-b border-r border-border rounded-r px-3 py-2 flex-1 bg-card">
@@ -197,17 +197,17 @@ const Home = ({ onSectionChange }: HomeProps) => {
                         </div>
                         <div>
                           <h4 className="font-medium mb-1">3. Configure WebSocket Connection</h4>
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-sm text-foreground">
                             Set up WebSocket URL and JSON subscription format for real-time data.
                           </p>
                         </div>
                       </div>
                       <div className="rounded-md overflow-hidden border border-border mt-4">
                         <div className="bg-card/50 p-3">
-                          <div className="font-mono text-xs mb-3 p-2 bg-muted rounded text-muted-foreground">
+                          <div className="font-mono text-xs mb-3 p-2 bg-muted rounded text-foreground">
                             WebSocket URL: <span className="text-primary">wss://ws.binaryws.com/websockets/v3?app_id=1089</span>
                           </div>
-                          <div className="font-mono text-xs p-2 bg-muted rounded text-muted-foreground">
+                          <div className="font-mono text-xs p-2 bg-muted rounded text-foreground">
                             Subscription: <span className="text-primary">{"{'ticks':'R_10'}"}</span>
                           </div>
                         </div>
@@ -229,7 +229,7 @@ const Home = ({ onSectionChange }: HomeProps) => {
             
             <TabsContent value="training" className="space-y-4">
               <div className="space-y-4">
-                <h3 className="text-xl font-semibold text-center flex justify-center items-center gap-2">
+                <h3 className="text-xl font-semibold text-center flex justify-center items-center gap-2 text-foreground">
                   <Workflow className="h-6 w-6 text-primary" />
                   Training Your Neural Network
                 </h3>
@@ -243,15 +243,15 @@ const Home = ({ onSectionChange }: HomeProps) => {
                         </div>
                         <div>
                           <h4 className="font-medium mb-1">1. Historical Data Analysis</h4>
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-sm text-foreground">
                             The system analyzes historical market data to identify patterns.
                           </p>
                         </div>
                       </div>
                       <div className="rounded-md overflow-hidden border border-border mt-4 bg-card/50 p-2">
                         <div className="flex items-center justify-between mb-2">
-                          <div className="text-xs text-muted-foreground">Processing data</div>
-                          <div className="text-xs text-muted-foreground">75%</div>
+                          <div className="text-xs text-foreground">Processing data</div>
+                          <div className="text-xs text-foreground">75%</div>
                         </div>
                         <div className="w-full h-2 bg-muted rounded-full">
                           <div className="h-full bg-primary rounded-full w-3/4"></div>
@@ -268,24 +268,24 @@ const Home = ({ onSectionChange }: HomeProps) => {
                         </div>
                         <div>
                           <h4 className="font-medium mb-1">2. Complete Training Missions</h4>
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-sm text-foreground">
                             Progress through training missions to improve accuracy.
                           </p>
                         </div>
                       </div>
                       <div className="rounded-md overflow-hidden border border-border mt-4 bg-card/50 p-3">
                         <div className="grid grid-cols-3 gap-2">
-                          <div className="bg-primary/20 rounded-md p-2 text-center text-xs">
+                          <div className="bg-primary/20 rounded-md p-2 text-center text-xs text-foreground">
                             <span className="block font-semibold">Mission 1</span>
                             <span className="text-primary text-xs">Completed</span>
                           </div>
-                          <div className="bg-muted rounded-md p-2 text-center text-xs">
+                          <div className="bg-muted rounded-md p-2 text-center text-xs text-foreground">
                             <span className="block font-semibold">Mission 2</span>
-                            <span className="text-muted-foreground text-xs">In Progress</span>
+                            <span className="text-foreground text-xs">In Progress</span>
                           </div>
-                          <div className="bg-muted/50 rounded-md p-2 text-center text-xs">
+                          <div className="bg-muted/50 rounded-md p-2 text-center text-xs text-foreground">
                             <span className="block font-semibold">Mission 3</span>
-                            <span className="text-muted-foreground text-xs">Locked</span>
+                            <span className="text-foreground text-xs">Locked</span>
                           </div>
                         </div>
                       </div>
@@ -300,14 +300,14 @@ const Home = ({ onSectionChange }: HomeProps) => {
                         </div>
                         <div>
                           <h4 className="font-medium mb-1">3. Neural Network Training</h4>
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-sm text-foreground">
                             Watch your bot's level increase and track accuracy improvements over time.
                           </p>
                         </div>
                       </div>
                       <div className="rounded-md overflow-hidden border border-border mt-4 bg-card/50 p-4">
                         <div className="flex items-center justify-between mb-4">
-                          <div className="text-sm font-medium">Network Level: 3</div>
+                          <div className="text-sm font-medium text-foreground">Network Level: 3</div>
                           <div className="text-sm text-primary">Accuracy: 72%</div>
                         </div>
                         <div className="grid grid-cols-4 gap-2">
@@ -318,7 +318,7 @@ const Home = ({ onSectionChange }: HomeProps) => {
                             ></div>
                           ))}
                         </div>
-                        <div className="mt-2 text-xs text-muted-foreground">
+                        <div className="mt-2 text-xs text-foreground">
                           5/8 connections optimized
                         </div>
                       </div>
@@ -339,7 +339,7 @@ const Home = ({ onSectionChange }: HomeProps) => {
             
             <TabsContent value="trading" className="space-y-4">
               <div className="space-y-4">
-                <h3 className="text-xl font-semibold text-center flex justify-center items-center gap-2">
+                <h3 className="text-xl font-semibold text-center flex justify-center items-center gap-2 text-foreground">
                   <TrendingUp className="h-6 w-6 text-primary" />
                   Execute Trades with Confidence
                 </h3>
@@ -353,19 +353,19 @@ const Home = ({ onSectionChange }: HomeProps) => {
                         </div>
                         <div>
                           <h4 className="font-medium mb-1">1. Generate Predictions</h4>
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-sm text-foreground">
                             Request predictions based on current market conditions.
                           </p>
                         </div>
                       </div>
                       <div className="rounded-md overflow-hidden border border-border mt-4 bg-card/50 p-4">
                         <div className="flex items-center justify-between mb-2">
-                          <div className="text-sm font-medium">Prediction</div>
+                          <div className="text-sm font-medium text-foreground">Prediction</div>
                           <div className="py-1 px-2 rounded bg-green-500/20 text-green-500 text-xs font-semibold">Rise</div>
                         </div>
-                        <div className="text-sm text-muted-foreground mb-1">Confidence: 78%</div>
-                        <div className="text-sm text-muted-foreground mb-1">Timeframe: 3 ticks</div>
-                        <div className="text-sm text-muted-foreground">Market: R_10</div>
+                        <div className="text-sm text-foreground mb-1">Confidence: 78%</div>
+                        <div className="text-sm text-foreground mb-1">Timeframe: 3 ticks</div>
+                        <div className="text-sm text-foreground">Market: R_10</div>
                       </div>
                     </CardContent>
                   </Card>
@@ -378,7 +378,7 @@ const Home = ({ onSectionChange }: HomeProps) => {
                         </div>
                         <div>
                           <h4 className="font-medium mb-1">2. Watch for Alerts</h4>
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-sm text-foreground">
                             Receive countdowns before prediction periods begin.
                           </p>
                         </div>
@@ -388,8 +388,8 @@ const Home = ({ onSectionChange }: HomeProps) => {
                           <div className="h-16 w-16 rounded-full border-4 border-primary flex items-center justify-center mb-2">
                             <span className="text-xl font-bold">7s</span>
                           </div>
-                          <div className="text-sm font-medium">Prediction Starting</div>
-                          <div className="text-xs text-muted-foreground">Prepare for entry</div>
+                          <div className="text-sm font-medium text-foreground">Prediction Starting</div>
+                          <div className="text-xs text-foreground">Prepare for entry</div>
                         </div>
                       </div>
                     </CardContent>
@@ -403,7 +403,7 @@ const Home = ({ onSectionChange }: HomeProps) => {
                         </div>
                         <div>
                           <h4 className="font-medium mb-1">3. Track Performance</h4>
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-sm text-foreground">
                             Review your trade history to see successful predictions.
                           </p>
                         </div>
@@ -418,21 +418,21 @@ const Home = ({ onSectionChange }: HomeProps) => {
                             <div>Result</div>
                           </div>
                           <div className="grid grid-cols-5 gap-1 text-xs mb-2">
-                            <div className="text-muted-foreground">10:23:45</div>
+                            <div className="text-foreground">10:23:45</div>
                             <div>R_10</div>
                             <div>Rise</div>
                             <div>75%</div>
                             <div className="text-green-500">Won</div>
                           </div>
                           <div className="grid grid-cols-5 gap-1 text-xs mb-2">
-                            <div className="text-muted-foreground">10:21:30</div>
+                            <div className="text-foreground">10:21:30</div>
                             <div>R_25</div>
                             <div>Fall</div>
                             <div>62%</div>
                             <div className="text-red-500">Lost</div>
                           </div>
                           <div className="grid grid-cols-5 gap-1 text-xs">
-                            <div className="text-muted-foreground">10:18:15</div>
+                            <div className="text-foreground">10:18:15</div>
                             <div>R_10</div>
                             <div>Rise</div>
                             <div>84%</div>
@@ -442,11 +442,11 @@ const Home = ({ onSectionChange }: HomeProps) => {
                       </div>
                       <div className="flex items-center justify-between mt-4">
                         <div className="text-sm">
-                          <span className="text-muted-foreground">Daily Performance: </span>
+                          <span className="text-foreground">Daily Performance: </span>
                           <span className="font-semibold text-green-500">+12.5%</span>
                         </div>
                         <div className="text-sm">
-                          <span className="text-muted-foreground">Win Rate: </span>
+                          <span className="text-foreground">Win Rate: </span>
                           <span className="font-semibold">67%</span>
                         </div>
                       </div>
@@ -470,7 +470,7 @@ const Home = ({ onSectionChange }: HomeProps) => {
         </CardContent>
       </Card>
       
-      <footer className="text-center text-xs text-muted-foreground mt-4">
+      <footer className="text-center text-xs text-foreground mt-4">
         <div className="flex flex-col md:flex-row md:items-center justify-center gap-1 md:gap-2">
           <div className="flex items-center justify-center gap-2">
             <Laptop className="h-3 w-3" />

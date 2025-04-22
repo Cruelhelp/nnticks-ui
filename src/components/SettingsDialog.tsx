@@ -24,16 +24,30 @@ type ChartStyle = 'line' | 'candlestick' | 'bar';
 
 const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onOpenChange }) => {
   const { settings, updateSettings } = useSettings();
-  const [localSettings, setLocalSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
+  const [localSettings, setLocalSettings] = useState<UserSettings>({
+    accent: settings.accent,
+    font: settings.font,
+    chartStyle: settings.chartStyle,
+    terminalHeight: settings.terminalHeight,
+    sidebarWidth: settings.sidebarWidth,
+    apiKey: settings.apiKey,
+    wsUrl: settings.wsUrl,
+    subscription: settings.subscription,
+  });
   const [isLoading, setIsLoading] = useState(false);
   
   useEffect(() => {
-    setLocalSettings(settings);
+    setLocalSettings({
+      accent: settings.accent,
+      font: settings.font,
+      chartStyle: settings.chartStyle,
+      terminalHeight: settings.terminalHeight,
+      sidebarWidth: settings.sidebarWidth,
+      apiKey: settings.apiKey,
+      wsUrl: settings.wsUrl,
+      subscription: settings.subscription,
+    });
   }, [settings]);
-  
-  const handleThemeChange = (theme: string) => {
-    setLocalSettings({ ...localSettings, theme });
-  };
   
   const handleAccentChange = (accent: AccentColor) => {
     setLocalSettings({ ...localSettings, accent });
@@ -70,7 +84,16 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onOpenChange }) =
   const handleSaveSettings = async () => {
     setIsLoading(true);
     try {
-      await updateSettings(localSettings);
+      await updateSettings({
+        accent: localSettings.accent,
+        font: localSettings.font,
+        chartStyle: localSettings.chartStyle,
+        terminalHeight: localSettings.terminalHeight,
+        sidebarWidth: localSettings.sidebarWidth,
+        apiKey: localSettings.apiKey,
+        wsUrl: localSettings.wsUrl,
+        subscription: localSettings.subscription,
+      });
       toast.success('Settings saved successfully');
       onOpenChange(false);
     } catch (error) {
@@ -82,7 +105,16 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onOpenChange }) =
   };
   
   const handleResetSettings = () => {
-    setLocalSettings(DEFAULT_SETTINGS);
+    setLocalSettings({
+      accent: DEFAULT_SETTINGS.accent,
+      font: DEFAULT_SETTINGS.font,
+      chartStyle: DEFAULT_SETTINGS.chartStyle,
+      terminalHeight: DEFAULT_SETTINGS.terminalHeight,
+      sidebarWidth: DEFAULT_SETTINGS.sidebarWidth,
+      apiKey: DEFAULT_SETTINGS.apiKey,
+      wsUrl: DEFAULT_SETTINGS.wsUrl,
+      subscription: DEFAULT_SETTINGS.subscription,
+    });
     toast.info('Settings reset to default values');
   };
 
@@ -106,37 +138,6 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onOpenChange }) =
           
           <TabsContent value="appearance" className="space-y-4 py-4">
             <div className="space-y-4">
-              <div>
-                <Label className="text-base">Theme</Label>
-                <RadioGroup 
-                  className="grid grid-cols-2 gap-4 mt-2" 
-                  value={localSettings.theme}
-                  onValueChange={handleThemeChange}
-                >
-                  <div>
-                    <RadioGroupItem value="light" id="light" className="peer sr-only" />
-                    <Label
-                      htmlFor="light"
-                      className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-white p-4 hover:bg-gray-100 hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-sun"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
-                      <span className="mt-2 text-xs">Light</span>
-                    </Label>
-                  </div>
-                  
-                  <div>
-                    <RadioGroupItem value="dark" id="dark" className="peer sr-only" />
-                    <Label
-                      htmlFor="dark"
-                      className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-gray-950 text-white p-4 hover:bg-gray-900 hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-moon"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
-                      <span className="mt-2 text-xs">Dark</span>
-                    </Label>
-                  </div>
-                </RadioGroup>
-              </div>
-              
               <div>
                 <Label className="text-base">Accent Color</Label>
                 <RadioGroup 

@@ -38,7 +38,6 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
           
           if (data) {
             const userSettings: Partial<UserSettings> = {
-              theme: data.theme,
               accent: data.accent as UserSettings['accent'],
               font: data.font as UserSettings['font'],
               chartStyle: data.chart_style as UserSettings['chartStyle'],
@@ -76,7 +75,6 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
           .from('user_settings')
           .upsert({
             user_id: user.id,
-            theme: updatedSettings.theme,
             accent: updatedSettings.accent,
             font: updatedSettings.font,
             chart_style: updatedSettings.chartStyle,
@@ -96,10 +94,6 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
         console.error('Error saving settings:', error);
         throw error;
       }
-    }
-    
-    if (newSettings.theme) {
-      document.documentElement.classList.toggle('dark', newSettings.theme === 'dark');
     }
     
     if (newSettings.font) {

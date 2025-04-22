@@ -265,13 +265,13 @@ System Status:
   return (
     <div className="w-full" style={{ height: isCollapsed ? '40px' : `${terminalHeight}px` }}>
       <Card className="border-t-2 border-t-primary w-full rounded-b-none h-full flex flex-col">
-        <div className="flex justify-between items-center p-2 bg-black text-white border-b border-gray-800">
+        <div className="flex justify-between items-center p-2 bg-background text-foreground border-b border-gray-800">
           <div className="flex items-center gap-1.5">
             <div className="w-3 h-3 rounded-full bg-red-500" />
             <div className="w-3 h-3 rounded-full bg-yellow-500" />
             <div className="w-3 h-3 rounded-full bg-green-500" />
           </div>
-          <div className="flex-1 text-center text-sm font-medium text-gray-400">Terminal</div>
+          <div className="flex-1 text-center text-sm font-medium text-muted-foreground">Terminal</div>
           <div className="flex items-center gap-1">
             <Button 
               variant="ghost" 
@@ -293,7 +293,7 @@ System Status:
         </div>
         
         {!isCollapsed && (
-          <div className="p-3 bg-black text-green-400 flex-1 overflow-hidden flex flex-col font-mono">
+          <div className="p-3 bg-background text-foreground flex-1 overflow-hidden flex flex-col font-mono">
             <div 
               ref={terminalRef}
               className="terminal-font flex-1 overflow-auto whitespace-pre-wrap"
@@ -307,17 +307,17 @@ System Status:
             </div>
             
             <form onSubmit={handleSubmit} className="flex items-center mt-2">
-              <span className="text-green-500 mr-2 terminal-font">$</span>
+              <span className="text-foreground mr-2 terminal-font">$</span>
               <input
                 ref={inputRef}
                 type="text"
                 value={input}
                 onChange={handleInputChange}
                 onKeyDown={handleKeyDown}
-                className="flex-1 bg-transparent terminal-font outline-none text-green-400 caret-green-400"
+                className="flex-1 bg-transparent terminal-font outline-none text-foreground caret-foreground"
                 autoFocus
               />
-              <span className="w-2 h-4 bg-green-400 opacity-80 cursor-blink ml-1"></span>
+              <span className="w-2 h-4 bg-foreground opacity-80 cursor-blink ml-1"></span>
             </form>
           </div>
         )}
@@ -325,7 +325,7 @@ System Status:
 
       {/* Admin Panel Dialog */}
       <Dialog open={showAdminPanel} onOpenChange={setShowAdminPanel}>
-        <DialogContent className="sm:max-w-[700px] bg-black border-gray-800">
+        <DialogContent className="sm:max-w-[700px] bg-background border-gray-800">
           <DialogHeader>
             <DialogTitle className="flex items-center">
               <Shield className="mr-2 h-5 w-5 text-primary" /> 
@@ -409,19 +409,19 @@ System Status:
                       <h4 className="font-medium mb-2">System Status</h4>
                       <div className="grid grid-cols-2 gap-2">
                         <div className="bg-gray-900 p-3 rounded-md">
-                          <p className="text-xs text-gray-400">CPU Usage</p>
+                          <p className="text-xs text-muted-foreground">CPU Usage</p>
                           <p className="text-lg">24%</p>
                         </div>
                         <div className="bg-gray-900 p-3 rounded-md">
-                          <p className="text-xs text-gray-400">Memory</p>
+                          <p className="text-xs text-muted-foreground">Memory</p>
                           <p className="text-lg">512MB</p>
                         </div>
                         <div className="bg-gray-900 p-3 rounded-md">
-                          <p className="text-xs text-gray-400">WebSocket</p>
+                          <p className="text-xs text-muted-foreground">WebSocket</p>
                           <p className="text-lg">Connected</p>
                         </div>
                         <div className="bg-gray-900 p-3 rounded-md">
-                          <p className="text-xs text-gray-400">Model Status</p>
+                          <p className="text-xs text-muted-foreground">Model Status</p>
                           <p className="text-lg">Active</p>
                         </div>
                       </div>

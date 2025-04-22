@@ -8,29 +8,16 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { useTheme } from '@/components/ui/themeUtils.tsx';
 import { Github, Mail, User, AlertCircle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 const Login = () => {
-  console.log('Login.tsx rendering');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
-  const { setTheme, theme } = useTheme();
-
-  // Debug fallback: show this in development mode to prove rendering
-  // if (process.env.NODE_ENV !== 'production') {
-  //   return (
-  //     <div style={{ background: 'red', color: 'white', padding: 20 }}>
-  //       <h1>Login Page Fallback</h1>
-  //       <p>If you see this, the Login component is rendering.</p>
-  //     </div>
-  //   );
-  // }
 
   // Login with email
   const handleEmailLogin = async (e: React.FormEvent) => {
@@ -51,7 +38,6 @@ const Login = () => {
         navigate('/');
       }
     } catch (error: unknown) {
-      console.error('Error during login:', error);
       let message = 'Failed to login';
       if (
         error &&
@@ -85,16 +71,13 @@ const Login = () => {
         email,
         password,
         options: {
-          data: {
-            username
-          }
+          data: { username }
         }
       });
 
       if (error) throw error;
 
       if (data?.user) {
-        // Create user profile
         await supabase.from('users_extra').insert({
           user_id: data.user.id,
           username,
@@ -106,7 +89,6 @@ const Login = () => {
         navigate('/');
       }
     } catch (error: unknown) {
-      console.error('Error during registration:', error);
       let message = 'Failed to register';
       if (
         error &&
@@ -129,7 +111,7 @@ const Login = () => {
     setError(null);
 
     try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      const { error } = await supabase.auth.signInWithOAuth({
         provider: 'github',
         options: {
           redirectTo: `${window.location.origin}/`
@@ -139,10 +121,7 @@ const Login = () => {
       if (error) {
         throw error;
       }
-
-      // Redirect will happen automatically
     } catch (error: unknown) {
-      console.error('GitHub login error:', error);
       setError('Failed to login with GitHub. Provider might not be configured.');
       toast.error('GitHub login failed.');
       setIsLoading(false);
@@ -155,7 +134,7 @@ const Login = () => {
     setError(null);
 
     try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: `${window.location.origin}/`
@@ -165,10 +144,7 @@ const Login = () => {
       if (error) {
         throw error;
       }
-
-      // Redirect will happen automatically
     } catch (error: unknown) {
-      console.error('Google login error:', error);
       setError('Failed to login with Google. Provider might not be configured.');
       toast.error('Google login failed.');
       setIsLoading(false);
@@ -179,33 +155,21 @@ const Login = () => {
   const handleGuestLogin = () => {
     localStorage.setItem('guestMode', 'true');
     localStorage.setItem('guestUsername', 'Guest User');
-
     toast.success('Logged in as guest!');
     navigate('/');
   };
 
-  const themeToggle = () => {
-    setTheme(theme === 'dark' ? 'light' : 'dark');
-  };
-
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-background">
-      <div className="absolute top-4 right-4">
-        <Button variant="outline" size="sm" onClick={themeToggle}>
-          {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
-        </Button>
-      </div>
-
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-background text-foreground transition-colors duration-300">
       <div className="flex flex-col items-center justify-center space-y-4 mb-8">
         <Logo size={56} />
-        <h1 className="text-3xl font-bold">NNticks</h1>
+        <h1 className="text-3xl font-bold text-foreground">NNticks</h1>
         <p className="text-muted-foreground">Neural Network Trading Prediction Platform</p>
       </div>
-
-      <Card className="w-full max-w-lg shadow-lg">
+      <Card className="w-full max-w-lg shadow-lg bg-card text-foreground transition-colors duration-300">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl text-center">Welcome back</CardTitle>
-          <CardDescription className="text-center">
+          <CardTitle className="text-2xl text-center text-foreground">Welcome back</CardTitle>
+          <CardDescription className="text-center text-muted-foreground">
             Sign in to your account or continue as a guest
           </CardDescription>
         </CardHeader>
@@ -217,13 +181,12 @@ const Login = () => {
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
-
           <div className="flex flex-col gap-4">
             <Button
               variant="outline"
               disabled={isLoading}
               onClick={handleGithubLogin}
-              className="w-full"
+              className="w-full border-border hover:bg-muted text-foreground"
             >
               {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Github className="mr-2 h-4 w-4" />}
               Continue with GitHub
@@ -233,7 +196,7 @@ const Login = () => {
               variant="outline"
               disabled={isLoading}
               onClick={handleGoogleLogin}
-              className="w-full"
+              className="w-full border-border hover:bg-muted text-foreground"
             >
               <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
                 <path
@@ -259,10 +222,10 @@ const Login = () => {
 
             <div className="relative my-2">
               <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
+                <span className="w-full border-t border-border" />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">
+                <span className="bg-card px-2 text-muted-foreground">
                   Or continue with
                 </span>
               </div>
@@ -277,7 +240,7 @@ const Login = () => {
               <TabsContent value="login">
                 <form onSubmit={handleEmailLogin} className="space-y-4 mt-4">
                   <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
+                    <Label htmlFor="email" className="text-foreground">Email</Label>
                     <Input
                       id="email"
                       type="email"
@@ -285,12 +248,13 @@ const Login = () => {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
+                      className="text-foreground bg-muted border-border placeholder-muted-foreground"
                     />
                   </div>
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <Label htmlFor="password">Password</Label>
-                      <Button variant="link" className="p-0 h-auto text-xs">
+                      <Label htmlFor="password" className="text-foreground">Password</Label>
+                      <Button variant="link" className="p-0 h-auto text-xs text-primary">
                         Forgot password?
                       </Button>
                     </div>
@@ -300,11 +264,12 @@ const Login = () => {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
+                      className="text-foreground bg-muted border-border placeholder-muted-foreground"
                     />
                   </div>
                   <Button 
                     type="submit" 
-                    className="w-full" 
+                    className="w-full bg-primary hover:bg-primary/80 text-primary-foreground" 
                     disabled={isLoading}
                   >
                     {isLoading ? (
@@ -320,17 +285,18 @@ const Login = () => {
               <TabsContent value="register">
                 <form onSubmit={handleEmailRegister} className="space-y-4 mt-4">
                   <div className="space-y-2">
-                    <Label htmlFor="username">Username</Label>
+                    <Label htmlFor="username" className="text-foreground">Username</Label>
                     <Input
                       id="username"
                       placeholder="johndoe"
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
                       required
+                      className="text-foreground bg-muted border-border placeholder-muted-foreground"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="register-email">Email</Label>
+                    <Label htmlFor="register-email" className="text-foreground">Email</Label>
                     <Input
                       id="register-email"
                       type="email"
@@ -338,10 +304,11 @@ const Login = () => {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
+                      className="text-foreground bg-muted border-border placeholder-muted-foreground"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="register-password">Password</Label>
+                    <Label htmlFor="register-password" className="text-foreground">Password</Label>
                     <Input
                       id="register-password"
                       type="password"
@@ -350,11 +317,12 @@ const Login = () => {
                       onChange={(e) => setPassword(e.target.value)}
                       required
                       minLength={6}
+                      className="text-foreground bg-muted border-border placeholder-muted-foreground"
                     />
                   </div>
                   <Button 
                     type="submit" 
-                    className="w-full" 
+                    className="w-full bg-green-600 hover:bg-green-700 text-white" 
                     disabled={isLoading}
                   >
                     {isLoading ? (
@@ -372,7 +340,7 @@ const Login = () => {
         <CardFooter className="flex flex-col">
           <Button 
             variant="ghost" 
-            className="w-full" 
+            className="w-full text-foreground hover:bg-muted" 
             onClick={handleGuestLogin}
           >
             Continue as Guest

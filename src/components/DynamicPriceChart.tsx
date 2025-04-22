@@ -20,7 +20,7 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, label })
         <p className="text-muted-foreground mb-1">{label}</p>
         <p className="font-medium">{`Price: ${payload[0].value.toFixed(5)}`}</p>
         {payload[0].payload.change !== undefined && (
-          <p className={`text-xs ${payload[0].payload.change > 0 ? 'text-green-400' : payload[0].payload.change < 0 ? 'text-red-400' : 'text-gray-400'}`}>
+          <p className={`text-xs ${payload[0].payload.change > 0 ? 'text-green-400' : payload[0].payload.change < 0 ? 'text-red-400' : 'text-muted-foreground'}`}>
             Change: {payload[0].payload.change > 0 ? '+' : ''}{payload[0].payload.change.toFixed(5)}
           </p>
         )}
@@ -176,7 +176,7 @@ const DynamicPriceChart: React.FC<DynamicPriceChartProps> = ({
             Price Chart
             {latestTick && (
               <span className={`ml-2 text-base font-normal ${
-                isPriceRising ? 'text-green-400' : isPriceFalling ? 'text-red-400' : 'text-gray-400'
+                isPriceRising ? 'text-green-400' : isPriceFalling ? 'text-red-400' : 'text-muted-foreground'
               }`}>
                 {latestTick.value.toFixed(5)}
                 <span className="text-xs ml-1">

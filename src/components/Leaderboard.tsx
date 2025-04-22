@@ -74,7 +74,7 @@ const Leaderboard = () => {
     if (rank === 1) {
       return <Trophy className="h-5 w-5 text-yellow-500" />;
     } else if (rank === 2) {
-      return <Medal className="h-5 w-5 text-gray-400" />;
+      return <Medal className="h-5 w-5 text-muted-foreground" />;
     } else if (rank === 3) {
       return <Medal className="h-5 w-5 text-amber-700" />;
     } else {

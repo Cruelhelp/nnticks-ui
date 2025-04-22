@@ -21,17 +21,16 @@ interface Mission {
   epochs?: number;
 }
 
-const TrainingNotice = () => (
-  <div className="mb-6 bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4 animate-fadeIn">
+const TrainingInfoBubble = () => (
+  <div className="mb-6 bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 animate-fadeIn">
     <div className="flex items-start">
       <div className="mr-3 pt-1">
-        <Brain className="h-5 w-5 text-yellow-500" />
+        <Brain className="h-5 w-5 text-blue-500" />
       </div>
       <div>
-        <h3 className="font-semibold text-sm">Training Connection Notice</h3>
+        <h3 className="font-semibold text-sm">How Neural Network Training Works</h3>
         <p className="text-sm text-muted-foreground mt-1">
-          During training, market data connection is temporarily paused as the neural network training is performed offline. 
-          Your available training epochs will determine which training missions are available to you.
+          Training improves your neural network's ability to predict market movements. Each mission runs a set number of epochs, updating the model based on historical data and helping it learn patterns. Successfully completing missions enhances your model's accuracy and unlocks advanced features.
         </p>
       </div>
     </div>
@@ -276,7 +275,7 @@ const Training = () => {
   ]);
   
   const getNeuralNetRef = () => {
-    // @ts-ignore
+    // @ts-expect-error: NeuralNet type is not compatible but required for dynamic reference
     if (NeuralNet && NeuralNet.neuralNetRef) return NeuralNet.neuralNetRef;
     // fallback: create new one (should not happen in real app)
     return { current: { train: async () => {}, getWeights: () => [] } };
@@ -314,12 +313,14 @@ const Training = () => {
       setIsLoadingEpochs(true);
       
       try {
-        setAvailableEpochs(25);
-        setTrainingEpochs(25);
+        const storedEpochs = localStorage.getItem('availableEpochs');
+        const epochs = storedEpochs ? parseInt(storedEpochs, 10) : 50;
+        setAvailableEpochs(epochs);
+        setTrainingEpochs(epochs);
       } catch (err) {
         console.error('Failed to load epochs:', err);
-        setAvailableEpochs(25);
-        setTrainingEpochs(25);
+        setAvailableEpochs(50);
+        setTrainingEpochs(50);
       } finally {
         setIsLoadingEpochs(false);
       }
@@ -430,12 +431,6 @@ const Training = () => {
       }
       return;
     }
-    
-    if (mission.completed) {
-      toast.info('This mission has already been completed');
-      return;
-    }
-    
     if (mission.epochs && mission.epochs > availableEpochs) {
       toast.error(`Not enough epochs. This mission requires ${mission.epochs} epochs, but you only have ${availableEpochs} available.`);
       return;
@@ -453,6 +448,10 @@ const Training = () => {
         setShowTrainingAnimation(true);
         await trainModel(mission.epochs);
         setAvailableEpochs(prev => prev - mission.epochs!);
+        setMissions(prevMissions => prevMissions.map(m =>
+          m.id === mission.id ? { ...m, completed: true } : m
+        ));
+        toast.success(`Mission completed: ${mission.title}`);
       } catch (error) {
         console.error('Error using epochs:', error);
         toast.error('Failed to start mission');
@@ -480,7 +479,7 @@ const Training = () => {
   
   return (
     <>
-      <TrainingNotice />
+      <TrainingInfoBubble />
       
       <div className="mb-6 flex items-center justify-between">
         <div>

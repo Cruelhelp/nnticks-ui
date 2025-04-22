@@ -1,4 +1,3 @@
-
 import { BrowserEventEmitter } from '@/lib/utils';
 import { persistentWebSocket } from './PersistentWebSocketService';
 import { supabase } from '@/lib/supabase';
@@ -21,6 +20,9 @@ class EpochCollectionService extends BrowserEventEmitter {
     progress: 0
   };
   private tickHandler: ((tick: TickData) => void) | null = null;
+  private lastEpochErrorToast: number | null = null;
+  private lastTickReceivedAt: number | null = null;
+  private noTickWarningInterval: NodeJS.Timeout | null = null;
 
   constructor() {
     super();
@@ -34,15 +36,17 @@ class EpochCollectionService extends BrowserEventEmitter {
 
   // Initialize with user ID
   public init(userId: string | null): void {
-    this.userId = userId;
+    // Always set a valid userId: authenticated user's id or GUEST_USER_ID
+    const GUEST_USER_ID = '00000000-0000-0000-0000-000000000000';
+    this.userId = userId || GUEST_USER_ID;
     
-    if (userId) {
+    if (this.userId) {
       this.loadSettings();
       this.loadLastEpoch();
     }
     
     this.setupTickHandler();
-    console.log('EpochCollectionService initialized with userId:', userId);
+    console.log('EpochCollectionService initialized with userId:', this.userId);
   }
 
   // Load settings from Supabase
@@ -184,6 +188,7 @@ class EpochCollectionService extends BrowserEventEmitter {
 
   // Set up the WebSocket tick handler
   private setupTickHandler(): void {
+    console.log('[EpochCollectionService] Setting up tick handler');
     // Remove any existing tick handler
     if (this.tickHandler) {
       persistentWebSocket.off('tick', this.tickHandler);
@@ -191,15 +196,34 @@ class EpochCollectionService extends BrowserEventEmitter {
     }
 
     // Create new tick handler
-    this.tickHandler = (tick: TickData) => {
+    this.tickHandler = async (tick: TickData) => {
+      console.log('[EpochCollectionService] Tick received:', tick);
       if (!this.isCollecting) return;
       
-      // Add tick to buffer
-      this.tickBuffer.push(tick);
-      
+      // Add tick to buffer for epoch logic only if stored successfully
+      let tickStored = false;
+      if (this.userId) {
+        try {
+          await supabase.from('ticks').insert({
+            user_id: this.userId,
+            timestamp: new Date(tick.timestamp).toISOString(),
+            price: tick.value,
+            market: tick.market || 'unknown',
+            tick_data: tick,
+          });
+          tickStored = true;
+        } catch (error) {
+          console.error('[EpochCollectionService] Error inserting tick into Supabase:', error);
+        }
+      }
+      if (tickStored) {
+        this.tickBuffer.push(tick);
+        console.log('[EpochCollectionService] Tick stored and added to buffer. Buffer size:', this.tickBuffer.length);
+      }
+
       // Update status
       const currentCount = this.tickBuffer.length;
-      const progress = (currentCount / this.batchSize) * 100;
+      const progress = Math.min(100, Math.max(0, (currentCount / this.batchSize) * 100));
       
       this.status = {
         isActive: this.isCollecting,
@@ -212,8 +236,6 @@ class EpochCollectionService extends BrowserEventEmitter {
       // Emit events
       this.emit('statusUpdate', this.status);
       this.emit('tickCollected', tick);
-      
-      console.log(`Tick collected. Buffer size: ${currentCount}/${this.batchSize}`);
       
       // Save state periodically (every 10 ticks)
       if (currentCount % 10 === 0) {
@@ -228,10 +250,25 @@ class EpochCollectionService extends BrowserEventEmitter {
 
     // Add tick handler to WebSocket
     persistentWebSocket.on('tick', this.tickHandler);
-    console.log('Tick handler set up');
-    
+    console.log('[EpochCollectionService] Tick handler set up');
+
     // Save initial state
     this.saveToLocalStorage();
+
+    // --- Debug: Warn if no ticks received for >10s ---
+    if (this.noTickWarningInterval) {
+      clearInterval(this.noTickWarningInterval);
+    }
+    this.lastTickReceivedAt = Date.now();
+    persistentWebSocket.on('tick', () => {
+      this.lastTickReceivedAt = Date.now();
+    });
+    this.noTickWarningInterval = setInterval(() => {
+      if (this.isCollecting && Date.now() - this.lastTickReceivedAt > 10000) {
+        console.warn('[EpochCollectionService] No ticks received for over 10 seconds!');
+        toast.warning('No market ticks received for 10 seconds. Check your connection.');
+      }
+    }, 5000);
   }
 
   // Process an epoch when enough ticks are collected
@@ -245,128 +282,69 @@ class EpochCollectionService extends BrowserEventEmitter {
       this.status.isProcessing = true;
       this.emit('statusUpdate', this.status);
       
-      // Get batch of ticks for training
-      const tickBatch = this.tickBuffer.slice(0, this.batchSize);
+      // Train model on tickBuffer
+      const result = await neuralNetwork.train(this.tickBuffer.map(t => t.value), {
+        maxEpochs: 10,
+        onProgress: (progress: number) => console.log(`Training progress: ${progress * 100}%`)
+      });
       
-      // Prepare ticks for training (extract values)
-      const tickValues = tickBatch.map(tick => tick.value);
+      // Save epoch to Supabase
+      const { data: epochInsert, error: epochError } = await supabase
+        .from('epochs')
+        .insert({
+          user_id: this.userId,
+          epoch_number: this.currentEpoch + 1,
+          batch_size: this.batchSize,
+          accuracy: typeof result === 'number' ? result * 100 : 0,
+          loss: neuralNetwork.getLastLoss() || 0,
+          training_time: 0,
+          model_state: neuralNetwork.exportModel(),
+          completed_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
       
-      // Train neural network
-      console.log(`Training neural network with ${tickValues.length} ticks`);
-      const startTime = Date.now();
+      if (epochError) throw epochError;
       
-      let trainingResult;
-      try {
-        trainingResult = await neuralNetwork.train(tickValues, {
-          maxEpochs: 10,
-          onProgress: (progress) => console.log(`Training progress: ${progress * 100}%`)
+      // Assign epoch_id to last N ticks for this user
+      if (epochInsert?.id) {
+        await supabase.rpc('assign_ticks_to_epoch', {
+          user_id: this.userId,
+          epoch_id: epochInsert.id,
+          tick_count: this.batchSize
         });
-      } catch (error) {
-        console.error('Error training neural network:', error);
-        trainingResult = 0;
       }
       
-      const endTime = Date.now();
-      const trainingTime = endTime - startTime;
-      
-      // Prepare result
-      const result: TrainingResult = {
-        accuracy: typeof trainingResult === 'number' ? trainingResult : 0,
-        loss: neuralNetwork.getLastLoss() || 0,
-        time: trainingTime
-      };
-      
-      // Increment epoch number
-      this.currentEpoch++;
-      
-      // Create epoch data
-      const newEpoch: EpochData = {
-        epochNumber: this.currentEpoch,
-        startTime: startTime,
-        endTime: endTime,
-        ticks: [...tickBatch],
-        results: result
-      };
-      
-      // Remove processed ticks from buffer
-      this.tickBuffer = this.tickBuffer.slice(this.batchSize);
-      
-      // Save epoch data to Supabase
-      await this.saveEpochToSupabase(newEpoch);
-      
-      // Update status
+      this.currentEpoch += 1;
+      this.tickBuffer = [];
       this.status = {
-        isActive: this.isCollecting,
-        isProcessing: false,
-        currentCount: this.tickBuffer.length,
-        targetCount: this.batchSize,
-        progress: (this.tickBuffer.length / this.batchSize) * 100
+        ...this.status,
+        currentCount: 0,
+        progress: 0
       };
       
-      // Emit events
-      this.emit('epochCompleted', newEpoch);
+      this.emit('epochCompleted', {
+        epochNumber: this.currentEpoch,
+        startTime: Date.now(),
+        endTime: Date.now(),
+        ticks: [],
+        results: result
+      });
+      
       this.emit('statusUpdate', this.status);
-      
-      // Save state to localStorage
       this.saveToLocalStorage();
-      
-      console.log(`Epoch ${this.currentEpoch} completed. Accuracy: ${result.accuracy * 100}%, Loss: ${result.loss}`);
       toast.success(`Epoch ${this.currentEpoch} completed`);
     } catch (error) {
+      // Prevent spamming error toasts
+      if (!this.lastEpochErrorToast || Date.now() - this.lastEpochErrorToast > 5000) {
+        toast.error('Failed to process epoch');
+        this.lastEpochErrorToast = Date.now();
+      }
       console.error('Error processing epoch:', error);
-      toast.error('Failed to process epoch');
     } finally {
       this.isProcessing = false;
       this.status.isProcessing = false;
       this.emit('statusUpdate', this.status);
-    }
-  }
-
-  // Save epoch data to Supabase
-  private async saveEpochToSupabase(epoch: EpochData): Promise<void> {
-    if (!this.userId) return;
-    
-    try {
-      // Export model state
-      const modelState = neuralNetwork.exportModel();
-      
-      // Save epoch to Supabase
-      const { error } = await supabase
-        .from('epochs')
-        .insert({
-          user_id: this.userId,
-          epoch_number: epoch.epochNumber,
-          batch_size: this.batchSize,
-          accuracy: epoch.results?.accuracy ? epoch.results.accuracy * 100 : null,
-          loss: epoch.results?.loss || null,
-          training_time: epoch.results?.time || null,
-          model_state: modelState,
-          completed_at: new Date(epoch.endTime || Date.now()).toISOString()
-        });
-      
-      if (error) {
-        console.error('Error saving epoch to Supabase:', error);
-      } else {
-        console.log('Epoch saved to Supabase:', epoch.epochNumber);
-      }
-      
-      // Store the ticks for this epoch
-      if (epoch.ticks.length > 0) {
-        const { error: ticksError } = await supabase
-          .from('epoch_ticks')
-          .insert({
-            epoch_id: epoch.epochNumber.toString(),
-            ticks: epoch.ticks
-          });
-        
-        if (ticksError) {
-          console.error('Error saving epoch ticks to Supabase:', ticksError);
-        } else {
-          console.log('Epoch ticks saved to Supabase');
-        }
-      }
-    } catch (error) {
-      console.error('Error saving epoch to Supabase:', error);
     }
   }
 

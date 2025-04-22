@@ -10,35 +10,46 @@ import { trainingService, EpochData } from '@/services/TrainingService';
 import { toast } from 'sonner';
 import { neuralNetwork } from '@/lib/neuralNetwork';
 import EpochCollectionManager from './EpochCollectionManager';
+import { supabase } from '@/lib/supabase';
 
 const Epochs: React.FC = () => {
   const { user } = useAuth();
   const [epochs, setEpochs] = useState<EpochData[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [activeTab, setActiveTab] = useState<string>('history');
-  
+  const [totalTicks, setTotalTicks] = useState<number>(0);
+
   const loadEpochs = useCallback(async () => {
     if (!user) return;
-    
     setIsLoading(true);
     try {
-      const epochsList = await trainingService.getEpochs();
-      setEpochs(epochsList);
+      const { data: epochRows, error: epochError } = await supabase
+        .from('epochs')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('completed_at', { ascending: false });
+      if (epochError) throw epochError;
+      setEpochs(epochRows || []);
+      const { count: tickCount } = await supabase
+        .from('ticks')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user.id);
+      setTotalTicks(tickCount || 0);
     } catch (error) {
-      console.error('Error loading epochs:', error);
-      toast.error('Failed to load epochs');
+      console.error('Error loading epochs or ticks:', error);
+      toast.error('Failed to load epochs or ticks');
     } finally {
       setIsLoading(false);
     }
   }, [user]);
-  
+
   useEffect(() => {
     if (user) {
       trainingService.setUserId(user.id);
       loadEpochs();
     }
   }, [user, loadEpochs]);
-  
+
   const handleImportModelClick = (epoch: EpochData) => {
     try {
       if (!epoch.modelState) {

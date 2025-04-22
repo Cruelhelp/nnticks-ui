@@ -1,4 +1,3 @@
-
 import { supabase } from '@/lib/supabase';
 import { TickData } from '@/types/chartTypes';
 
@@ -6,7 +5,8 @@ class TickService {
   private userId: string | null = null;
   
   setUserId(userId: string | null) {
-    this.userId = userId;
+    const GUEST_USER_ID = '00000000-0000-0000-0000-000000000000';
+    this.userId = userId || GUEST_USER_ID;
   }
   
   async storeTick(tick: TickData) {
@@ -17,9 +17,10 @@ class TickService {
         .from('ticks')
         .insert({
           timestamp: new Date(tick.timestamp).toISOString(),
-          value: tick.value,
+          price: tick.value,
           market: tick.market || 'unknown',
-          user_id: this.userId
+          user_id: this.userId,
+          tick_data: tick,
         });
       
       if (error) throw error;
